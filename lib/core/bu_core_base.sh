@@ -1627,6 +1627,251 @@ bu_scoped_pushd()
     bu_scope_add_cleanup bu_popd_silent
 }
 
+# Number of source lines shown before and after each frame when
+# BU_STACKTRACE_STYLE=full. Tunable via the environment (export it before
+# sourcing) — not a registered setting because it is a plain integer.
+BU_STACKTRACE_CONTEXT_LINES=${BU_STACKTRACE_CONTEXT_LINES:-2}
+
+# awk program used by __bu_traceback_highlight. Kept as a quoted heredoc so
+# the shell performs no expansion on the awk source. It performs a light,
+# single-pass syntax highlight: bash reserved words, brackets/parens/braces,
+# comments, and single/double-quoted strings. It deliberately does not parse
+# `$((...))`, `${...}`, or heredocs — "light" highlighting trades a little
+# precision for zero dependencies and speed on the error path.
+BU_TRACEBACK_HIGHLIGHT_AWK=$(cat <<'AWK'
+function add(text, color) {
+    out = out (color != "" ? color : "") text (color != "" ? rs : "")
+}
+BEGIN {
+    split("case coproc do done elif else esac fi for function if in select then time until while", tmp)
+    for (k in tmp) keywords[tmp[k]] = 1
+}
+{
+    line = $0
+    out = ""
+    state = "normal"
+    buf = ""
+    word = ""
+    i = 1
+    n = length(line)
+    while (i <= n) {
+        c = substr(line, i, 1)
+        if (state == "comment") {
+            add(substr(line, i), cm)
+            break
+        }
+        if (state == "single") {
+            if (c == "'") {
+                buf = buf "'"
+                add(buf, st)
+                state = "normal"
+            } else {
+                buf = buf c
+            }
+            i++
+            continue
+        }
+        if (state == "double") {
+            if (c == "\\" && i < n) {
+                buf = buf substr(line, i, 2)
+                i += 2
+                continue
+            }
+            if (c == "\"") {
+                buf = buf "\""
+                add(buf, st)
+                state = "normal"
+            } else {
+                buf = buf c
+            }
+            i++
+            continue
+        }
+        if (c == "#") {
+            add(substr(line, i), cm)
+            break
+        }
+        if (c == "'") {
+            buf = "'"
+            state = "single"
+            i++
+            continue
+        }
+        if (c == "\"") {
+            buf = "\""
+            state = "double"
+            i++
+            continue
+        }
+        if (c == "(" || c == ")" || c == "[" || c == "]" || c == "{" || c == "}") {
+            add(c, br)
+            i++
+            continue
+        }
+        if (c ~ /[A-Za-z0-9_]/) {
+            word = ""
+            while (i <= n && substr(line, i, 1) ~ /[A-Za-z0-9_]/) {
+                word = word substr(line, i, 1)
+                i++
+            }
+            add(word, (word in keywords) ? kw : "")
+            continue
+        }
+        add(c, "")
+        i++
+    }
+    # An unterminated quote at end-of-line is still a string; emit what we
+    # accumulated so it is not silently dropped.
+    if (state == "single" || state == "double") {
+        add(buf, st)
+    }
+    print out
+}
+AWK
+)
+
+# ```
+# *Description*:
+# Lightly syntax-highlight a single line of shell source: bash reserved words
+# (violet), brackets/parens/braces (yellow), comments (grey, or blue on
+# 8-colour terminals), and quoted strings (green). When the terminal has no
+# color support the BU_TPUT_* codes are empty and the line is returned
+# unchanged.
+#
+# *Params*:
+# - `$1`: Source line to highlight
+#
+# *Returns*:
+# - stdout: The highlighted line
+# ```
+__bu_traceback_highlight()
+{
+    local -r line=$1
+    awk \
+        -v kw="${BU_TPUT_VIOLET:-}" \
+        -v br="${BU_TPUT_YELLOW:-}" \
+        -v cm="${BU_TPUT_GREY:-${BU_TPUT_DARK_BLUE:-}}" \
+        -v st="${BU_TPUT_GREEN:-}" \
+        -v rs="${BU_TPUT_RESET:-}" \
+        "$BU_TRACEBACK_HIGHLIGHT_AWK" <<<"$line"
+}
+
+# ```
+# *Description*:
+# Print one traceback frame in the short (single-line) style.
+#
+# *Params*:
+# - `$1`: Frame index
+# - `$2`: Command text (frame 0) or function name (later frames)
+# - `$3`: Source file path
+# - `$4`: Line number
+# ```
+__bu_traceback_print_frame_short()
+{
+    local -r idx=$1
+    local -r what=$2
+    local -r file=$3
+    local -r line=$4
+    printf "    %s: %s%s%s at %s%s:%s%s\n" \
+        "$idx" \
+        "$BU_TPUT_BOLD" "$what" "$BU_TPUT_RESET" \
+        "$BU_TPUT_UNDERLINE" "$(basename -- "$file")" "$line" "$BU_TPUT_NO_UNDERLINE"
+}
+
+# ```
+# *Description*:
+# Print one traceback frame in the full (verbose) style: a Python-style
+# "File ... line N, in func" header followed by the surrounding source lines,
+# with the fault line highlighted. Falls back to a single grey line when the
+# source file is unavailable (missing, unreadable, or a non-numeric line).
+#
+# *Params*:
+# - `$1`: Command text (frame 0) or function name (later frames)
+# - `$2`: Source file path
+# - `$3`: Line number
+# ```
+__bu_traceback_print_frame_full()
+{
+    local -r what=$1
+    local -r file=$2
+    local -r line=$3
+
+    printf '  File "%s", line %s, in %s\n' \
+        "${BU_TPUT_UNDERLINE}$file${BU_TPUT_NO_UNDERLINE}" \
+        "${BU_TPUT_BOLD}$line${BU_TPUT_RESET}" \
+        "${BU_TPUT_BOLD}${what:-<module>}${BU_TPUT_RESET}"
+
+    if [[ -z "$file" || ! -r "$file" || ! "$line" =~ ^[0-9]+$ ]]
+    then
+        printf '    %s<source unavailable>%s\n' "$BU_TPUT_GREY" "$BU_TPUT_RESET"
+        return 0
+    fi
+
+    local -r context=${BU_STACKTRACE_CONTEXT_LINES:-2}
+    local start=$((line - context))
+    local end=$((line + context))
+    ((start < 1)) && start=1
+
+    local -a snippet=()
+    mapfile -t snippet < <(sed -n "${start},${end}p" "$file" 2>/dev/null || true)
+
+    if ((${#snippet[@]} == 0))
+    then
+        printf '    %s<no source at line %s>%s\n' "$BU_TPUT_GREY" "$line" "$BU_TPUT_RESET"
+        return 0
+    fi
+
+    local -i n=$start
+    local src src_hl
+    for src in "${snippet[@]}"
+    do
+        src_hl=$(__bu_traceback_highlight "$src")
+        if (( n == line ))
+        then
+            printf '  %s>%s %s%5d%s %s│%s %s\n' \
+                "$BU_TPUT_RED" "$BU_TPUT_RESET" \
+                "$BU_TPUT_RED" "$n" "$BU_TPUT_RESET" \
+                "$BU_TPUT_GREY" "$BU_TPUT_RESET" \
+                "$src_hl"
+        else
+            printf '    %s%5d%s %s│%s %s\n' \
+                "$BU_TPUT_GREY" "$n" "$BU_TPUT_RESET" \
+                "$BU_TPUT_GREY" "$BU_TPUT_RESET" \
+                "$src_hl"
+        fi
+        n=$((n + 1))
+    done
+    return 0
+}
+
+# ```
+# *Description*:
+# Dispatch one traceback frame to the active rendering style.
+#
+# *Params*:
+# - `$1`: Style (short or full)
+# - `$2`: Frame index
+# - `$3`: Command text (frame 0) or function name (later frames)
+# - `$4`: Source file path
+# - `$5`: Line number
+# ```
+__bu_traceback_print_frame()
+{
+    local -r style=$1
+    local -r idx=$2
+    local -r what=$3
+    local -r file=$4
+    local -r line=$5
+    case "$style" in
+    full)
+        __bu_traceback_print_frame_full "$what" "$file" "$line"
+        ;;
+    *)
+        __bu_traceback_print_frame_short "$idx" "$what" "$file" "$line"
+        ;;
+    esac
+}
+
 BU_EXIT_HANDLER_CLEANING_UP=false
 
 # ```
@@ -1667,15 +1912,14 @@ __bu_exit_handler()
         echo
         echo "Script exited with code: ${BU_TPUT_RED}$exit_code${BU_TPUT_RESET}"
         echo "Traceback (most recent call last):"
-        local i
+        local i file line what
         for i in "${!BASH_LINENO[@]}"
         do
             if (( i == 0 ))
             then
-                printf "    %s: %s%s%s at %s%s:%s%s\n" \
-                    "$i" \
-                    "$BU_TPUT_BOLD" "$BU_ERR_COMMAND" "$BU_TPUT_RESET" \
-                    "$BU_TPUT_UNDERLINE" "$(basename -- "${BASH_SOURCE[i+1]}")" "$BU_ERR_LINENO" "$BU_TPUT_NO_UNDERLINE"
+                what=$BU_ERR_COMMAND
+                line=$BU_ERR_LINENO
+                file=${BASH_SOURCE[i+1]}
             else
                 # Skip top-of-stack frames that carry no information
                 # (no function name and line 0 — remnant of the root
@@ -1683,11 +1927,11 @@ __bu_exit_handler()
                 if [[ -z "${FUNCNAME[i+1]:-}" && "${BASH_LINENO[i]:-}" == "0" ]]; then
                     continue
                 fi
-                printf "    %s: %s%s%s at %s%s:%s%s\n" \
-                    "$i" \
-                    "$BU_TPUT_BOLD" "${FUNCNAME[i+1]}" "$BU_TPUT_RESET" \
-                                        "$BU_TPUT_UNDERLINE" "$(basename -- "${BASH_SOURCE[i+1]}")" "${BASH_LINENO[i]}" "$BU_TPUT_NO_UNDERLINE"
+                what=${FUNCNAME[i+1]}
+                line=${BASH_LINENO[i]}
+                file=${BASH_SOURCE[i+1]}
             fi
+            __bu_traceback_print_frame "${BU_STACKTRACE_STYLE:-short}" "$i" "$what" "$file" "$line"
         done
         } >"$dev"
 

@@ -156,7 +156,58 @@ bats ./test/parse_bash_test.bats    # hand-written parser tests (54 tests)
 bats ./test/ts_test.bats            # tree-sitter daemon tests (49 tests)
 bats ./test/fzf_dims_test.bats      # fzf dimension calculation tests (14 tests)
 bats ./test/out_test.bats           # structured output tests (38 tests)
+bats ./test/traceback_test.bats     # exit-handler traceback rendering tests
 ```
+
+### Exit handler & traceback styles
+
+When a command fails under `errexit` (`bu_exit_handler_setup` enables `set -e -E`),
+the exit handler in [bu_core_base.sh](../lib/core/bu_core_base.sh) prints a traceback
+of the call stack. The rendering style is controlled by the registered setting
+`BU_STACKTRACE_STYLE`:
+
+| Value | Description |
+|---|---|
+| `short` | One compact line per frame: `0: false at script.sh:42` (default) |
+| `full` | Python-style frames with the surrounding source lines, fault line highlighted |
+
+```sh
+# Compact (default)
+bu set-config BU_STACKTRACE_STYLE short
+
+# Verbose — show surrounding source lines
+bu set-config BU_STACKTRACE_STYLE full
+```
+
+The `full` style renders each frame as a `File "...", line N, in func` header
+followed by a source window. The number of lines shown before/after each frame
+is `BU_STACKTRACE_CONTEXT_LINES` (default `2`), a tunable global in
+`bu_core_base.sh` that can be exported before sourcing to widen the window:
+
+```sh
+export BU_STACKTRACE_CONTEXT_LINES=5
+source ./activate
+```
+
+```
+  File "/path/to/script.sh", line 42, in my_func
+       40 │     local x=1
+       41 │     x=$((x + 1))
+  >    42 │     false
+       43 │     cleanup
+       44 │ }
+```
+
+Frames whose source file is missing or unreadable fall back to a single grey
+`<source unavailable>` line rather than failing the exit handler.
+
+The `full` style also applies a light, dependency-free syntax highlight to the
+source lines: bash reserved words (violet), brackets/parens/braces (yellow),
+comments (grey, falling back to blue on 8-colour terminals), and single/double
+quoted strings (green). It is a single-pass highlighter, so it does not parse
+nested `$((...))`/`${...}` constructs or heredocs — it trades a little precision
+for zero dependencies and speed on the error path. When the terminal has no
+colour support the codes degrade to empty and the source is shown plain.
 
 ### Tree-sitter daemon
 

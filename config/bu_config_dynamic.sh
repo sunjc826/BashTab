@@ -99,6 +99,19 @@ bu_config_register BU_EXPOSE_COMMANDS --bool --default false \
 BU_EXPOSE_COMMANDS=${BU_EXPOSE_COMMANDS:-false}
 
 # ```
+# How the exit-handler traceback is rendered when a command fails.
+#   short - one compact line per stack frame (default)
+#   full  - Python-style frames plus the surrounding source lines
+# The number of context lines shown by "full" is BU_STACKTRACE_CONTEXT_LINES
+# (a tunable global in bu_core_base.sh; not registered because it is a plain
+# integer).
+# ```
+bu_config_register BU_STACKTRACE_STYLE --default short \
+    --enum short full enum-- \
+    --hint "Traceback rendering style (short: one line per frame, full: source context)"
+BU_STACKTRACE_STYLE=${BU_STACKTRACE_STYLE:-${BU_CONFIG_PROPERTIES[BU_STACKTRACE_STYLE,default]}}
+
+# ```
 # Directory for remote-session ControlMaster sockets (see bu_core_remote.sh).
 # Socket paths must stay under the ~100-byte unix sun_path limit, so a long
 # BU_OUT_DIR should be paired with a short override here.
