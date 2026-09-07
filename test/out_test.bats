@@ -354,6 +354,129 @@ function test_bu_format_table_colors_use_key_not_label { #@test
 }
 
 # ===========================================================================
+# bu_format_table --style
+# ===========================================================================
+
+function test_bu_format_table_style_ascii { #@test
+    local out
+    out=$(printf '%s\n' '{"name":"bashtab","version":"0.1.0"}' '{"name":"myapp","version":"-"}' \
+        | bu_format_table --columns name,version --style ascii)
+    assert_equal "$out" '+---------+---------+
+| name    | version |
++---------+---------+
+| bashtab | 0.1.0   |
+| myapp   | -       |
++---------+---------+'
+}
+
+function test_bu_format_table_style_unicode { #@test
+    local out
+    out=$(printf '%s\n' '{"name":"bashtab","version":"0.1.0"}' '{"name":"myapp","version":"-"}' \
+        | bu_format_table --columns name,version --style unicode)
+    assert_equal "$out" '┌─────────┬─────────┐
+│ name    │ version │
+├─────────┼─────────┤
+│ bashtab │ 0.1.0   │
+│ myapp   │ -       │
+└─────────┴─────────┘'
+}
+
+function test_bu_format_table_style_double { #@test
+    local out
+    out=$(printf '%s\n' '{"name":"bashtab","version":"0.1.0"}' '{"name":"myapp","version":"-"}' \
+        | bu_format_table --columns name,version --style double)
+    assert_equal "$out" '╔═════════╦═════════╗
+║ name    ║ version ║
+╠═════════╬═════════╣
+║ bashtab ║ 0.1.0   ║
+║ myapp   ║ -       ║
+╚═════════╩═════════╝'
+}
+
+function test_bu_format_table_style_clickhouse { #@test
+    # ClickHouse PrettyCompact: single-line box with no header separator rule
+    local out
+    out=$(printf '%s\n' '{"name":"bashtab","version":"0.1.0"}' '{"name":"myapp","version":"-"}' \
+        | bu_format_table --columns name,version --style clickhouse)
+    assert_equal "$out" '┌─────────┬─────────┐
+│ name    │ version │
+│ bashtab │ 0.1.0   │
+│ myapp   │ -       │
+└─────────┴─────────┘'
+}
+
+function test_bu_format_table_style_markdown { #@test
+    local out
+    out=$(printf '%s\n' '{"name":"bashtab","version":"0.1.0"}' '{"name":"myapp","version":"-"}' \
+        | bu_format_table --columns name,version --style markdown)
+    assert_equal "$out" '| name    | version |
+| ------- | ------- |
+| bashtab | 0.1.0   |
+| myapp   | -       |'
+}
+
+function test_bu_format_table_style_mysql { #@test
+    local out
+    out=$(printf '%s\n' '{"name":"bashtab","version":"0.1.0"}' '{"name":"myapp","version":"-"}' \
+        | bu_format_table --columns name,version --style mysql)
+    assert_equal "$out" '+---------+---------+
+| name    | version |
++---------+---------+
+| bashtab | 0.1.0   |
++---------+---------+
+| myapp   | -       |
++---------+---------+'
+}
+
+function test_bu_format_table_style_psql { #@test
+    local out
+    out=$(printf '%s\n' '{"name":"bashtab","version":"0.1.0"}' '{"name":"myapp","version":"-"}' \
+        | bu_format_table --columns name,version --style psql)
+    assert_equal "$out" 'name    | version
+-------+-------
+bashtab | 0.1.0
+myapp   | -'
+}
+
+function test_bu_format_table_style_plain { #@test
+    # plain: no header underline, no bold — just padded columns
+    local out
+    out=$(printf '%s\n' '{"name":"bashtab","version":"0.1.0"}' '{"name":"myapp","version":"-"}' \
+        | bu_format_table --columns name,version --style plain)
+    assert_equal "$out" 'name     version
+bashtab  0.1.0
+myapp    -'
+}
+
+function test_bu_format_table_style_unknown_errors { #@test
+    run bu_format_table --columns name --style bogus </dev/null
+    assert_failure
+}
+
+function test_bu_format_table_style_stream { #@test
+    local out
+    out=$(COLUMNS=40; printf '%s\n' '{"name":"bashtab","version":"0.1.0"}' '{"name":"myapp","version":"-"}' \
+        | bu_format_table --stream --columns name,version --style ascii)
+    assert_equal "$out" '+------------------+------------------+
+| name             | version          |
++------------------+------------------+
+| bashtab          | 0.1.0            |
+| myapp            | -                |
++------------------+------------------+'
+}
+
+function test_bu_format_table_style_default_from_env { #@test
+    # BU_TABLE_STYLE selects the default style when --style is absent
+    local out
+    out=$(printf '%s\n' '{"name":"x","version":"1"}' | BU_TABLE_STYLE=unicode bu_format_table --columns name,version)
+    assert_equal "$out" '┌──────┬─────────┐
+│ name │ version │
+├──────┼─────────┤
+│ x    │ 1       │
+└──────┴─────────┘'
+}
+
+# ===========================================================================
 # Integration: bu commands with structured output
 # ===========================================================================
 

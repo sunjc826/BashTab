@@ -60,6 +60,51 @@ bu_register_table_pager_preset()
     __BU_TABLE_PAGER_PRESETS[$name]=$cmd
 }
 
+# Table display styles for bu_format_table.  Each value is a JSON descriptor
+# consumed by the jq renderer.  A "seg spec" ({left,char,join,right,min,pad})
+# draws a horizontal rule whose per-column segment is `.width + 2*pad`
+# characters (at least `min`).  `left`/`vsep`/`right` wrap data and header
+# lines; `top`/`hsep`/`rsep`/`bottom` are optional seg specs (or null).
+# `header_bold` bolds the header row (on a terminal only).  Extend via
+# bu_register_table_style.
+declare -A -g __BU_TABLE_STYLES=(
+    [classic]='{"header_bold":true,"left":"","vsep":"  ","right":"","top":null,"hsep":{"left":"","char":"-","join":"  ","right":"","min":1,"pad":0},"rsep":null,"bottom":null}'
+    [plain]='{"header_bold":false,"left":"","vsep":"  ","right":"","top":null,"hsep":null,"rsep":null,"bottom":null}'
+    [ascii]='{"header_bold":true,"left":"| ","vsep":" | ","right":" |","top":{"left":"+","char":"-","join":"+","right":"+","min":1,"pad":1},"hsep":{"left":"+","char":"-","join":"+","right":"+","min":1,"pad":1},"rsep":null,"bottom":{"left":"+","char":"-","join":"+","right":"+","min":1,"pad":1}}'
+    [unicode]='{"header_bold":true,"left":"│ ","vsep":" │ ","right":" │","top":{"left":"┌","char":"─","join":"┬","right":"┐","min":1,"pad":1},"hsep":{"left":"├","char":"─","join":"┼","right":"┤","min":1,"pad":1},"rsep":null,"bottom":{"left":"└","char":"─","join":"┴","right":"┘","min":1,"pad":1}}'
+    [double]='{"header_bold":true,"left":"║ ","vsep":" ║ ","right":" ║","top":{"left":"╔","char":"═","join":"╦","right":"╗","min":1,"pad":1},"hsep":{"left":"╠","char":"═","join":"╬","right":"╣","min":1,"pad":1},"rsep":null,"bottom":{"left":"╚","char":"═","join":"╩","right":"╝","min":1,"pad":1}}'
+    [markdown]='{"header_bold":true,"left":"| ","vsep":" | ","right":" |","top":null,"hsep":{"left":"| ","char":"-","join":" | ","right":" |","min":3,"pad":0},"rsep":null,"bottom":null}'
+    [mysql]='{"header_bold":true,"left":"| ","vsep":" | ","right":" |","top":{"left":"+","char":"-","join":"+","right":"+","min":1,"pad":1},"hsep":{"left":"+","char":"-","join":"+","right":"+","min":1,"pad":1},"rsep":{"left":"+","char":"-","join":"+","right":"+","min":1,"pad":1},"bottom":{"left":"+","char":"-","join":"+","right":"+","min":1,"pad":1}}'
+    [psql]='{"header_bold":true,"left":"","vsep":" | ","right":"","top":null,"hsep":{"left":"","char":"-","join":"+","right":"","min":1,"pad":0},"rsep":null,"bottom":null}'
+    [clickhouse]='{"header_bold":true,"left":"│ ","vsep":" │ ","right":" │","top":{"left":"┌","char":"─","join":"┬","right":"┐","min":1,"pad":1},"hsep":null,"rsep":null,"bottom":{"left":"└","char":"─","join":"┴","right":"┘","min":1,"pad":1}}'
+)
+
+# ```
+# *Description*:
+# Register (or override) a table display style for bu_format_table.
+# Users can then pass --style <name> or set BU_TABLE_STYLE=<name>.
+#
+# *Params*:
+# - `$1`: Style name (e.g. "unicode", "markdown")
+# - `$2`: JSON descriptor (see __BU_TABLE_STYLES for the shape)
+#
+# *Examples*:
+# ```bash
+# bu_register_table_style "fancy" '{"header_bold":true,"left":"","vsep":"  ","right":"","top":null,"hsep":{"left":"","char":"=","join":"  ","right":"","min":1,"pad":0},"rsep":null,"bottom":null}'
+# ```
+# ```
+bu_register_table_style()
+{
+    local name=$1
+    local descriptor=$2
+    if [[ -z "$name" || -z "$descriptor" ]]
+    then
+        bu_log_err "Usage: bu_register_table_style <name> <json-descriptor>"
+        return 1
+    fi
+    __BU_TABLE_STYLES[$name]=$descriptor
+}
+
 # Static field registry: producer command-line prefix -> space-separated
 # record fields. Consulted first by __bu_out_complete_pipeline_fields when
 # completing after a pipe. Longest prefix match wins.
@@ -1161,6 +1206,31 @@ def ansilen: ansistrip | length;
 def pad($w): . + " " * ($w - ansilen);
 def ellipsize($w): if ansilen > $w then .[0:($w - ($ellipsis | length))] + $ellipsis else . end;
 def rtrim: sub(" +$"; "");
+# Table-style rendering helpers.  A style object has {header_bold,left,vsep,
+# right,top,hsep,rsep,bottom}; top/hsep/rsep/bottom are "seg specs"
+# ({left,char,join,right,min,pad}) or null.  Widths are measured in display
+# columns via ansilen so borders align around ANSI-coloured cells.
+def __table_seg($spec; $s):
+    $s.left
+    + ($spec | map(([$s.min, (.width + 2 * $s.pad)] | max) as $w | $s.char * $w) | join($s.join))
+    + $s.right;
+def __table_headercell($s; $bold; $reset):
+    ($s.header | cellstr | ellipsize($s.width)) as $v
+    | $bold + $v + $reset + (" " * ($s.width - ($v | ansilen)));
+def __table_datacell($r; $s; $colors; $reset):
+    ($r[$s.key] | cellstr | ellipsize($s.width)) as $v
+    | ($colors[$s.key] // "") + $v + (if $colors[$s.key] then $reset else "" end)
+    + (" " * ($s.width - ($v | ansilen)));
+# Emit buffered rows (rsep between rows, bottom after the last), for the
+# buffered renderer.
+def __table_rows($spec; $style; $colors; $reset; $rows):
+    ( $rows
+      | to_entries[]
+      | .value as $r
+      | (if ($style.rsep and .key > 0) then __table_seg($spec; $style.rsep) else empty end),
+        ($style.left + ($spec | map(__table_datacell($r; .; $colors; $reset)) | join($style.vsep)) + $style.right | rtrim)
+    ),
+    (if $style.bottom and ($rows | length) > 0 then __table_seg($spec; $style.bottom) else empty end);
 EOF
 
 # ```
@@ -1194,10 +1264,12 @@ bu_format_table()
 
     local columns=
     local colors=
+    local style=
     local is_stream=false
     local shift_by=1
     while (($#))
     do
+        shift_by=1
         case "$1" in
         --columns)
             columns=$2
@@ -1205,6 +1277,10 @@ bu_format_table()
             ;;
         --colors)
             colors=$2
+            shift_by=2
+            ;;
+        --style)
+            style=$2
             shift_by=2
             ;;
         --stream)
@@ -1222,6 +1298,14 @@ bu_format_table()
         fi
         shift "$shift_by"
     done
+
+    [[ -n "$style" ]] || style=${BU_TABLE_STYLE:-classic}
+    local style_json=${__BU_TABLE_STYLES[$style]:-}
+    if [[ -z "$style_json" ]]
+    then
+        bu_log_err "Unknown table style[$style]; valid styles: ${!__BU_TABLE_STYLES[*]}"
+        return 1
+    fi
 
     __bu_out_colspecs_to_json "$columns" || return 1
     local cols_json=$BU_RET
@@ -1252,8 +1336,10 @@ bu_format_table()
     then
         bold=$BU_TPUT_BOLD
     fi
-    # No explicit or auto colours → suppress reset so plain output stays clean
-    if [[ -z "$colors" && "$rainbow_json" == '[]' ]]
+    # Suppress reset only when neither bold nor colours are emitted, so plain
+    # (piped, uncoloured) output stays clean while a bold header on a terminal
+    # is always reset before the separator/border.
+    if [[ -z "$bold" && -z "$colors" && "$rainbow_json" == '[]' ]]
     then
         reset=
     fi
@@ -1292,6 +1378,7 @@ bu_format_table()
             --argjson cols "$cols_json" \
             --argjson colors "$colors_json" \
             --argjson rainbow "$rainbow_json" \
+            --argjson style "$style_json" \
             --argjson termw "$termw" \
             --argjson minw 4 \
             --arg bold "$bold" --arg reset "$reset" --arg ellipsis "…" \
@@ -1301,16 +1388,18 @@ bu_format_table()
                    .[$cols[$i].key] = $rainbow[$i % ($rainbow | length)])
              else $colors end) as $colors
             | ($cols | length) as $n
-            | ([$cols[] | {key: .key, header: .header, width: ([$minw, ((($termw - 2 * ($n - 1)) / $n) | floor)] | max)}]) as $spec
-            | def rowline($r): $spec | map(
-                  . as $s
-                  | ($r[$s.key] | cellstr | ellipsize($s.width)) as $val
-                  | ($colors[$s.key] // "") + $val + (if $colors[$s.key] then $reset else "" end) as $colored
-                  | $colored + (" " * ($s.width - ($val | length)))
-              ) | join("  ");
-            ($spec | map(. as $s | ($s.header | ellipsize($s.width)) as $h | $bold + $h + $reset + (" " * ($s.width - ($h | length)))) | join("  ") | rtrim),
-            ($spec | map("-" * .width) | join("  ") | rtrim),
-            (inputs | rowline(.) | rtrim)
+            | (($style.left | length) + ($style.right | length) + ($style.vsep | length) * ($n - 1)) as $over
+            | ([$cols[] | {key: .key, header: .header, width: ([$minw, ((($termw - $over) / $n) | floor)] | max)}]) as $spec
+            | (if $style.header_bold then $bold else "" end) as $B
+            | (if $style.top then __table_seg($spec; $style.top) else empty end),
+              ($style.left + ($spec | map(__table_headercell(.; $B; $reset)) | join($style.vsep)) + $style.right | rtrim),
+              (if $style.hsep then __table_seg($spec; $style.hsep) else empty end),
+              (foreach inputs as $r (0; . + 1;
+                   . as $i
+                   | (if ($style.rsep and $i > 1) then __table_seg($spec; $style.rsep) else empty end),
+                     ($style.left + ($spec | map(__table_datacell($r; .; $colors; $reset)) | join($style.vsep)) + $style.right | rtrim)
+              )),
+              (if $style.bottom then __table_seg($spec; $style.bottom) else empty end)
             ' | $__bu_pager_pipe || cat
         return
     fi
@@ -1319,6 +1408,7 @@ bu_format_table()
         --argjson cols "$cols_json" \
         --argjson colors "$colors_json" \
         --argjson rainbow "$rainbow_json" \
+        --argjson style "$style_json" \
         --argjson termw "$termw" \
         --arg bold "$bold" --arg reset "$reset" --arg ellipsis "…" \
         "$__BU_OUT_JQ_PRELUDE"'
@@ -1332,18 +1422,20 @@ bu_format_table()
            else $colors end) as $colors
         | ([4, (if ($cols | length) > 10 then 6 elif ($cols | length) > 6 then 5 else 4 end)] | max) as $minw
         | ($cols | map(. as $c | {key: $c.key, header: $c.header, width: ([($c.header | length)] + [$rows[] | .[$c.key] | cellstr | ansilen] | max)})) as $init
-        | def fit($spec):
-              if ($spec | length) <= 1 then $spec
-              elif (($spec | map(.width) | add) + 2 * ($spec | length - 1)) <= $termw then $spec
-              elif ($spec | all(.[]; .width <= $minw)) then
-                  # Even at min widths the table overflows — drop rightmost columns
-                  fit($spec[:-1])
-              else
-                  # Shrink the widest column that is above the minimum
-                  ($spec | map(select(.width > $minw)) | max_by(.width) | .key) as $mk
-                  | fit($spec | map(if .key == $mk then .width -= 1 else . end))
-              end;
-        fit($init) as $spec
+        | def fit($spec; $style):
+              (($style.left | length) + ($style.right | length)
+               + ($style.vsep | length) * (($spec | length) - 1)) as $over
+              | if ($spec | length) <= 1 then $spec
+                elif (($spec | map(.width) | add) + $over) <= $termw then $spec
+                elif ($spec | all(.[]; .width <= $minw)) then
+                    # Even at min widths the table overflows — drop rightmost columns
+                    fit($spec[:-1]; $style)
+                else
+                    # Shrink the widest column that is above the minimum
+                    ($spec | map(select(.width > $minw)) | max_by(.width) | .key) as $mk
+                    | fit($spec | map(if .key == $mk then .width -= 1 else . end); $style)
+                end;
+        fit($init; $style) as $spec
         | (if ($spec | length) < ($cols | length) then
               # Emit a short diagnostic to stderr when columns are dropped.
               # WARNING: do NOT pipe . through debug — 0-arity debug() dumps
@@ -1351,14 +1443,11 @@ bu_format_table()
               # (msg | debug | empty), . pattern for jq 1.6 compat instead.
               (("table " + (($cols | length) - ($spec | length) | tostring) + " column(s) hidden (terminal too narrow); use --format tsv/jsonl for all fields" | debug | empty), .)
            else . end)
-        | ($spec | map(. as $s | ($s.header | ellipsize($s.width)) as $h | $bold + $h + $reset + (" " * ($s.width - ($h | length)))) | join("  ") | rtrim),
-          ($spec | map("-" * .width) | join("  ") | rtrim),
-          ($rows[] | . as $r | $spec | map(
-              . as $s
-              | ($r[$s.key] | cellstr | ellipsize($s.width)) as $val
-              | ($colors[$s.key] // "") + $val + (if $colors[$s.key] then $reset else "" end) as $colored
-              | $colored + (" " * ($s.width - ($val | length)))
-          ) | join("  ") | rtrim)
+        | (if $style.header_bold then $bold else "" end) as $B
+        | (if $style.top then __table_seg($spec; $style.top) else empty end),
+          ($style.left + ($spec | map(__table_headercell(.; $B; $reset)) | join($style.vsep)) + $style.right | rtrim),
+          (if $style.hsep then __table_seg($spec; $style.hsep) else empty end),
+          __table_rows($spec; $style; $colors; $reset; $rows)
         end
         ' | $__bu_pager_pipe || cat
 }
@@ -3289,6 +3378,7 @@ __bu_out_analyze_pipeline()
 # - `--columns a,b,c`: Forwarded to table/list/tsv formatters
 # - `--stream`: Forwarded to the table formatter
 # - `--colors k=color,...`: Forwarded to the table formatter
+# - `--style name`: Forwarded to the table formatter (see BU_TABLE_STYLE)
 # - stdin: JSONL stream
 #
 # *Returns*:
@@ -3305,10 +3395,12 @@ bu_out()
     local format=auto
     local columns=
     local colors=
+    local style=
     local is_stream=false
     local shift_by=1
     while (($#))
     do
+        shift_by=1
         case "$1" in
         --format)
             format=$2
@@ -3320,6 +3412,10 @@ bu_out()
             ;;
         --colors)
             colors=$2
+            shift_by=2
+            ;;
+        --style)
+            style=$2
             shift_by=2
             ;;
         --stream)
@@ -3362,6 +3458,7 @@ bu_out()
     table)
         [[ -n "$columns" ]] && formatter_args+=(--columns "$columns")
         [[ -n "$colors" ]] && formatter_args+=(--colors "$colors")
+        [[ -n "$style" ]] && formatter_args+=(--style "$style")
         "$is_stream" && formatter_args+=(--stream)
         bu_format_table "${formatter_args[@]}"
         ;;

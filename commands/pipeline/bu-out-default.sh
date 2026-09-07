@@ -14,6 +14,7 @@ bu_run_log_command "$@"
 local format=auto
 local columns=
 local colors=
+local style=
 local is_stream=false
 local is_help=false
 local error_msg=
@@ -38,6 +39,12 @@ do
         # Colorize column cells (comma-separated key=color pairs). Forwarded to table.
         bu_parse_positional $# --hint "Comma-separated key=color pairs (e.g. name=green,version=yellow)"
         colors=${!shift_by}
+        ;;
+    --style)# STYLE
+        # Table border/separator style (classic, plain, ascii, unicode, double, clickhouse, markdown, mysql, psql)
+        bu_parse_positional $# --enum "${!__BU_TABLE_STYLES[*]}" enum--
+        bu_validate_positional "${!shift_by}"
+        style=${!shift_by}
         ;;
     --stream)# _FLAG
         # Stream table rows as they arrive (forwarded to table)
@@ -86,6 +93,7 @@ fi
 local -a out_args=(--format "$format")
 [[ -n "$columns" ]] && out_args+=(--columns "$columns")
 [[ -n "$colors" ]] && out_args+=(--colors "$colors")
+[[ -n "$style" ]] && out_args+=(--style "$style")
 "$is_stream" && out_args+=(--stream)
 bu_out "${out_args[@]}"
 

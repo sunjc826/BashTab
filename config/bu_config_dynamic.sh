@@ -75,6 +75,14 @@ bu_config_register BU_TABLE_PAGER --default "" \
     --hint "Pager for tabular output (preset:less, preset:bat, or a custom command). Empty disables."
 BU_TABLE_PAGER=${BU_TABLE_PAGER:-""}
 
+# Default table display style for `bu format-table` / `bu out --format table`.
+# Overridable per-invocation with --style. One of: classic, plain, ascii,
+# unicode, double, markdown, mysql, psql.
+bu_config_register BU_TABLE_STYLE --default classic \
+    --enum classic plain ascii unicode double clickhouse markdown mysql psql enum-- \
+    --hint "Table border/separator style for bu format-table"
+BU_TABLE_STYLE=${BU_TABLE_STYLE:-${BU_CONFIG_PROPERTIES[BU_TABLE_STYLE,default]}}
+
 # Allow pipeline field completion to execute the pipeline prefix being typed
 # ("probing") to discover record fields from live output. Off by default:
 # only producers in BU_OUT_PROBE_COMMANDS are ever executed.

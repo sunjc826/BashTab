@@ -181,9 +181,34 @@ Design notes:
 - Header is bold on a terminal; rows are right-trimmed (no trailing spaces).
 - `--columns a,b:Label` — order/select fields, rename headers.
 - `--colors name=green,version=yellow` — per-column color (keys, not labels).
+- `--style name` — table border/separator style (see below); default
+  `classic`, overridable via `BU_TABLE_STYLE`.
 - `--stream` — emit immediately with proportional widths from `$COLUMNS`
   (requires `--columns`). Use for large/slow streams.
 - Empty input → no output (PowerShell semantics).
+
+### Table styles
+
+`bu format-table --style <name>` (or `BU_TABLE_STYLE=<name>`) picks a
+border/separator look. `classic` (bold header, dashed underline, two-space
+gutter) is the default and unchanged. The rest:
+
+| Style | Look |
+|---|---|
+| `plain` | Padded columns only — no header underline, no bold |
+| `ascii` | `+`/`-`/`\|` box |
+| `unicode` | Single-line box-drawing (`┌─┬┐ │ ├┼┤ └┴┘`) |
+| `double` | Double-line box-drawing (`╔═╦╗ ║ ╠╬╣ ╚╩╝`) |
+| `clickhouse` | ClickHouse `PrettyCompact` — single-line box, no header rule |
+| `markdown` | `\| a \| b \|` + `\|---\|---\|` header (GitHub-flavoured) |
+| `mysql` | `+----+` borders between every row |
+| `psql` | Postgres-style `-+-` header separator only |
+
+Styles are registered in `__BU_TABLE_STYLES` (a name → JSON-descriptor
+assoc) and extended with `bu_register_table_style <name> <descriptor>`,
+e.g. from a module preinit script. A descriptor sets `left`/`vsep`/`right`
+(line wrappers) and optional `top`/`hsep`/`rsep`/`bottom` rule specs
+(`{left,char,join,right,min,pad}`) plus `header_bold`.
 
 `bu_format_list` renders `key : value` blocks — good for wide records on
 narrow terminals.
@@ -231,6 +256,7 @@ verb=`convert-to`, noun=`jsonl`. Extend the array for custom multi-word verbs.
 | Variable | Default | Purpose |
 |---|---|---|
 | `BU_OUTPUT_FORMAT` | *(empty)* | Force output format when `--format auto` |
+| `BU_TABLE_STYLE` | `classic` | Default table style. `plain`, `ascii`, `unicode`, `double`, `clickhouse`, `markdown`, `mysql`, or `psql` (see [Table styles](#table-styles)). Overridden per-call by `--style`. |
 | `BU_TABLE_PAGER` | *(empty)* | Pager for tables. `preset:less` → `less -R`, `preset:bat` → `bat --paging=always`, `preset:never` → cat, or a raw command like `less -R`. Empty disables. |
 | `BU_OUT_PRODUCER_FIELDS` | builtins | Assoc: producer prefix → field list |
 | `BU_OUT_PROBE_PIPELINE` | `false` | Master switch for live probing during completion |
