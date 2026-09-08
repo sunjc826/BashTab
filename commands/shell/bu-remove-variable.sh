@@ -124,7 +124,7 @@ then
     while IFS= read -r _n
     do
         [[ -n "$_n" ]] && names+=("$_n")
-    done < <(jq -r '.name // empty' 2>/dev/null)
+    done < <(__bu_out_strict_guard "remove-variable" | jq -r '.name // empty' 2>/dev/null)
 fi
 
 if ((${#names[@]} == 0))

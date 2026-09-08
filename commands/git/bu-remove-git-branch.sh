@@ -92,7 +92,7 @@ if ((${#branches[@]} == 0)) && read -t 0 2>/dev/null; then
         local b
         b=$(jq -r '.name // empty' <<<"$line" 2>/dev/null) || true
         [[ -n "$b" ]] && branches+=("$b")
-    done
+    done < <(__bu_out_strict_guard "remove-git-branch")
 fi
 
 if ((${#branches[@]} == 0)); then

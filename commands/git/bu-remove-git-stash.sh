@@ -79,7 +79,7 @@ if ((${#indices[@]} == 0)) && ! "$is_all" && read -t 0 2>/dev/null; then
         local idx
         idx=$(jq -r '.index // empty' <<<"$line" 2>/dev/null) || true
         [[ -n "$idx" ]] && indices+=("$idx")
-    done
+    done < <(__bu_out_strict_guard "remove-git-stash")
 fi
 
 if ((${#indices[@]} == 0)) && ! "$is_all"; then

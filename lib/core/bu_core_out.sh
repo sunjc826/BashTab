@@ -2929,6 +2929,91 @@ __bu_out_field_present()
 
 # ```
 # *Description*:
+# Optional strict-mode stdin guard for pipeline consumers.  When
+# BU_OUT_STRICT=true, reads the first JSONL record and warns to stderr if the
+# command's `# Requires-All:` (all) / `# Requires-Any:` (at least one)
+# contract is unsatisfied, then passes every record through unchanged.  When
+# BU_OUT_STRICT is unset/false this is a plain `cat` (zero overhead).
+#
+# Meant to be wired into a consumer's stdin loop as
+# `done < <(__bu_out_strict_guard "<command>")`, so the guard runs in a
+# process substitution and the loop keeps reading the current shell.
+#
+# *Params*:
+# - `$1`: Command name without the `bu ` prefix
+# ```
+__bu_out_strict_guard()
+{
+    local -r command_name=$1
+
+    if [[ "${BU_OUT_STRICT:-false}" != true ]]
+    then
+        cat
+        return 0
+    fi
+
+    # Peek the first record (preserving it verbatim), then pass everything through.
+    local _sg_first
+    IFS= read -r _sg_first || return 0
+
+    local _sg_all= _sg_any=
+    local _sg_file=${BU_COMMANDS[$command_name]:-}
+    if [[ -f "$_sg_file" ]]
+    then
+        __bu_command_header_get "$_sg_file" "Requires-All" _sg_all
+        __bu_command_header_get "$_sg_file" "Requires-Any" _sg_any
+    fi
+
+    if [[ -n "$BU_OUT_JQ" && ( -n "$_sg_all" || -n "$_sg_any" ) ]]
+    then
+        local -a _sg_missing=()
+        if [[ -n "$_sg_all" ]]
+        then
+            local -a _sg_all_fields=()
+            read -r -a _sg_all_fields <<< "$_sg_all"
+            local _sg_r
+            for _sg_r in "${_sg_all_fields[@]}"
+            do
+                if ! "$BU_OUT_JQ" -e --arg f "$_sg_r" 'has($f)' <<<"$_sg_first" >/dev/null 2>&1
+                then
+                    _sg_missing+=("$_sg_r")
+                fi
+            done
+        fi
+        if [[ -n "$_sg_any" ]]
+        then
+            local -a _sg_any_fields=()
+            read -r -a _sg_any_fields <<< "$_sg_any"
+            local _sg_r2 _sg_any_ok=false
+            for _sg_r2 in "${_sg_any_fields[@]}"
+            do
+                if "$BU_OUT_JQ" -e --arg f "$_sg_r2" 'has($f)' <<<"$_sg_first" >/dev/null 2>&1
+                then
+                    _sg_any_ok=true
+                    break
+                fi
+            done
+            if ! "$_sg_any_ok"
+            then
+                local _sg_ifs=$IFS
+                IFS='|'
+                _sg_missing+=("${_sg_any_fields[*]}")
+                IFS=$_sg_ifs
+            fi
+        fi
+        if ((${#_sg_missing[@]} > 0))
+        then
+            bu_log_warn "BU_OUT_STRICT: [$command_name] needs field(s) [${_sg_missing[*]}] not present in upstream record"
+        fi
+    fi
+
+    printf '%s\n' "$_sg_first"
+    cat
+    return 0
+}
+
+# ```
+# *Description*:
 # Statically resolve the record fields an upstream pipeline produces.  Uses
 # multi-stage analysis, the static registry, and the `# Fields:` header — but
 # never executes the producer (unlike completion probing / tab-execute).

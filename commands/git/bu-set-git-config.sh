@@ -96,7 +96,7 @@ if [[ -z "$key" ]] && read -t 0 2>/dev/null; then
     local line
     while IFS= read -r line; do
         pipeline_records+=("$line")
-    done
+    done < <(__bu_out_strict_guard "set-git-config")
 fi
 
 if ((${#pipeline_records[@]} > 0)); then

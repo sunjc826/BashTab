@@ -118,7 +118,7 @@ then
     while IFS= read -r _s
     do
         [[ -n "$_s" ]] && signals+=("$_s")
-    done < <(jq -r '.signal // empty' 2>/dev/null)
+    done < <(__bu_out_strict_guard "remove-trap" | jq -r '.signal // empty' 2>/dev/null)
 fi
 
 if ((${#signals[@]} == 0))

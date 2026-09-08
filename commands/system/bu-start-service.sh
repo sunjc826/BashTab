@@ -117,7 +117,7 @@ then
     while IFS= read -r _u
     do
         [[ -n "$_u" ]] && units+=("$_u")
-    done < <(jq -r '.unit // .name // empty' 2>/dev/null)
+    done < <(__bu_out_strict_guard "start-service" | jq -r '.unit // .name // empty' 2>/dev/null)
 fi
 
 if ((${#units[@]} == 0))

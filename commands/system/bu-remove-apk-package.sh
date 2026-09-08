@@ -51,7 +51,7 @@ if ((${#names[@]} == 0)) && read -t 0 2>/dev/null; then
     local line; while IFS= read -r line; do
         local n; n=$(jq -r '.name // empty' <<<"$line" 2>/dev/null) || true
         [[ -n "$n" ]] && names+=("$n")
-    done
+    done < <(__bu_out_strict_guard "remove-apk-package")
 fi
 if ((${#names[@]} == 0)); then error_msg="No packages specified."; bu_autohelp; bu_scope_pop_function; return 1; fi
 if "$is_dry_run"; then

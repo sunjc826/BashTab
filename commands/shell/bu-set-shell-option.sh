@@ -124,7 +124,7 @@ then
                     && bu_out_record name="$_n" value:=false \
                     || { bu_out_record name="$_n" value:=true error="set +o failed"; rc=1; }
             fi
-        done < <(jq -r '.name as $n | (if has("value") then (.value | tostring) else "" end) as $v | if $n then "\($n)\t\($v)" else empty end' 2>/dev/null)
+        done < <(__bu_out_strict_guard "set-shell-option" | jq -r '.name as $n | (if has("value") then (.value | tostring) else "" end) as $v | if $n then "\($n)\t\($v)" else empty end' 2>/dev/null)
     } > "$records_file"
     bu_out --format "$format" < "$records_file"
     bu_scope_pop_function

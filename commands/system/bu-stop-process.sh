@@ -103,7 +103,7 @@ then
     while IFS= read -r pid
     do
         [[ -n "$pid" ]] && pids+=("$pid")
-    done < <(jq -r '.pid // empty' 2>/dev/null)
+    done < <(__bu_out_strict_guard "stop-process" | jq -r '.pid // empty' 2>/dev/null)
 fi
 
 if ((${#pids[@]} == 0))

@@ -84,7 +84,7 @@ if ((${#tags[@]} == 0)) && read -t 0 2>/dev/null; then
         local t
         t=$(jq -r '.name // empty' <<<"$line" 2>/dev/null) || true
         [[ -n "$t" ]] && tags+=("$t")
-    done
+    done < <(__bu_out_strict_guard "remove-git-tag")
 fi
 
 if ((${#tags[@]} == 0)); then

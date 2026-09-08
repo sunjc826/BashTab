@@ -1142,6 +1142,37 @@ function test_get_member_empty_input_silent { #@test
 }
 
 # ===========================================================================
+# BU_OUT_STRICT runtime validation
+# ===========================================================================
+
+function test_strict_guard_passthrough_and_warn { #@test
+    local tmpdir out
+    tmpdir=$(mktemp -d)
+    cat > "$tmpdir/bu-needs-host.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: consume
+# Requires-All: host
+function __bu_bu_needs_host_main() { :; }
+EOF
+    bu_preinit_register_user_defined_subcommand_file "$tmpdir/bu-needs-host.sh" needs-host source
+
+    # Strict off: pure passthrough, no warning.
+    out=$(printf '{"name":"x"}\n' | __bu_out_strict_guard needs-host 2>/dev/null)
+    assert_equal "$out" '{"name":"x"}'
+
+    # Strict on: stdout still passes the record through; stderr warns.
+    out=$(printf '{"name":"x"}\n' | BU_OUT_STRICT=true __bu_out_strict_guard needs-host 2>/dev/null)
+    assert_equal "$out" '{"name":"x"}'
+    out=$(printf '{"name":"x"}\n' | BU_OUT_STRICT=true __bu_out_strict_guard needs-host 2>&1 >/dev/null)
+    assert_regex "$out" 'BU_OUT_STRICT'
+    assert_regex "$out" 'needs-host'
+    assert_regex "$out" 'host'
+
+    rm -rf "$tmpdir"
+}
+
+# ===========================================================================
 # Cmdlets end at Out-Default: table on a terminal, JSONL when piped
 # ===========================================================================
 

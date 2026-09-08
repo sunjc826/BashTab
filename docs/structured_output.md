@@ -283,6 +283,21 @@ declared order), even when the producer emitted no records; inferred-only
 fields follow. This is the type-level complement to the name-only `# Fields:`
 header — types are inferred, never hand-authored.
 
+### Runtime strict mode
+
+`BU_OUT_STRICT=true` makes pipeline consumers (`# Pipeline: consume`)
+validate the first incoming record against their `# Requires-All:` /
+`# Requires-Any:` contract and warn to stderr when it is unsatisfied, instead
+of silently producing empty output:
+
+```bash
+printf '{"index":1}\n' | BU_OUT_STRICT=true bu remove-git-tag
+# WARN  ... [remove-git-tag] needs field(s) [name] not present in upstream record
+```
+
+Records are always passed through unchanged, so strict mode only adds
+diagnostics; it never alters the stream. Off by default (a plain `cat`).
+
 ### Alias merging in option completion
 
 Case-pattern alternatives equal modulo leading `-`/`+` and case

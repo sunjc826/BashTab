@@ -100,7 +100,7 @@ if ((${#paths[@]} == 0)) && read -t 0 2>/dev/null; then
         local p
         p=$(jq -r '.path // empty' <<<"$line" 2>/dev/null) || true
         [[ -n "$p" ]] && paths+=("$p")
-    done
+    done < <(__bu_out_strict_guard "add-git-file")
 fi
 
 if ((${#paths[@]} == 0)) && ! "$is_all" && ! "$is_update"; then
