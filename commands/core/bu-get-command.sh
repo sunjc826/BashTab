@@ -294,9 +294,18 @@ __bu_get_cmd_registry_lookup()
             # function type: stays empty unless registered
         fi
 
-        # Fields from BU_OUT_PRODUCER_FIELDS
+        # Fields: registry first (jc parsers, bu_register_output_fields),
+        # then the command's `# Fields:` header.
         __bu_get_cmd_registry_lookup BU_OUT_PRODUCER_FIELDS "$command"
         local fields=$BU_RET
+        if [[ -z "$fields" ]]
+        then
+            local _f_file=${BU_COMMANDS[$command]:-}
+            if [[ -f "$_f_file" ]]
+            then
+                __bu_command_header_get "$_f_file" "Fields" fields
+            fi
+        fi
 
         # Stage + derived input/output from the # Pipeline: header (or the
         # registry cache populated by bu_register_stage_effect).

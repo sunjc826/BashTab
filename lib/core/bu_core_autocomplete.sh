@@ -2419,7 +2419,11 @@ __bu_autocomplete_completion_func_cli()
                 compopt -o nospace
             fi
         else
-            bu_compgen -W "${!BU_COMMANDS[*]}" -- "$cur_word"
+            # Command position after a pipe: only suggest commands whose
+            # input format/fields are compatible with the upstream stream.
+            local -a _pipe_candidates=("${!BU_COMMANDS[@]}")
+            __bu_out_filter_compatible_commands _pipe_candidates
+            bu_compgen -W "${_pipe_candidates[*]}" -- "$cur_word"
         fi
         if "${BU_AUTOCOMPLETE_ACCEPT_ANSI_COLORS:-false}"
         then

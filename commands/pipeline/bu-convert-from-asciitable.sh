@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: codec
 # Dispatch: source
 # Synopsis: Convert ASCII table text to JSONL records
 function __bu_bu_convert_from_asciitable_main()

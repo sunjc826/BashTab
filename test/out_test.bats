@@ -576,7 +576,7 @@ function test_bu_get_command_metadata { #@test
     def=$(printf '%s' "$out" | jq -r .definition)
     [[ -f "$def" ]]
     [[ "$def" == */bu-get-module.sh ]]
-    assert_equal "$(printf '%s' "$out" | jq -c 'del(.definition, .shadows, .shadowed_by)')" '{"name":"get-module","verb":"get","noun":"module","namespace":"bu","type":"source","synopsis":"List loaded BashTab modules","fields":"","stage":"producer","input":"none","output":"jsonl","requires":"","module":"bu"}'
+    assert_equal "$(printf '%s' "$out" | jq -c 'del(.definition, .shadows, .shadowed_by)')" '{"name":"get-module","verb":"get","noun":"module","namespace":"bu","type":"source","synopsis":"List loaded BashTab modules","fields":"name rank version path describe branch dirty","stage":"producer","input":"none","output":"jsonl","requires":"","module":"bu"}'
 }
 
 function test_bu_get_command_multi_word_verb { #@test
@@ -962,6 +962,81 @@ function test_pipeline_fields_dsl_dynamic_hint { #@test
     bu_autocomplete_get_autocompletions bu sort ""
     # The hint should now mention the available fields, not the static text
     assert_equal "${COMPREPLY[*]}" "name verb noun namespace type definition synopsis fields stage input output requires module shadows shadowed_by"
+}
+
+# ===========================================================================
+# Command completion after a pipe: format + field compatibility
+# ===========================================================================
+
+function test_pipeline_command_filter_jsonl_upstream { #@test
+    # After a jsonl producer, jsonl consumers are offered; known-incompatible
+    # commands (producers, foreign-format codecs) are hidden.
+    local command_line_front_before_pipe="bu get-command | "
+    bu_autocomplete_get_autocompletions bu ""
+    local joined=" ${COMPREPLY[*]} "
+    assert_regex "$joined" ' select '
+    assert_regex "$joined" ' where '
+    assert_regex "$joined" ' format-table '
+    refute_regex "$joined" ' convert-from-tsv '
+    refute_regex "$joined" ' get-disk '
+}
+
+function test_pipeline_command_filter_tsv_upstream { #@test
+    # After convert-to-tsv, jsonl consumers are hidden; tsv/text consumers stay.
+    local command_line_front_before_pipe="bu get-command | bu convert-to-tsv | "
+    bu_autocomplete_get_autocompletions bu ""
+    local joined=" ${COMPREPLY[*]} "
+    refute_regex "$joined" ' select '
+    refute_regex "$joined" ' where '
+    assert_regex "$joined" ' convert-from-tsv '
+    assert_regex "$joined" ' convert-from-lines '
+}
+
+function test_pipeline_command_filter_no_pipe { #@test
+    # Without a pipe, producers are still offered (no filtering).
+    bu_autocomplete_get_autocompletions bu ""
+    assert_regex " ${COMPREPLY[*]} " ' get-disk '
+}
+
+function test_pipeline_command_filter_requires_fields { #@test
+    # A # Requires: command is only offered when the upstream producer
+    # statically emits those fields.
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    cat > "$tmpdir/bu-needs-host.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: query
+# Requires: host
+function __bu_bu_needs_host_main() { :; }
+EOF
+    cat > "$tmpdir/bu-prod-host.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: producer
+# Fields: host port name
+function __bu_bu_prod_host_main() { :; }
+EOF
+    cat > "$tmpdir/bu-prod-nohost.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: producer
+# Fields: name version
+function __bu_bu_prod_nohost_main() { :; }
+EOF
+    bu_preinit_register_user_defined_subcommand_file "$tmpdir/bu-needs-host.sh" needs-host source
+    bu_preinit_register_user_defined_subcommand_file "$tmpdir/bu-prod-host.sh" prod-host source
+    bu_preinit_register_user_defined_subcommand_file "$tmpdir/bu-prod-nohost.sh" prod-nohost source
+
+    local command_line_front_before_pipe="bu prod-host | "
+    bu_autocomplete_get_autocompletions bu ""
+    assert_regex " ${COMPREPLY[*]} " ' needs-host '
+
+    command_line_front_before_pipe="bu prod-nohost | "
+    bu_autocomplete_get_autocompletions bu ""
+    refute_regex " ${COMPREPLY[*]} " ' needs-host '
+
+    rm -rf "$tmpdir"
 }
 
 # ===========================================================================

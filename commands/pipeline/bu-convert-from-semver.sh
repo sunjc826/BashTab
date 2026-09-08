@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: codec
 # Dispatch: source
 # Synopsis: Parse a semantic version string into components
 function __bu_bu_convert_from_semver_main()

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: codec
 # Dispatch: source
 # Synopsis: Decode a JWT token into its header and payload
 function __bu_bu_convert_from_jwt_main()

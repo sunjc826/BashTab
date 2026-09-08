@@ -236,6 +236,21 @@ Producer text is resolved from the completion bindings via dynamic scope
 (`command_line_front_before_pipe` for the legacy parser, `pipe_before` for
 tree-sitter), with a `COMP_WORDS` pipe-walk fallback.
 
+### Command completion after a pipe
+
+At the command position after a pipe (`bu get-command | <TAB>`), candidate
+commands are filtered by compatibility with the upstream stream:
+
+- **Format** — a command is offered only if its `input` format token matches
+  the upstream `output` (e.g. after `bu convert-to-tsv`, jsonl consumers like
+  `bu select` are hidden; `bu convert-from-tsv` and `bu convert-from-lines`
+  remain). Unknown formats are never filtered out — only positively-known
+  mismatches are hidden.
+- **Fields** — a command with a `# Requires:` contract is offered only when
+  the upstream producer's fields are statically known to include every
+  required field. Static resolution uses multi-stage analysis, the field
+  registry, and `# Fields:` headers (no producer execution).
+
 ### Alias merging in option completion
 
 Case-pattern alternatives equal modulo leading `-`/`+` and case

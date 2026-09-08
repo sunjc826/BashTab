@@ -2795,6 +2795,232 @@ bu_register_stage_effect()
 
 # ```
 # *Description*:
+# Report whether a pipeline command consuming `input` format can follow an
+# upstream stage emitting `output` format.  Unknown formats are treated as
+# compatible (do not filter), so only positively-known mismatches are hidden.
+#
+# *Params*:
+# - `$1`: input format token (e.g. `jsonl`, `tsv`, `text`, `none`)
+# - `$2`: output format token
+#
+# *Returns*:
+# - exit 0 if compatible, 1 if known-incompatible
+# ```
+__bu_out_format_compatible()
+{
+    local -r input=$1
+    local -r output=$2
+    [[ -z "$input" || -z "$output" ]] && return 0
+    [[ "$input" == "$output" ]] && return 0
+    # A generic line-oriented "text" consumer accepts any line-oriented stream.
+    [[ "$input" == text && "$output" != none && "$output" != display ]] && return 0
+    return 1
+}
+
+# ```
+# *Description*:
+# Compute the output format of a producer pipeline (the stream that would
+# reach the next stage after a pipe).  Walks each stage's effect and returns
+# the final output format token.
+#
+# *Params*:
+# - `$1`: Producer pipeline text (e.g. "bu get-command | bu convert-to-tsv")
+# - `$2`: Name of the variable to receive the format token (nameref)
+#
+# *Returns*:
+# - exit 0 and sets the token; exit 1 if any stage's effect/format is unknown
+# ```
+__bu_out_pipeline_output_format()
+{
+    local -r pipeline_text=$1
+    local -n _pof_out=$2
+    _pof_out=
+
+    local -a _pof_stages=()
+    __bu_out_split_pipeline "$pipeline_text" _pof_stages
+    ((${#_pof_stages[@]} == 0)) && return 1
+
+    local _pof_fmt=
+    local _pof_stage _pof_cmd _pof_eff _pof_in _pof_o
+    for _pof_stage in "${_pof_stages[@]}"
+    do
+        _pof_cmd=$(__bu_out_extract_command "$_pof_stage") || return 1
+        _pof_eff=
+        __bu_out_stage_effect_lookup "${_pof_cmd#bu }" _pof_eff
+        [[ -z "$_pof_eff" ]] && return 1
+        _pof_in= _pof_o=
+        __bu_out_effect_io "$_pof_eff" "${_pof_cmd#bu }" _pof_in _pof_o
+        [[ -z "$_pof_o" ]] && return 1
+        _pof_fmt=$_pof_o
+    done
+
+    [[ -z "$_pof_fmt" ]] && return 1
+    _pof_out=$_pof_fmt
+    return 0
+}
+
+# ```
+# *Description*:
+# Read a command's fixed input-field contract (`# Requires:` header).
+#
+# *Params*:
+# - `$1`: Command name without the `bu ` prefix
+# - `$2`: Name of the variable to receive the space-joined fields (nameref)
+# ```
+__bu_out_command_requires()
+{
+    local -r command_name=$1
+    local -n _cor_out=$2
+    _cor_out=
+    local _cor_file=${BU_COMMANDS[$command_name]:-}
+    if [[ -f "$_cor_file" ]]
+    then
+        __bu_command_header_get "$_cor_file" "Requires" _cor_out
+    fi
+    return 0
+}
+
+# ```
+# *Description*:
+# Statically resolve the record fields an upstream pipeline produces.  Uses
+# multi-stage analysis, the static registry, and the `# Fields:` header — but
+# never executes the producer (unlike completion probing / tab-execute).
+#
+# *Params*:
+# - `$1`: Producer pipeline text
+# - `$2`: Name of the array to receive the field names (nameref)
+#
+# *Returns*:
+# - exit 0 if fields are known (array populated), 1 if unknown
+# ```
+__bu_out_static_pipeline_fields()
+{
+    local -r pipeline_text=$1
+    local -n _spf_out=$2
+    _spf_out=()
+
+    local -a _spf_fields=()
+    if __bu_out_analyze_pipeline "$pipeline_text" _spf_fields && ((${#_spf_fields[@]} > 0))
+    then
+        _spf_out=("${_spf_fields[@]}")
+        return 0
+    fi
+
+    # Static registry longest-prefix match.
+    local _spf_key _spf_best=
+    for _spf_key in "${!BU_OUT_PRODUCER_FIELDS[@]}"
+    do
+        if [[ "$pipeline_text" == "$_spf_key" || "$pipeline_text" == "$_spf_key "* ]] && (( ${#_spf_key} > ${#_spf_best} ))
+        then
+            _spf_best=$_spf_key
+        fi
+    done
+    if [[ -n "$_spf_best" ]]
+    then
+        # shellcheck disable=SC2206
+        _spf_fields=(${BU_OUT_PRODUCER_FIELDS[$_spf_best]})
+    fi
+
+    # `# Fields:` header.
+    if ((${#_spf_fields[@]} == 0))
+    then
+        local _spf_cmd=${pipeline_text#* }
+        _spf_cmd=${_spf_cmd%%[[:space:]]*}
+        local _spf_file=${BU_COMMANDS[$_spf_cmd]:-}
+        if [[ -f "$_spf_file" ]]
+        then
+            local _spf_line=
+            __bu_command_header_get "$_spf_file" "Fields" _spf_line
+            [[ -n "$_spf_line" ]] && _spf_fields=($_spf_line)
+        fi
+    fi
+
+    ((${#_spf_fields[@]} > 0)) || return 1
+    _spf_out=("${_spf_fields[@]}")
+    return 0
+}
+
+# ```
+# *Description*:
+# Filter a list of candidate command names for the command position after a
+# pipe.  Hides commands whose input format is known-incompatible with the
+# upstream stream, and — when the upstream fields are statically known —
+# commands whose `# Requires:` fields are not all present upstream.  When no
+# pipe context exists, or the upstream is unknown, the list is left unchanged.
+#
+# *Params*:
+# - `$1`: Name of the candidate command array (nameref, filtered in place)
+# ```
+__bu_out_filter_compatible_commands()
+{
+    local -n _fcc_in=$1
+
+    if ! __bu_out_resolve_producer
+    then
+        return 0
+    fi
+    local _fcc_producer=$BU_RET
+
+    local _fcc_up_out=
+    __bu_out_pipeline_output_format "$_fcc_producer" _fcc_up_out || return 0
+
+    local -a _fcc_up_fields=()
+    local _fcc_up_known=false
+    if __bu_out_static_pipeline_fields "$_fcc_producer" _fcc_up_fields
+    then
+        _fcc_up_known=true
+    fi
+
+    local -a _fcc_result=()
+    local _fcc_cmd
+    for _fcc_cmd in "${_fcc_in[@]}"
+    do
+        local _fcc_eff= _fcc_in_fmt= _fcc_out_fmt=
+        __bu_out_stage_effect_lookup "$_fcc_cmd" _fcc_eff
+        if [[ -n "$_fcc_eff" ]]
+        then
+            __bu_out_effect_io "$_fcc_eff" "$_fcc_cmd" _fcc_in_fmt _fcc_out_fmt
+            if [[ -n "$_fcc_in_fmt" ]] && ! __bu_out_format_compatible "$_fcc_in_fmt" "$_fcc_up_out"
+            then
+                continue
+            fi
+        fi
+
+        if "$_fcc_up_known"
+        then
+            local _fcc_req=
+            __bu_out_command_requires "$_fcc_cmd" _fcc_req
+            if [[ -n "$_fcc_req" ]]
+            then
+                local -a _fcc_req_fields=()
+                read -r -a _fcc_req_fields <<< "$_fcc_req"
+                local _fcc_r _fcc_f _fcc_found _fcc_all=true
+                for _fcc_r in "${_fcc_req_fields[@]}"
+                do
+                    _fcc_found=false
+                    for _fcc_f in "${_fcc_up_fields[@]}"
+                    do
+                        [[ "$_fcc_f" == "$_fcc_r" ]] && { _fcc_found=true; break; }
+                    done
+                    if ! "$_fcc_found"
+                    then
+                        _fcc_all=false
+                        break
+                    fi
+                done
+                "$_fcc_all" || continue
+            fi
+        fi
+
+        _fcc_result+=("$_fcc_cmd")
+    done
+
+    _fcc_in=("${_fcc_result[@]}")
+    return 0
+}
+
+# ```
+# *Description*:
 # Split a pipeline text (everything before the cursor's pipe) into individual
 # stage texts. Uses `|` as the delimiter. The text comes from tree-sitter's
 # pipeBefore, which is already CST-accurate — pipes inside strings or

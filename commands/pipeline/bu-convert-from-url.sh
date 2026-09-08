@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: codec
 # Dispatch: source
 # Synopsis: Parse a URL into its components
 function __bu_bu_convert_from_url_main()

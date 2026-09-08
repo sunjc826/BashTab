@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: codec
 # Dispatch: source
 # Synopsis: Decode base64-encoded data to JSONL
 function __bu_bu_convert_from_base64_main()

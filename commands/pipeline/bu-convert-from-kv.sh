@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: codec
 # Dispatch: source
 # Synopsis: Convert key=value text to JSONL records
 function __bu_bu_convert_from_kv_main()

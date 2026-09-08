@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: codec
 # Dispatch: source
 # Synopsis: Convert INI-format text to JSONL records
 function __bu_bu_convert_from_ini_main()

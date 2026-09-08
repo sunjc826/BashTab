@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: codec
 # Dispatch: source
 # Synopsis: Convert YAML text to JSONL records
 function __bu_bu_convert_from_yaml_main()
