@@ -1048,6 +1048,43 @@ function test_consume_effect_io { #@test
 }
 
 # ===========================================================================
+# Static pipeline validation (backward field analysis)
+# ===========================================================================
+
+function test_validate_pipeline_flags_missing_field { #@test
+    __bu_out_validate_pipeline "bu get-command | bu sort madeup"
+    assert_equal "${BU_RET[*]}" "madeup"
+}
+
+function test_validate_pipeline_accepts_valid { #@test
+    __bu_out_validate_pipeline "bu get-command | bu sort name"
+    assert_equal "${BU_RET[*]}" ""
+}
+
+function test_validate_pipeline_select_reads_old_name { #@test
+    # "new=old" reads the right-hand (old) name, not the output alias.
+    __bu_out_validate_pipeline "bu get-command | bu select name,ver=version"
+    assert_equal "${BU_RET[*]}" "version"
+}
+
+function test_validate_pipeline_where_structured { #@test
+    __bu_out_validate_pipeline "bu get-command | bu where madeup -eq source"
+    assert_equal "${BU_RET[*]}" "madeup"
+}
+
+function test_validate_pipeline_consume_requires { #@test
+    # remove-git-stash reads .index, which get-git-tag does not emit.
+    __bu_out_validate_pipeline "bu get-git-tag | bu remove-git-stash"
+    assert_equal "${BU_RET[*]}" "index"
+}
+
+function test_validate_pipeline_command { #@test
+    local out
+    out=$(bu validate-pipeline 'bu get-command | bu sort madeup')
+    assert_equal "$out" '{"field":"madeup"}'
+}
+
+# ===========================================================================
 # Cmdlets end at Out-Default: table on a terminal, JSONL when piped
 # ===========================================================================
 

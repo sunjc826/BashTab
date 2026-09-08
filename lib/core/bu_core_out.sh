@@ -3459,6 +3459,18 @@ __bu_out_analyze_stage()
             # shellcheck disable=SC2206
             _out_fields=(${BU_OUT_PRODUCER_FIELDS[$best_producer]})
         fi
+        # Fall back to the producer's `# Fields:` header when the registry
+        # has no entry (most producers declare their schema in-file).
+        if ((${#_out_fields[@]} == 0))
+        then
+            local _prod_file=${BU_COMMANDS[${cmd_name#bu }]:-}
+            if [[ -f "$_prod_file" ]]
+            then
+                local _prod_line=
+                __bu_command_header_get "$_prod_file" "Fields" _prod_line
+                [[ -n "$_prod_line" ]] && _out_fields=($_prod_line)
+            fi
+        fi
         ;;
     passthrough)
         _out_fields=("${_in_fields[@]}")
@@ -3657,6 +3669,316 @@ __bu_out_analyze_pipeline()
 
     ((${#current_fields[@]} == 0)) && return 1
     _final_fields=("${current_fields[@]}")
+    return 0
+}
+
+# MARK: Backward field analysis (which fields a stage reads)
+
+# ```
+# *Description*:
+# Split a comma-separated field spec into the INPUT field names a stage reads
+# (the right-hand "old" name of "new=old" renames).
+#
+# *Params*:
+# - `$1`: Field spec (e.g. "name,ver=version")
+# - `$2`: Name of the array to receive the field names (nameref)
+# ```
+__bu_out_parse_field_spec_reads()
+{
+    local field_spec=$1
+    local -n _pfr_out=$2
+    _pfr_out=()
+
+    local spec old_name
+    local ifs=$IFS
+    IFS=','
+    # shellcheck disable=SC2206
+    for spec in $field_spec
+    do
+        [[ -z "$spec" ]] && continue
+        case "$spec" in
+        *=*) old_name=${spec#*=} ;;
+        *)   old_name=$spec ;;
+        esac
+        _pfr_out+=("$old_name")
+    done
+    IFS=$ifs
+    return 0
+}
+
+# ```
+# *Description*:
+# Extract the input field names a select/project-style stage reads: the first
+# non-flag positional after the command name, parsed as a field spec.
+#
+# *Params*:
+# - `$1`: Stage text (e.g. "bu select name,ver=version")
+# - `$2`: Name of the array to receive the field names (nameref)
+# ```
+__bu_out_parse_select_reads()
+{
+    local stage_text=$1
+    local -n _psr_out=$2
+    _psr_out=()
+
+    __bu_out_canonicalize_stage "$stage_text"
+    local canon=$BU_CANONICAL_STAGE
+    local -a words=()
+    read -r -a words <<< "$canon"
+    ((${#words[@]} < 2)) && return 0
+
+    local cmd_word_count=1
+    [[ "${words[0]}" == bu ]] && cmd_word_count=2
+    local i word spec=
+    for (( i = cmd_word_count; i < ${#words[@]}; i++ ))
+    do
+        word=${words[i]}
+        [[ "$word" == -* ]] && continue
+        spec=$word
+        break
+    done
+    [[ -z "$spec" ]] && return 0
+    __bu_out_parse_field_spec_reads "$spec" _psr_out
+    return 0
+}
+
+# ```
+# *Description*:
+# Extract the single field name a sort-style stage reads: the first non-flag
+# positional after the command name.
+#
+# *Params*:
+# - `$1`: Stage text (e.g. "bu sort name")
+# - `$2`: Name of the array to receive the field name (nameref)
+# ```
+__bu_out_first_field_arg()
+{
+    local stage_text=$1
+    local -n _ffa_out=$2
+    _ffa_out=()
+
+    __bu_out_canonicalize_stage "$stage_text"
+    local canon=$BU_CANONICAL_STAGE
+    local -a words=()
+    read -r -a words <<< "$canon"
+    ((${#words[@]} < 2)) && return 0
+
+    local cmd_word_count=1
+    [[ "${words[0]}" == bu ]] && cmd_word_count=2
+    local i word
+    for (( i = cmd_word_count; i < ${#words[@]}; i++ ))
+    do
+        word=${words[i]}
+        [[ "$word" == -* ]] && continue
+        _ffa_out=("$word")
+        return 0
+    done
+    return 0
+}
+
+# ```
+# *Description*:
+# Extract the field names a structured `where` clause reads (the first field
+# after each `where` keyword).  Raw-jq where expressions are skipped — they
+# can't be statically parsed.
+#
+# *Params*:
+# - `$1`: Stage text (e.g. "bu where type -eq source")
+# - `$2`: Name of the array to receive the field names (nameref)
+# ```
+__bu_out_parse_where_reads()
+{
+    local stage_text=$1
+    local -n _pwr_out=$2
+    _pwr_out=()
+
+    __bu_out_canonicalize_stage "$stage_text"
+    local canon=$BU_CANONICAL_STAGE
+    local -a words=()
+    read -r -a words <<< "$canon"
+    ((${#words[@]} < 3)) && return 0
+
+    local i word fld
+    for (( i = 1; i < ${#words[@]}; i++ ))
+    do
+        word=${words[i]}
+        case "$word" in
+        where|--where)
+            fld=${words[i+1]:-}
+            if [[ -n "$fld" && "$fld" != -* && "$fld" != .* && "$fld" != \(* ]]
+            then
+                _pwr_out+=("$fld")
+            fi
+            ;;
+        esac
+    done
+    return 0
+}
+
+# ```
+# *Description*:
+# Extract the input field names a query-object stage reads from its clauses:
+# select/group-by field specs (right-hand names) and structured where fields.
+# order-by/having/grep are skipped (output-alias / post-group / any-field).
+#
+# *Params*:
+# - `$1`: Stage text
+# - `$2`: Name of the array to receive the field names (nameref)
+# ```
+__bu_out_parse_query_reads()
+{
+    local stage_text=$1
+    local -n _pqr_out=$2
+    _pqr_out=()
+
+    __bu_out_canonicalize_stage "$stage_text"
+    local canon=$BU_CANONICAL_STAGE
+    local -a words=()
+    read -r -a words <<< "$canon"
+    ((${#words[@]} < 3)) && return 0
+
+    local i word prev spec fld
+    local -a _pqr_tmp=()
+    for (( i = 1; i < ${#words[@]}; i++ ))
+    do
+        word=${words[i]}
+        prev=${words[i-1]}
+        case "$word" in
+        select|--select|group-by|--group-by)
+            # Skip a bare keyword that is actually a comparison value.
+            case "$prev" in -eq|-ne|-gt|-lt|-ge|-le|-like|-notlike|-match|-notmatch|-contains|-notcontains|-in|-notin|-ilike|-i|grep) continue ;; esac
+            spec=${words[i+1]:-}
+            [[ -n "$spec" && "$spec" != -* ]] || continue
+            _pqr_tmp=()
+            __bu_out_parse_field_spec_reads "$spec" _pqr_tmp
+            _pqr_out+=("${_pqr_tmp[@]}")
+            ;;
+        where|--where)
+            fld=${words[i+1]:-}
+            if [[ -n "$fld" && "$fld" != -* && "$fld" != .* && "$fld" != \(* ]]
+            then
+                _pqr_out+=("$fld")
+            fi
+            ;;
+        esac
+    done
+    return 0
+}
+
+# ```
+# *Description*:
+# Determine which upstream fields a pipeline stage READS, from its effect and
+# command name:
+# - consume commands read their `# Requires:` fields
+# - project (compare-object) reads the right-hand names of its field spec
+# - query stages read sort/select/where/group-by field arguments
+#
+# *Params*:
+# - `$1`: Stage text
+# - `$2`: Name of the array to receive the field names (nameref)
+# ```
+__bu_out_stage_reads()
+{
+    local stage_text=$1
+    local -n _sr_out=$2
+    _sr_out=()
+
+    __bu_out_canonicalize_stage "$stage_text"
+    local canon=$BU_CANONICAL_STAGE
+    local cmd_name
+    cmd_name=$(__bu_out_extract_command "$canon") || return 0
+    local plain=${cmd_name#bu }
+
+    local effect=
+    __bu_out_stage_effect_lookup "$plain" effect
+    [[ -z "$effect" ]] && return 0
+
+    case "$effect" in
+    consume)
+        local req=
+        __bu_out_command_requires "$plain" req
+        read -r -a _sr_out <<< "$req"
+        ;;
+    project)
+        __bu_out_parse_select_reads "$canon" _sr_out
+        ;;
+    query)
+        case "$plain" in
+        sort)         __bu_out_first_field_arg "$canon" _sr_out ;;
+        select)       __bu_out_parse_select_reads "$canon" _sr_out ;;
+        where)        __bu_out_parse_where_reads "$canon" _sr_out ;;
+        query-object) __bu_out_parse_query_reads "$canon" _sr_out ;;
+        esac
+        ;;
+    esac
+    return 0
+}
+
+# ```
+# *Description*:
+# Statically validate a pipeline's field references.  Walks each stage,
+# tracking the fields available at each point, and collects the names of any
+# field a stage reads that is not produced upstream.  Unknown stages make the
+# available-field set unknown, which skips further validation (no false
+# positives).
+#
+# *Params*:
+# - `$1`: Pipeline text (e.g. "bu get-command | bu sort madeup")
+#
+# *Returns*:
+# - BU_RET: array of missing field names (empty = pipeline is field-valid)
+# - Always exits 0
+# ```
+__bu_out_validate_pipeline()
+{
+    local pipeline_text=$1
+    BU_RET=()
+
+    pipeline_text=${pipeline_text%"${pipeline_text##*[![:space:]]}"}
+    pipeline_text=${pipeline_text%|}
+    pipeline_text=${pipeline_text%"${pipeline_text##*[![:space:]]}"}
+    [[ -z "$pipeline_text" ]] && return 0
+
+    local -a stages=()
+    __bu_out_split_pipeline "$pipeline_text" stages
+    ((${#stages[@]} == 0)) && return 0
+
+    local -a _vp_avail=()
+    local known=false
+    local stage
+    local -a reads=()
+    local -a _vp_out=()
+    for stage in "${stages[@]}"
+    do
+        __bu_out_stage_reads "$stage" reads
+        if "$known" && ((${#reads[@]} > 0))
+        then
+            local r f found
+            for r in "${reads[@]}"
+            do
+                found=false
+                for f in "${_vp_avail[@]}"
+                do
+                    [[ "$f" == "$r" ]] && { found=true; break; }
+                done
+                "$found" || BU_RET+=("$r")
+            done
+        fi
+
+        if __bu_out_analyze_stage "$stage" _vp_avail _vp_out
+        then
+            _vp_avail=("${_vp_out[@]}")
+            if ((${#_vp_avail[@]} > 0))
+            then
+                known=true
+            else
+                known=false
+            fi
+        else
+            known=false
+            _vp_avail=()
+        fi
+    done
     return 0
 }
 

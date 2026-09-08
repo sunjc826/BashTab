@@ -251,6 +251,22 @@ commands are filtered by compatibility with the upstream stream:
   required field. Static resolution uses multi-stage analysis, the field
   registry, and `# Fields:` headers (no producer execution).
 
+### Static pipeline validation
+
+`bu validate-pipeline '<pipeline>'` statically checks a pipeline's field
+references and reports any field a stage reads that is not produced
+upstream — the runtime analogue of the completion filter:
+
+```bash
+bu validate-pipeline 'bu get-command | bu sort madeup'   # {"field":"madeup"}
+bu validate-pipeline 'bu get-command | bu select name'   # (no output = valid)
+```
+
+Only structurally-parseable reads are checked: `sort`/`select`/`where`/
+`group-by` field arguments and `# Requires:` contracts. Raw jq expressions,
+`order-by` aliases, and `grep` patterns are skipped; unknown producers make
+validation skip rather than report false positives.
+
 ### Alias merging in option completion
 
 Case-pattern alternatives equal modulo leading `-`/`+` and case
