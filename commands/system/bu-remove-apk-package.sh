@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: consume
+# Requires: name
 # Dispatch: source
 # Synopsis: Uninstall Alpine Linux packages
 function __bu_bu_remove_apk_package_main()

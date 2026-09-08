@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: consume
+# Requires: name
 # Dispatch: source
 # Synopsis: Uninstall Debian packages
 function __bu_bu_remove_dpkg_package_main()

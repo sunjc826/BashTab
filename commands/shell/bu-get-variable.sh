@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: name type attributes value length
 # Dispatch: source
 # Synopsis: List shell and environment variables
 function __bu_bu_get_variable_main()

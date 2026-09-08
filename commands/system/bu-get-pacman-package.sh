@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: List installed Arch Linux packages
 # Fields: name version description architecture url licenses groups provides depends_on optional_deps required_by optional_for conflicts replaces installed_size packager build_date install_date

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: consume
+# Requires: name
 # Dispatch: source
 # Synopsis: Install one or more Debian packages
 function __bu_bu_add_dpkg_package_main()

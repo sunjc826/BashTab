@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: consume
+# Requires: pid
 # Dispatch: source
 # Synopsis: Terminate a running process
 function __bu_bu_stop_process_main()

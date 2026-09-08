@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: key value scope
 # Dispatch: source
 # Synopsis: Show Git configuration settings
 function __bu_bu_get_git_config_main()

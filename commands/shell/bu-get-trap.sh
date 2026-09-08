@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: signal handler
 # Dispatch: source
 # Synopsis: List active shell trap handlers
 function __bu_bu_get_trap_main()
