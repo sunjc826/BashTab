@@ -66,7 +66,7 @@ many of those values are null. Requires a full pass over the stream.
 fi
 
 jq -sc '
-    (map(keys_unsorted) | add | unique // []) as $keys
+    ((map(keys_unsorted) | add) // []) | unique as $keys
     | $keys[] as $k
     | {
         name: $k,

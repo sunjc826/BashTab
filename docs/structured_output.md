@@ -268,6 +268,21 @@ Only structurally-parseable reads are checked: `sort`/`select`/`where`/
 Raw jq expressions, `order-by` aliases, and `grep` patterns are skipped;
 unknown producers make validation skip rather than report false positives.
 
+### Inferred output schema
+
+`bu get-shape <producer>` runs a producer once and infers the record shape:
+one record per field with its observed JSON type(s), whether it is present
+on every record, and presence/null counts:
+
+```bash
+bu get-shape get-command    # name/type/types/required/count/null_count per field
+```
+
+Declared fields from the producer's `# Fields:` header are listed first (in
+declared order), even when the producer emitted no records; inferred-only
+fields follow. This is the type-level complement to the name-only `# Fields:`
+header — types are inferred, never hand-authored.
+
 ### Alias merging in option completion
 
 Case-pattern alternatives equal modulo leading `-`/`+` and case

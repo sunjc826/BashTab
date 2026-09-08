@@ -1106,6 +1106,42 @@ function test_validate_pipeline_command { #@test
 }
 
 # ===========================================================================
+# bu get-shape (inferred output schema)
+# ===========================================================================
+
+function test_get_shape_infers_types { #@test
+    local out
+    out=$(bu get-shape get-module --format jsonl)
+    assert_equal "$(printf '%s' "$out" | jq -r 'select(.name=="name") | .type')" "string"
+    assert_equal "$(printf '%s' "$out" | jq -r 'select(.name=="rank") | .type')" "number"
+    assert_equal "$(printf '%s' "$out" | jq -r 'select(.name=="name") | .required')" "true"
+}
+
+function test_get_shape_declared_fields_on_empty { #@test
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    cat > "$tmpdir/bu-empty-prod.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: producer
+# Fields: alpha beta
+function __bu_bu_empty_prod_main() { :; }
+EOF
+    bu_preinit_register_user_defined_subcommand_file "$tmpdir/bu-empty-prod.sh" empty-prod source
+    local out
+    out=$(bu get-shape empty-prod --format jsonl)
+    assert_equal "$(printf '%s' "$out" | jq -r 'select(.name=="alpha") | .count')" "0"
+    assert_equal "$(printf '%s' "$out" | jq -r 'select(.name=="alpha") | .required')" "false"
+    rm -rf "$tmpdir"
+}
+
+function test_get_member_empty_input_silent { #@test
+    local out
+    out=$(printf '' | bu get-member 2>&1)
+    assert_equal "$out" ""
+}
+
+# ===========================================================================
 # Cmdlets end at Out-Default: table on a terminal, JSONL when piped
 # ===========================================================================
 
