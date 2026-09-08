@@ -75,10 +75,10 @@ stage reads that is not produced upstream (e.g. 'bu get-command | bu sort
 madeup' reports 'madeup'). Quote the whole pipeline as one argument.
 
 Only structurally-parseable reads are checked: sort/select/where/group-by
-field arguments and # Requires: contracts. Raw jq expressions, order-by
-aliases, and grep patterns are skipped. Unknown producers make the available
-field set unknown, which skips further validation rather than reporting
-false positives.
+field arguments and # Requires-All: / # Requires-Any: contracts. Raw jq
+expressions, order-by aliases, and grep patterns are skipped. Unknown
+producers make the available field set unknown, which skips further
+validation rather than reporting false positives.
 " \
         --example "Catch a typo" "bu validate-pipeline 'bu get-command | bu sort madeup'" \
         --example "A valid pipeline" "bu validate-pipeline 'bu get-command | bu select name'"

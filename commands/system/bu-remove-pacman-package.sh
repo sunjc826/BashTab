@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pipeline: consume
-# Requires: name
+# Requires-All: name
 # Dispatch: source
 # Synopsis: Uninstall Arch Linux packages
 function __bu_bu_remove_pacman_package_main()

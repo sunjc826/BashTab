@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: consume
+# Requires-Any: unit name
 # Dispatch: source
 # Synopsis: Disable a system service from starting at boot
 # Completion helper: unit names from the live system (enabled units only).

@@ -2862,23 +2862,69 @@ __bu_out_pipeline_output_format()
 
 # ```
 # *Description*:
-# Read a command's fixed input-field contract (`# Requires:` header).
+# Read a command's fixed input-field contract (`# Requires-All:` header —
+# every listed field must be present).
 #
 # *Params*:
 # - `$1`: Command name without the `bu ` prefix
 # - `$2`: Name of the variable to receive the space-joined fields (nameref)
 # ```
-__bu_out_command_requires()
+__bu_out_command_requires_all()
 {
     local -r command_name=$1
-    local -n _cor_out=$2
-    _cor_out=
-    local _cor_file=${BU_COMMANDS[$command_name]:-}
-    if [[ -f "$_cor_file" ]]
+    local -n _cra_out=$2
+    _cra_out=
+    local _cra_file=${BU_COMMANDS[$command_name]:-}
+    if [[ -f "$_cra_file" ]]
     then
-        __bu_command_header_get "$_cor_file" "Requires" _cor_out
+        __bu_command_header_get "$_cra_file" "Requires-All" _cra_out
     fi
     return 0
+}
+
+# ```
+# *Description*:
+# Read a command's fallback input-field contract (`# Requires-Any:` header —
+# at least one listed field must be present).
+#
+# *Params*:
+# - `$1`: Command name without the `bu ` prefix
+# - `$2`: Name of the variable to receive the space-joined fields (nameref)
+# ```
+__bu_out_command_requires_any()
+{
+    local -r command_name=$1
+    local -n _crany_out=$2
+    _crany_out=
+    local _crany_file=${BU_COMMANDS[$command_name]:-}
+    if [[ -f "$_crany_file" ]]
+    then
+        __bu_command_header_get "$_crany_file" "Requires-Any" _crany_out
+    fi
+    return 0
+}
+
+# ```
+# *Description*:
+# Report whether a field name is present in an array of field names.
+#
+# *Params*:
+# - `$1`: Field name to look for
+# - `$2`: Name of the array to search (nameref)
+#
+# *Returns*:
+# - exit 0 if present, 1 if absent
+# ```
+__bu_out_field_present()
+{
+    local -r field=$1
+    local -n _fp_arr=$2
+    local _fp_f
+    for _fp_f in "${_fp_arr[@]}"
+    do
+        [[ "$_fp_f" == "$field" ]] && return 0
+    done
+    return 1
 }
 
 # ```
@@ -2989,27 +3035,41 @@ __bu_out_filter_compatible_commands()
 
         if "$_fcc_up_known"
         then
-            local _fcc_req=
-            __bu_out_command_requires "$_fcc_cmd" _fcc_req
-            if [[ -n "$_fcc_req" ]]
+            # Requires-All: every field must be present upstream.
+            local _fcc_req_all=
+            __bu_out_command_requires_all "$_fcc_cmd" _fcc_req_all
+            if [[ -n "$_fcc_req_all" ]]
             then
-                local -a _fcc_req_fields=()
-                read -r -a _fcc_req_fields <<< "$_fcc_req"
-                local _fcc_r _fcc_f _fcc_found _fcc_all=true
-                for _fcc_r in "${_fcc_req_fields[@]}"
+                local -a _fcc_all_fields=()
+                read -r -a _fcc_all_fields <<< "$_fcc_req_all"
+                local _fcc_r _fcc_all_ok=true
+                for _fcc_r in "${_fcc_all_fields[@]}"
                 do
-                    _fcc_found=false
-                    for _fcc_f in "${_fcc_up_fields[@]}"
-                    do
-                        [[ "$_fcc_f" == "$_fcc_r" ]] && { _fcc_found=true; break; }
-                    done
-                    if ! "$_fcc_found"
+                    if ! __bu_out_field_present "$_fcc_r" _fcc_up_fields
                     then
-                        _fcc_all=false
+                        _fcc_all_ok=false
                         break
                     fi
                 done
-                "$_fcc_all" || continue
+                "$_fcc_all_ok" || continue
+            fi
+            # Requires-Any: at least one field must be present upstream.
+            local _fcc_req_any=
+            __bu_out_command_requires_any "$_fcc_cmd" _fcc_req_any
+            if [[ -n "$_fcc_req_any" ]]
+            then
+                local -a _fcc_any_fields=()
+                read -r -a _fcc_any_fields <<< "$_fcc_req_any"
+                local _fcc_r2 _fcc_any_found=false
+                for _fcc_r2 in "${_fcc_any_fields[@]}"
+                do
+                    if __bu_out_field_present "$_fcc_r2" _fcc_up_fields
+                    then
+                        _fcc_any_found=true
+                        break
+                    fi
+                done
+                "$_fcc_any_found" || continue
             fi
         fi
 
@@ -3147,15 +3207,21 @@ __bu_out_pipeline_help()
         help_text+=$'\n'"${indent}${_io_in} → ${_io_out}"
     fi
 
-    # Fixed input contract (# Requires:) when declared.
+    # Input contracts (# Requires-All: / # Requires-Any:) when declared.
     local file=${BU_COMMANDS[${canon#bu }]:-}
     if [[ -f "$file" ]]
     then
-        local _req=
-        __bu_command_header_get "$file" "Requires" _req
-        if [[ -n "$_req" ]]
+        local _req_all=
+        __bu_command_header_get "$file" "Requires-All" _req_all
+        if [[ -n "$_req_all" ]]
         then
-            help_text+=$'\n'"${indent}Requires fields: ${_req// /, }"
+            help_text+=$'\n'"${indent}Requires fields: ${_req_all// /, }"
+        fi
+        local _req_any=
+        __bu_command_header_get "$file" "Requires-Any" _req_any
+        if [[ -n "$_req_any" ]]
+        then
+            help_text+=$'\n'"${indent}Requires one of: ${_req_any// /, }"
         fi
     fi
 
@@ -3880,8 +3946,10 @@ __bu_out_parse_query_reads()
 __bu_out_stage_reads()
 {
     local stage_text=$1
-    local -n _sr_out=$2
-    _sr_out=()
+    local -n _sr_all=$2
+    local -n _sr_any=$3
+    _sr_all=()
+    _sr_any=()
 
     __bu_out_canonicalize_stage "$stage_text"
     local canon=$BU_CANONICAL_STAGE
@@ -3895,19 +3963,22 @@ __bu_out_stage_reads()
 
     case "$effect" in
     consume)
-        local req=
-        __bu_out_command_requires "$plain" req
-        read -r -a _sr_out <<< "$req"
+        local req_all=
+        __bu_out_command_requires_all "$plain" req_all
+        read -r -a _sr_all <<< "$req_all"
+        local req_any=
+        __bu_out_command_requires_any "$plain" req_any
+        read -r -a _sr_any <<< "$req_any"
         ;;
     project)
-        __bu_out_parse_select_reads "$canon" _sr_out
+        __bu_out_parse_select_reads "$canon" _sr_all
         ;;
     query)
         case "$plain" in
-        sort)         __bu_out_first_field_arg "$canon" _sr_out ;;
-        select)       __bu_out_parse_select_reads "$canon" _sr_out ;;
-        where)        __bu_out_parse_where_reads "$canon" _sr_out ;;
-        query-object) __bu_out_parse_query_reads "$canon" _sr_out ;;
+        sort)         __bu_out_first_field_arg "$canon" _sr_all ;;
+        select)       __bu_out_parse_select_reads "$canon" _sr_all ;;
+        where)        __bu_out_parse_where_reads "$canon" _sr_all ;;
+        query-object) __bu_out_parse_query_reads "$canon" _sr_all ;;
         esac
         ;;
     esac
@@ -3946,23 +4017,40 @@ __bu_out_validate_pipeline()
     local -a _vp_avail=()
     local known=false
     local stage
-    local -a reads=()
+    local -a reads_all=()
+    local -a reads_any=()
     local -a _vp_out=()
     for stage in "${stages[@]}"
     do
-        __bu_out_stage_reads "$stage" reads
-        if "$known" && ((${#reads[@]} > 0))
+        __bu_out_stage_reads "$stage" reads_all reads_any
+        if "$known"
         then
-            local r f found
-            for r in "${reads[@]}"
+            # Requires-All reads: warn per missing field.
+            local r
+            for r in "${reads_all[@]}"
             do
-                found=false
-                for f in "${_vp_avail[@]}"
-                do
-                    [[ "$f" == "$r" ]] && { found=true; break; }
-                done
-                "$found" || BU_RET+=("$r")
+                __bu_out_field_present "$r" _vp_avail || BU_RET+=("$r")
             done
+            # Requires-Any reads: warn only when NONE are present.
+            if ((${#reads_any[@]} > 0))
+            then
+                local r2 any_found=false
+                for r2 in "${reads_any[@]}"
+                do
+                    if __bu_out_field_present "$r2" _vp_avail
+                    then
+                        any_found=true
+                        break
+                    fi
+                done
+                if ! "$any_found"
+                then
+                    local any_ifs=$IFS
+                    IFS='|'
+                    BU_RET+=("${reads_any[*]}")
+                    IFS=$any_ifs
+                fi
+            fi
         fi
 
         if __bu_out_analyze_stage "$stage" _vp_avail _vp_out

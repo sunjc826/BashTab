@@ -218,9 +218,9 @@ narrow terminals.
 After a pipe, field names of the producer's records are offered:
 
 ```bash
-bu get-command | bu select <TAB>     # name verb noun namespace type definition synopsis fields stage input output requires module shadows shadowed_by
+bu get-command | bu select <TAB>     # name verb noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by
 bu get-command | bu select name,<TAB>  # comma-aware: the remaining fields
-bu get-command | bu where <TAB>      # .name .verb .noun .namespace .type .definition .synopsis .fields .stage .input .output .requires
+bu get-command | bu where <TAB>      # .name .verb .noun .namespace .type .definition .synopsis .fields .stage .input .output .requires_all .requires_any
 ```
 
 Sources, in order:
@@ -246,9 +246,10 @@ commands are filtered by compatibility with the upstream stream:
   `bu select` are hidden; `bu convert-from-tsv` and `bu convert-from-lines`
   remain). Unknown formats are never filtered out — only positively-known
   mismatches are hidden.
-- **Fields** — a command with a `# Requires:` contract is offered only when
+- **Fields** — a command with a `# Requires-All:` contract is offered only when
   the upstream producer's fields are statically known to include every
-  required field. Static resolution uses multi-stage analysis, the field
+  required field; a `# Requires-Any:` contract is satisfied when at least one
+  is present. Static resolution uses multi-stage analysis, the field
   registry, and `# Fields:` headers (no producer execution).
 
 ### Static pipeline validation
@@ -263,9 +264,9 @@ bu validate-pipeline 'bu get-command | bu select name'   # (no output = valid)
 ```
 
 Only structurally-parseable reads are checked: `sort`/`select`/`where`/
-`group-by` field arguments and `# Requires:` contracts. Raw jq expressions,
-`order-by` aliases, and `grep` patterns are skipped; unknown producers make
-validation skip rather than report false positives.
+`group-by` field arguments and `# Requires-All:`/`# Requires-Any:` contracts.
+Raw jq expressions, `order-by` aliases, and `grep` patterns are skipped;
+unknown producers make validation skip rather than report false positives.
 
 ### Alias merging in option completion
 
@@ -329,7 +330,8 @@ needs no central registry.
 # Pipeline: codec            # stage effect: producer | passthrough | project |
                             #   query | sink | codec | recordify_tsv |
                             #   recordify_lines | recordify_new | recordify_jc
-# Requires: host port        # (optional) fixed fields consumed from piped JSONL
+# Requires-All: host port   # (optional) EVERY field must be present
+# Requires-Any: unit name    # (optional) at least ONE field must be present
 # Fields: name path version  # (optional) output fields this producer emits
 ```
 
@@ -337,8 +339,10 @@ needs no central registry.
   in `bu get-command` are derived from it (and, for `codec`, from the noun:
   `convert-to-json` → `jsonl → json`). Function/alias commands that have no
   file register via `bu_register_stage_effect` instead.
-- `# Requires:` — fixed field names a cmdlet must receive on piped JSONL
-  (surfaced in `bu get-command` and the `--help` PIPELINE section).
+- `# Requires-All:` — field names a cmdlet must ALL receive on piped JSONL
+  (AND; surfaced in `bu get-command` and the `--help` PIPELINE section).
+- `# Requires-Any:` — field names a cmdlet accepts ANY one of (OR; the
+  structural-typing fallback, e.g. services reading `.unit // .name`).
 - `# Fields:` — output field names a producer emits, used for pipeline-aware
   completion after a pipe.
 
@@ -350,14 +354,14 @@ Agents and scripts should enumerate capabilities via:
 bu get-command --format jsonl
 ```
 
-Each record includes all fifteen fields:
+Each record includes all sixteen fields:
 
 ```json
 {"name":"get-command","verb":"get","noun":"command","namespace":"bu",
  "type":"source","definition":"/path/to/commands/core/bu-get-command.sh",
  "synopsis":"List registered commands and their properties",
- "fields":"name verb noun namespace type definition synopsis fields stage input output requires module shadows shadowed_by",
- "stage":"producer","input":"none","output":"jsonl","requires":""}
+ "fields":"name verb noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by",
+ "stage":"producer","input":"none","output":"jsonl","requires_all":"","requires_any":""}
 ```
 
 - `definition` — what the name resolves to: the script path for `execute`/`source`
@@ -366,12 +370,14 @@ Each record includes all fifteen fields:
 - `synopsis` — one-line description (static, safe to parse)
 - `fields` — output fields this command produces (space-joined, for pipeline composition)
 - `stage` — pipeline stage effect: `producer`, `passthrough`, `project`, `query`,
-  `sink`, `codec`, `recordify_*`, or empty if unregistered
+  `sink`, `consume`, `codec`, `recordify_*`, or empty if unregistered
 - `input` / `output` — stream format tokens (`jsonl`, `json`, `tsv`, `csv`,
   `text`, `base64`, `display`, `none`): what the cmdlet accepts as pipeline
   input and what it emits. Derived from `stage` (and, for `codec`, the noun)
-- `requires` — fixed fields the cmdlet must receive from an upstream producer
-  (`# Requires:` header), space-joined; empty when there is no fixed contract
+- `requires_all` — fields the cmdlet must ALL receive from upstream
+  (`# Requires-All:` header, AND), space-joined
+- `requires_any` — fields the cmdlet accepts ANY one of (`# Requires-Any:`
+  header, OR), space-joined
 
 This is a single fast call (~7ms awk scan) that gives agents a complete
 manifest of available commands — no per-command `--help` forks needed.

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: consume
+# Requires-Any: unit name
 # Dispatch: source
 # Synopsis: Enable a system service to start at boot
 # Completion helper: unit names from the live system (units + service unit files).

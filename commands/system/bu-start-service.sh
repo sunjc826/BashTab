@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: consume
+# Requires-Any: unit name
 # Dispatch: source
 # Synopsis: Start a system service
 # Completion helper: unit names from the live system (units + service unit files).

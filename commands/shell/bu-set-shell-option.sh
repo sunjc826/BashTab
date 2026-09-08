@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pipeline: consume
-# Requires: name
+# Requires-All: name
 # Dispatch: source
 # Synopsis: Set a bash shell option
 function __bu_bu_set_shell_option_main()

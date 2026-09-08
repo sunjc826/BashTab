@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pipeline: consume
-# Requires: name
+# Requires-All: name
 # Dispatch: source
 # Synopsis: Remove a registered command alias
 # Help-Topic: aliases

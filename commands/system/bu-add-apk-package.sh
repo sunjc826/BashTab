@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pipeline: consume
-# Requires: name
+# Requires-All: name
 # Dispatch: source
 # Synopsis: Install one or more Alpine Linux packages
 function __bu_bu_add_apk_package_main()

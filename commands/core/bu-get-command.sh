@@ -4,7 +4,7 @@
 # Tab-Execute: true
 # Synopsis: List registered commands and their properties
 # Help-Topic: commands
-# Fields: name verb noun namespace type definition synopsis fields stage input output requires module shadows shadowed_by
+# Fields: name verb noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by
 function __bu_bu_get_command_main()
 {
 local -r invocation_dir=$PWD
@@ -97,7 +97,7 @@ do
         ;;
     --columns)# COLUMNS
         # Fields to display, in order (comma-separated)
-        bu_parse_positional $# --delimited name verb noun namespace type definition synopsis fields stage input output requires module shadows shadowed_by delimited-- --hint "Comma-separated fields"
+        bu_parse_positional $# --delimited name verb noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by delimited-- --hint "Comma-separated fields"
         columns=${!shift_by}
         ;;
     -h|--help)# _FLAG
@@ -265,7 +265,7 @@ __bu_get_cmd_registry_lookup()
 
 # ── Phase 3: Emit TSV records (all schema columns) ──
 # Columns: name verb noun namespace type definition synopsis fields stage
-#          input output requires module shadows shadowed_by
+#          input output requires_all requires_any module shadows shadowed_by
 # Default --columns for table projection is name,type,definition,synopsis
 {
     for command in "${filtered_commands[@]}"
@@ -317,12 +317,14 @@ __bu_get_cmd_registry_lookup()
             __bu_out_effect_io "$stage" "$command" input output
         fi
 
-        # Fixed input contract (# Requires: header).
-        local requires=
+        # Input contracts: # Requires-All: (every field) and # Requires-Any:
+        # (at least one field).
+        local requires_all= requires_any=
         local _req_file=${BU_COMMANDS[$command]:-}
         if [[ -f "$_req_file" ]]
         then
-            __bu_command_header_get "$_req_file" "Requires" requires
+            __bu_command_header_get "$_req_file" "Requires-All" requires_all
+            __bu_command_header_get "$_req_file" "Requires-Any" requires_any
         fi
 
         # Definition: BU_COMMANDS value (falling back to the qualified store
@@ -345,12 +347,12 @@ __bu_get_cmd_registry_lookup()
             fi
         fi
 
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
             "$command" "$command_verb" "$command_noun" "$command_namespace" \
             "$command_type" "$definition" "$synopsis" "$fields" "$stage" "$input" \
-            "$output" "$requires" "$command_module" "$shadows" "$shadowed_by"
+            "$output" "$requires_all" "$requires_any" "$command_module" "$shadows" "$shadowed_by"
     done
-} | sort | bu_out_from_tsv --columns name,verb,noun,namespace,type,definition,synopsis,fields,stage,input,output,requires,module,shadows,shadowed_by \
+} | sort | bu_out_from_tsv --columns name,verb,noun,namespace,type,definition,synopsis,fields,stage,input,output,requires_all,requires_any,module,shadows,shadowed_by \
     | "$BU_OUT_JQ" -c '.shadows = (if .shadows == "" then null else .shadows end) | .shadowed_by = (if .shadowed_by == "" then null else .shadowed_by end)' \
     | bu_out --format "$format" --columns "${columns:-name,type,definition,synopsis}"
 
