@@ -223,8 +223,9 @@ bu_register_tab_execute_field()
 declare -g -r __BU_OUT_VALUE_RECORD_CAP=1000
 # Distinct cap for a single field's value candidates: a high-cardinality
 # column (e.g. an id) yields this many candidates plus the static hint, not
-# a million.
-declare -g -r __BU_OUT_VALUE_DISTINCT_CAP=50
+# a million. Bounded by __BU_OUT_VALUE_RECORD_CAP (the captured-row memo), so
+# raising it past the record cap is a no-op; keep the two in lockstep.
+declare -g -r __BU_OUT_VALUE_DISTINCT_CAP=1000
 # Session-scoped memo of captured producer rows, keyed by producer_str.
 # No disk cache: datasets are live; re-source clears the memo.
 declare -A -g __BU_OUT_TAB_ROWS=()

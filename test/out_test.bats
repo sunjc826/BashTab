@@ -1776,8 +1776,9 @@ function test_value_completion_record_and_distinct_caps { #@test
     bu_register_tab_execute "many_producer"
 
     __bu_out_complete_field_values id
-    # Distinct cap: at most 50 candidates for a high-cardinality column.
-    assert_equal "${#BU_RET[@]}" 50
+    # Distinct cap: at most 1000 candidates for a high-cardinality column
+    # (bounded by the 1000-row record memo).
+    assert_equal "${#BU_RET[@]}" 1000
     # Record cap: the memo captured at most 1000 rows.
     local memo_lines
     memo_lines=$(grep -c '' <<<"${__BU_OUT_TAB_ROWS[many_producer]}")
