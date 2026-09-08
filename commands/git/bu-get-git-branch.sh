@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: name commit upstream track date subject current
 # Dispatch: source
 # Synopsis: List Git branches
 function __bu_bu_get_git_branch_main()

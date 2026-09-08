@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: consume
+# Requires: name
 # Dispatch: source
 # Synopsis: Delete a Git tag
 function __bu_bu_remove_git_tag_main()

@@ -1039,6 +1039,14 @@ EOF
     rm -rf "$tmpdir"
 }
 
+function test_consume_effect_io { #@test
+    # A consume command reads jsonl and emits no stream.
+    local in= out=
+    __bu_out_effect_io consume remove-git-tag in out
+    assert_equal "$in" jsonl
+    assert_equal "$out" none
+}
+
 # ===========================================================================
 # Cmdlets end at Out-Default: table on a terminal, JSONL when piped
 # ===========================================================================

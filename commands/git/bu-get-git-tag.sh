@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: name commit message tagger tag_date
 # Dispatch: source
 # Synopsis: List Git tags
 function __bu_bu_get_git_tag_main()

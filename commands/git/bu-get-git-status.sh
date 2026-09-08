@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: path xy staged unstaged orig_path
 # Dispatch: source
 # Synopsis: Show the Git working-tree status
 function __bu_bu_get_git_status_main()

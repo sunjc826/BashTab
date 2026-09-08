@@ -2660,6 +2660,7 @@ declare -A -g BU_OUT_EFFECT_IO=(
     [project]="jsonl:jsonl"
     [query]="jsonl:jsonl"
     [sink]="jsonl:display"
+    [consume]="jsonl:none"
     [recordify_tsv]="tsv:jsonl"
     [recordify_lines]="text:jsonl"
     [recordify_new]="none:jsonl"
@@ -3114,6 +3115,9 @@ __bu_out_pipeline_help()
     sink)
         role="Reads JSONL records from stdin and renders them for display on the terminal."
         ;;
+    consume)
+        role="Reads JSONL records from stdin and acts on each record (no structured output)."
+        ;;
     codec)
         role="Converts between JSONL and another format (json, tsv, csv, base64, ...)."
         ;;
@@ -3462,6 +3466,11 @@ __bu_out_analyze_stage()
     sink)
         # A sink renders records for display; field names pass through
         # unchanged (it terminates the JSONL stream anyway).
+        _out_fields=("${_in_fields[@]}")
+        ;;
+    consume)
+        # A consume command reads records and acts on them (no stream out);
+        # field names pass through unchanged (it terminates the stream).
         _out_fields=("${_in_fields[@]}")
         ;;
     project)

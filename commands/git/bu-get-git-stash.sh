@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: index ref branch short_hash message
 # Dispatch: source
 # Synopsis: List Git stashes
 function __bu_bu_get_git_stash_main()
