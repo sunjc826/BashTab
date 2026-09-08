@@ -108,6 +108,11 @@ __bu_impl()
     # sourced from this scope re-declares 'remaining_options' locally
     local remaining_options=("$@")
 
+    # Settle any deferred --is-compatible probe for the raw command name
+    # before resolving it, so a failed probe lands in the "known but
+    # unavailable" branch below (which reports the reason and reprobes).
+    bu_cap_ensure_compat "$bu_command_raw"
+
     # Resolve namespace-qualified commands: :<ns>:<verb-noun>
     local bu_command=$bu_command_raw
     local function_or_script_path=
@@ -179,9 +184,9 @@ __bu_impl()
         # expansion, then dispatch --help to the root command (first word of
         # the expansion) so the user lands on the real flag documentation.
         # Alias-of-alias chains re-enter this arm naturally via that dispatch.
+        local _alias_root_cmd=${function_or_script_path%% *}
         if (( $# == 1 )) && { [[ "$1" == "--help" || "$1" == "-h" ]]; }
         then
-            local _alias_root_cmd=${function_or_script_path%% *}
             printf '%s\n' "${BU_TPUT_BOLD}ALIAS${BU_TPUT_RESET}"
             printf '%s %s => %s %s\n\n' \
                 "$BU_CLI_COMMAND_NAME" "$bu_command" \
@@ -189,6 +194,16 @@ __bu_impl()
             __bu_impl "$_alias_root_cmd" --help
             exit_code=$?
             return "$exit_code"
+        fi
+        # Settle a deferred --is-compatible probe on the alias root command
+        # before expanding the alias: alias execution does not round-trip
+        # through the top-level lookup, so without this an incompatible gated
+        # command behind an alias would execute unprobed.
+        bu_cap_ensure_compat "$_alias_root_cmd"
+        if [[ -z "${BU_COMMANDS[$_alias_root_cmd]:-}" && -n "${BU_COMMAND_UNAVAILABLE[$_alias_root_cmd]:-}" ]]
+        then
+            bu_log_err "Command[$_alias_root_cmd] is unavailable: ${BU_COMMAND_UNAVAILABLE[$_alias_root_cmd]}"
+            return 1
         fi
         if ! __bu_impl_process_alias "$function_or_script_path" "$@"
         then

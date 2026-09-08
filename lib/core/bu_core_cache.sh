@@ -35,6 +35,16 @@ declare -g __BU_COMMAND_CACHE_CHECKED=false
 # (dynamic module systems, rapid development).
 BU_COMMAND_CACHE_ENABLED=${BU_COMMAND_CACHE_ENABLED:-true}
 
+# Opt-in deferred --is-compatible probing. When true, gated commands
+# (scripts declaring --is-compatible) register as available immediately at
+# scan time and are probed on first dispatch instead of during activation.
+# This trades activation latency for deferred discovery: completion and
+# command listings show pending gated commands as available until their first
+# probe, and the first dispatch of an incompatible command errors with the
+# probe reason instead of the command being hidden. A scan run with this on
+# never persists compat-probe results to the compat cache.
+BU_COMMAND_COMPAT_DEFERRED=${BU_COMMAND_COMPAT_DEFERRED:-false}
+
 # ── Prompt integration ───────────────────────────────────────────────
 
 # Saved original PROMPT_COMMAND before BashTab hooked it.

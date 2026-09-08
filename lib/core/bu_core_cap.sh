@@ -441,6 +441,46 @@ bu_cap_cache_invalidate()
 
 # ```
 # *Description*:
+# Settle a deferred --is-compatible probe for one command.  Only acts when the
+# command carries the compat_pending marker written by the deferred scan; it
+# is otherwise a no-op.  The marker is cleared before probing so the probe
+# runs exactly once whatever the outcome.  A failed probe moves the command
+# into BU_COMMAND_UNAVAILABLE with the probe's stderr/stdout as the reason and
+# records unavailable_path — the same terminal state a scan-time probe
+# failure produces — so the existing unavailable-reporting and
+# reprobe/recovery paths operate on it unmodified.
+#
+# *Params*:
+# - `$1`: command name
+#
+# *Returns*:
+# - 0 if the command is available (or not pending), 1 if unavailable
+# ```
+bu_cap_ensure_compat()
+{
+    local -r cmd=$1
+    local script_path=${BU_COMMAND_PROPERTIES[$cmd,compat_pending]:-}
+    [[ -n "$script_path" ]] || return 0
+
+    # Clear the marker first so the probe settles exactly once, even on
+    # failure — a failed probe must not re-run on every dispatch.
+    unset "BU_COMMAND_PROPERTIES[$cmd,compat_pending]"
+
+    local reason
+    if reason=$(BU_IS_COMPAT_PROBE=1 bash "$script_path" --is-compatible 2>&1); then
+        return 0
+    fi
+
+    # Probe failed — leave the exact terminal state a scan-time failure
+    # produces so the unavailable-reporting and reprobe/recovery paths work.
+    BU_COMMAND_UNAVAILABLE[$cmd]=$reason
+    BU_COMMAND_PROPERTIES[$cmd,unavailable_path]=$script_path
+    unset "BU_COMMANDS[$cmd]"
+    return 1
+}
+
+# ```
+# *Description*:
 # Re-run --is-compatible probes for unavailable commands that have a
 # recorded script path.  On success, the command is registered, removed
 # from BU_COMMAND_UNAVAILABLE, and the active compat cache is re-saved.

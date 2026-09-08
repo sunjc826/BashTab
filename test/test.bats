@@ -1582,6 +1582,26 @@ __bu_get_gated_main "$@"
 EOF
 }
 
+# Same as __write_gated_fixture but with a distinctive body marker so tests
+# can assert that the script body never executed.
+__write_gated_fixture_body_marker()
+{
+    local dir=$1
+    cat > "$dir/get-gated.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+function __bu_get_gated_main()
+{
+if [[ "$1" == "--is-compatible" ]]; then
+    command -v bu_test_gated_dep &>/dev/null || { echo "bu_test_gated_dep required" >&2; exit 1; }
+    exit 0
+fi
+echo DEFERRED_BODY_RAN
+}
+__bu_get_gated_main "$@"
+EOF
+}
+
 function test_compat_cache_bypassed_when_command_cache_disabled { #@test
     local tmpdir
     tmpdir=$(mktemp -d)
@@ -1673,6 +1693,153 @@ function test_compat_reprobe_recovers_after_dep_appears { #@test
     assert_output --partial "AFTER=REASON_CLEARED"
 
     rm -rf "$tmpdir" "$bindir" "$BATS_TEST_TMPDIR/out"
+}
+
+function test_compat_deferred_scan_skips_probe { #@test
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    local cache_dir="$BATS_TEST_TMPDIR/out"
+    __write_gated_fixture "$tmpdir"
+
+    # Deferred mode + caching disabled: the scan must register the gated
+    # command optimistically (pending marker) and must NOT probe it or
+    # persist a compat cache.
+    run timeout 60 bash -c '
+        export BU_OUT_DIR="$1"
+        export BU_COMMAND_CACHE_ENABLED=false
+        export BU_COMMAND_COMPAT_DEFERRED=true
+        export BU_COMMAND_SCAN_LAZY=true
+        unset BU_TOP_LEVEL_MODULE BU_MODULE_LIST
+        source "$2"/bu_entrypoint.sh || true
+        unset BU_COMMAND_SEARCH_DIRS
+        declare -A BU_COMMAND_SEARCH_DIRS=(["$3"]=)
+        BU_COMMAND_SCAN_LAZY=false
+        __bu_init_env_commands
+        [[ -n "${BU_COMMANDS[get-gated]:-}" ]] && echo "REGISTERED" || echo "UNAVAILABLE"
+        [[ -n "${BU_COMMAND_PROPERTIES[get-gated,compat_pending]:-}" ]] && echo "PENDING" || echo "NOT_PENDING"
+        ls "$1"/cache/compat-*.cache >/dev/null 2>&1 && echo "CACHE_WRITTEN" || echo "NO_CACHE"
+    ' _ "$cache_dir" "$DIR/.." "$tmpdir"
+    assert_success
+    assert_output --partial "REGISTERED"
+    assert_output --partial "PENDING"
+    assert_output --partial "NO_CACHE"
+
+    rm -rf "$tmpdir" "$cache_dir"
+}
+
+function test_compat_deferred_compatible_dispatch_consumes_marker { #@test
+    local tmpdir bindir
+    tmpdir=$(mktemp -d)
+    bindir="$BATS_TEST_TMPDIR/bin"
+    mkdir -p "$bindir"
+    printf '#!/usr/bin/env bash\n' > "$bindir/bu_test_gated_dep"
+    chmod +x "$bindir/bu_test_gated_dep"
+    __write_gated_fixture "$tmpdir"
+
+    # First dispatch of a COMPATIBLE gated command works and consumes the
+    # pending marker.
+    run timeout 60 bash -c '
+        export BU_OUT_DIR="$1"
+        export PATH="$2:$PATH"
+        export BU_COMMAND_CACHE_ENABLED=false
+        export BU_COMMAND_COMPAT_DEFERRED=true
+        export BU_COMMAND_SCAN_LAZY=true
+        unset BU_TOP_LEVEL_MODULE BU_MODULE_LIST
+        source "$3"/bu_entrypoint.sh || true
+        unset BU_COMMAND_SEARCH_DIRS
+        declare -A BU_COMMAND_SEARCH_DIRS=(["$4"]=)
+        BU_COMMAND_SCAN_LAZY=false
+        __bu_init_env_commands
+        [[ -n "${BU_COMMAND_PROPERTIES[get-gated,compat_pending]:-}" ]] && echo "PENDING_BEFORE"
+        bu get-gated
+        echo "DISPATCH_RC=$?"
+        [[ -z "${BU_COMMAND_PROPERTIES[get-gated,compat_pending]:-}" ]] && echo "PENDING_CLEARED" || echo "PENDING_STILL_SET"
+        [[ -n "${BU_COMMANDS[get-gated]:-}" ]] && echo "STILL_REGISTERED"
+    ' _ "$BATS_TEST_TMPDIR/out" "$bindir" "$DIR/.." "$tmpdir"
+    assert_success
+    assert_output --partial "PENDING_BEFORE"
+    assert_output --partial "DISPATCH_RC=0"
+    assert_output --partial "PENDING_CLEARED"
+    assert_output --partial "STILL_REGISTERED"
+    assert_output --partial "gated"
+
+    rm -rf "$tmpdir" "$bindir" "$BATS_TEST_TMPDIR/out"
+}
+
+function test_compat_deferred_incompatible_dispatch_settles_once { #@test
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    __write_gated_fixture_body_marker "$tmpdir"
+
+    # First dispatch of an INCOMPATIBLE gated command errors with the probe
+    # reason, does not execute the body, and stays unavailable on the second
+    # dispatch (the pending marker settles exactly once).
+    run timeout 60 bash -c '
+        export BU_OUT_DIR="$1"
+        export BU_COMMAND_CACHE_ENABLED=false
+        export BU_COMMAND_COMPAT_DEFERRED=true
+        export BU_COMMAND_SCAN_LAZY=true
+        unset BU_TOP_LEVEL_MODULE BU_MODULE_LIST
+        source "$2"/bu_entrypoint.sh || true
+        unset BU_COMMAND_SEARCH_DIRS
+        declare -A BU_COMMAND_SEARCH_DIRS=(["$3"]=)
+        BU_COMMAND_SCAN_LAZY=false
+        __bu_init_env_commands
+        bu get-gated
+        echo "DISPATCH1_RC=$?"
+        [[ -z "${BU_COMMANDS[get-gated]:-}" ]] && echo "REMOVED1"
+        [[ -n "${BU_COMMAND_UNAVAILABLE[get-gated]:-}" ]] && echo "REASON1:${BU_COMMAND_UNAVAILABLE[get-gated]}"
+        bu get-gated
+        echo "DISPATCH2_RC=$?"
+        [[ -z "${BU_COMMANDS[get-gated]:-}" ]] && echo "REMOVED2"
+        [[ -n "${BU_COMMAND_UNAVAILABLE[get-gated]:-}" ]] && echo "REASON2:${BU_COMMAND_UNAVAILABLE[get-gated]}"
+    ' _ "$BATS_TEST_TMPDIR/out" "$DIR/.." "$tmpdir"
+    assert_success
+    refute_output --partial "DEFERRED_BODY_RAN"
+    assert_output --partial "DISPATCH1_RC=1"
+    assert_output --partial "REMOVED1"
+    assert_output --partial "REASON1:bu_test_gated_dep required"
+    assert_output --partial "DISPATCH2_RC=1"
+    assert_output --partial "REMOVED2"
+    assert_output --partial "REASON2:bu_test_gated_dep required"
+
+    rm -rf "$tmpdir" "$BATS_TEST_TMPDIR/out"
+}
+
+function test_compat_deferred_alias_dispatch_errors { #@test
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    __write_gated_fixture_body_marker "$tmpdir"
+
+    # An incompatible gated command reached through an alias must also be
+    # probed on first dispatch (alias execution bypasses the top-level lookup).
+    run timeout 60 bash -c '
+        export BU_OUT_DIR="$1"
+        export BU_COMMAND_CACHE_ENABLED=false
+        export BU_COMMAND_COMPAT_DEFERRED=true
+        export BU_COMMAND_SCAN_LAZY=true
+        unset BU_TOP_LEVEL_MODULE BU_MODULE_LIST
+        source "$2"/bu_entrypoint.sh || true
+        unset BU_COMMAND_SEARCH_DIRS
+        declare -A BU_COMMAND_SEARCH_DIRS=(["$3"]=)
+        BU_COMMAND_SCAN_LAZY=false
+        __bu_init_env_commands
+        bu_preinit_register_new_alias g get-gated
+        bu g
+        echo "ALIAS1_RC=$?"
+        [[ -n "${BU_COMMAND_UNAVAILABLE[get-gated]:-}" ]] && echo "REASON1:${BU_COMMAND_UNAVAILABLE[get-gated]}"
+        bu g
+        echo "ALIAS2_RC=$?"
+        [[ -n "${BU_COMMAND_UNAVAILABLE[get-gated]:-}" ]] && echo "REASON2:${BU_COMMAND_UNAVAILABLE[get-gated]}"
+    ' _ "$BATS_TEST_TMPDIR/out" "$DIR/.." "$tmpdir"
+    assert_success
+    refute_output --partial "DEFERRED_BODY_RAN"
+    assert_output --partial "ALIAS1_RC=1"
+    assert_output --partial "REASON1:bu_test_gated_dep required"
+    assert_output --partial "ALIAS2_RC=1"
+    assert_output --partial "REASON2:bu_test_gated_dep required"
+
+    rm -rf "$tmpdir" "$BATS_TEST_TMPDIR/out"
 }
 
 

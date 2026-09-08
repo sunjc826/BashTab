@@ -216,6 +216,11 @@ __bu_init_env_commands()
                         BU_COMMAND_PROPERTIES[$command,unavailable_path]=$script_path
                         continue
                     fi
+                elif "$BU_COMMAND_COMPAT_DEFERRED"; then
+                    # Deferred mode — register optimistically and mark the
+                    # script path pending.  The probe runs on first dispatch
+                    # (see bu_cap_ensure_compat) instead of at scan time.
+                    BU_COMMAND_PROPERTIES[$command,compat_pending]=$script_path
                 else
                     # Cache miss — probe
                     local reason
@@ -237,9 +242,11 @@ __bu_init_env_commands()
         done
     done
 
-    # Save compat cache if we probed fresh (only when caching is enabled
-    # and the command cache wasn't loaded)
-    if "$BU_COMMAND_CACHE_ENABLED" && ! "$BU_COMMAND_CACHE_LOADED" && ! $compat_cache_valid && [[ -n "$fingerprint" ]]; then
+    # Save compat cache if we probed fresh (only when caching is enabled,
+    # the command cache wasn't loaded, and deferred mode is off — nothing
+    # was probed in deferred mode, and saving would write an all-available
+    # cache that poisons later non-deferred shells).
+    if "$BU_COMMAND_CACHE_ENABLED" && ! "$BU_COMMAND_CACHE_LOADED" && ! $compat_cache_valid && ! "$BU_COMMAND_COMPAT_DEFERRED" && [[ -n "$fingerprint" ]]; then
         bu_cap_cache_save "$fingerprint"
     fi
 
