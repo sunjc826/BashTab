@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: List Docker volumes
 # Fields: Driver Labels Links Mountpoint Name Scope Size

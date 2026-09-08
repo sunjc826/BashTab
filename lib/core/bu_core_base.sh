@@ -365,6 +365,175 @@ bu_cat_arr_append()
     eval "$ret"+=\( \"\${MAPFILE[@]}\" \)
 }
 
+# MARK: Command script header parsing
+
+# Command scripts declare metadata in `# Key: value` header comments near the
+# top of the file (see docs/structured_output.md, "Command discovery and the
+# # Synopsis convention").  These two functions provide a single memoized
+# parser so every consumer (Dispatch, Synopsis, Fields, Tab-Execute,
+# Help-Topic, and future headers) reads the header exactly once per file
+# instead of running its own awk per header type.
+
+# path -> newline-joined "key<TAB>value" lines for every recognized header.
+declare -A -g __BU_COMMAND_HEADER_BLOCK=()
+# path -> "1" once parsed (the block itself may legitimately be empty).
+declare -A -g __BU_COMMAND_HEADER_PARSED=()
+# path -> "Dispatch" header value, pre-extracted by the batch parser so the
+# scan's hot path (__bu_command_dispatch_decl) is a single assoc lookup.
+declare -A -g __BU_COMMAND_HEADER_DISPATCH=()
+
+# ```
+# *Description*:
+# Parse a command script's `# Key: value` header comments into the header
+# cache.  Idempotent and memoized by path: the first call runs one awk pass
+# over the file; later calls are no-ops.  The cache is invalidated wholesale
+# at the start of each command-registry scan (see __bu_init_env_commands),
+# which is the natural boundary — a scan re-reads the filesystem, so any
+# cached header may be stale.  No per-file stat fingerprinting is needed.
+#
+# *Params*:
+# - `$1`: Path to the command script
+#
+# *Returns*:
+# - Always exits 0 (a missing file caches an empty header block — a normal,
+#   non-fatal condition).
+#
+# *Notes*:
+# - Directive headers (`Dispatch`, `Tab-Execute`, `Tab-Execute-Field`) are
+#   only honored within the first 8 lines so they must sit at the very top
+#   of the file; all other headers are honored within the first 30 lines.
+# - Values are extracted verbatim (no variable/command substitution) with
+#   leading space after the colon and trailing whitespace trimmed.
+# ```
+__bu_command_headers_parse()
+{
+    local -r file=$1
+    [[ -n "${__BU_COMMAND_HEADER_PARSED[$file]:-}" ]] && return 0
+    if [[ ! -f "$file" ]]
+    then
+        # Missing file: mark parsed with an empty block so repeated lookups
+        # of a known-bad path don't re-check existence every time.
+        __BU_COMMAND_HEADER_BLOCK[$file]=
+        __BU_COMMAND_HEADER_PARSED[$file]=1
+        return 0
+    fi
+    __BU_COMMAND_HEADER_BLOCK[$file]=$(awk '
+        FNR > 30 { exit }
+        /^#[[:space:]]*[A-Za-z][A-Za-z0-9-]*:[[:space:]]/ {
+            line = $0
+            sub(/^#[[:space:]]*/, "", line)
+            key = line
+            sub(/:.*/, "", key)
+            # Directive headers must sit at the top of the file (lines 1-8).
+            if ((key == "Dispatch" || key == "Tab-Execute" || key == "Tab-Execute-Field") && FNR > 8) next
+            val = line
+            sub(/^[^:]*:[[:space:]]*/, "", val)
+            sub(/[[:space:]]+$/, "", val)
+            print key "\t" val
+        }
+    ' "$file" 2>/dev/null)
+    __BU_COMMAND_HEADER_PARSED[$file]=1
+    return 0
+}
+
+# ```
+# *Description*:
+# Read a single header value from a command script via the memoized header
+# cache.  The value extraction is pure bash; the parse memo means a file is
+# awk-scanned once and only re-scanned when its mtime:size changes.
+#
+# *Params*:
+# - `$1`: Path to the command script
+# - `$2`: Header key (e.g. `Synopsis`, `Fields`)
+# - `$3`: Name of the variable to receive the value (nameref)
+#
+# *Returns*:
+# - Always exits 0 (a missing key or file yields an empty value — a normal,
+#   non-fatal condition, so this is safe to call under `set -e`).
+# ```
+__bu_command_header_get()
+{
+    local -r file=$1
+    local -r key=$2
+    local -n _hdr_out=$3
+    _hdr_out=
+    __bu_command_headers_parse "$file"
+    local block=$'\n'${__BU_COMMAND_HEADER_BLOCK[$file]}
+    if [[ "$block" == *$'\n'"$key"$'\t'* ]]
+    then
+        local rest=${block#*$'\n'"$key"$'\t'}
+        _hdr_out=${rest%%$'\n'*}
+    fi
+    return 0
+}
+
+# ```
+# *Description*:
+# Parse the headers of many command scripts in a single awk process (batch
+# mode), populating the memoized header cache.  Called once per search
+# directory during the command scan so the per-file registration loop does
+# not fork an awk per file.
+#
+# *Params*:
+# - `$1`: Directory (prefix applied to the relative paths)
+# - `...`: Relative file paths within that directory
+#
+# *Returns*:
+# - Always exits 0.  Every given path is marked parsed (empty block); the
+#   awk pass fills in blocks for files that actually declare headers.
+# ```
+__bu_command_headers_batch()
+{
+    local -r dir=$1
+    shift
+
+    # Mark every candidate parsed with an empty block; the awk below fills in
+    # the real blocks for files that declare headers.
+    local _rel
+    for _rel in "$@"
+    do
+        __BU_COMMAND_HEADER_BLOCK["$dir/$_rel"]=
+        __BU_COMMAND_HEADER_PARSED["$dir/$_rel"]=1
+        __BU_COMMAND_HEADER_DISPATCH["$dir/$_rel"]=
+    done
+    (($# == 0)) && return 0
+
+    local -a _full_paths=()
+    for _rel in "$@"
+    do
+        _full_paths+=("$dir/$_rel")
+    done
+
+    # One awk over all files: print FILENAME<TAB>key<TAB>value per header.
+    # Reads past line 30 of each file but only matches within the window.
+    while IFS=$'\t' read -r _bp _bk _bv
+    do
+        [[ -z "$_bp" ]] && continue
+        if [[ -z "${__BU_COMMAND_HEADER_BLOCK[$_bp]:+x}" ]]
+        then
+            __BU_COMMAND_HEADER_BLOCK[$_bp]="$_bk"$'\t'"$_bv"
+        else
+            __BU_COMMAND_HEADER_BLOCK[$_bp]+=$'\n'"$_bk"$'\t'"$_bv"
+        fi
+        # Pre-extract Dispatch for the scan's hot path.
+        [[ "$_bk" == Dispatch ]] && __BU_COMMAND_HEADER_DISPATCH[$_bp]=$_bv
+    done < <(awk '
+        FNR <= 30 && /^#[[:space:]]*[A-Za-z][A-Za-z0-9-]*:[[:space:]]/ {
+            line = $0
+            sub(/^#[[:space:]]*/, "", line)
+            key = line
+            sub(/:.*/, "", key)
+            # Directive headers must sit at the top of the file (lines 1-8).
+            if ((key == "Dispatch" || key == "Tab-Execute" || key == "Tab-Execute-Field") && FNR > 8) next
+            val = line
+            sub(/^[^:]*:[[:space:]]*/, "", val)
+            sub(/[[:space:]]+$/, "", val)
+            print FILENAME "\t" key "\t" val
+        }
+    ' "${_full_paths[@]}" 2>/dev/null)
+    return 0
+}
+
 # MARK: Shell symbol helpers
 
 # ```

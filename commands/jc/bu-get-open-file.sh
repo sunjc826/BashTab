@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: List files opened by processes
 # Fields: command pid user fd type device size_off node name

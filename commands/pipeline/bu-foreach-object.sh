@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: passthrough
 # Dispatch: source
 # Synopsis: Execute a script block for each record in a JSONL stream
 function __bu_bu_foreach_object_main()

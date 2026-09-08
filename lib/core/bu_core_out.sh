@@ -2354,19 +2354,13 @@ __bu_out_complete_pipeline_fields()
         _ff_cmd_name=${_ff_cmd_name%%[[:space:]]*}
         if [[ -f "${BU_COMMANDS[$_ff_cmd_name]:-}" ]]
         then
-            local _ff_line
-            _ff_line=$(awk 'FNR>30{exit} /^#[[:space:]]*Fields:[[:space:]]/ {
-                line = $0
-                sub(/^#[[:space:]]*Fields:[[:space:]]*/, "", line)
-                sub(/[[:space:]]+$/, "", line)
-                print line
-                exit
-            }' "${BU_COMMANDS[$_ff_cmd_name]}" 2>/dev/null)
+            local _ff_line=
+            __bu_command_header_get "${BU_COMMANDS[$_ff_cmd_name]}" "Fields" _ff_line
             if [[ -n "$_ff_line" ]]
             then
                 # shellcheck disable=SC2206 # Intentional word splitting of the field list
                 fields=($_ff_line)
-                # Cache into the static registry so subsequent completions skip awk
+                # Cache into the static registry so subsequent completions skip the parse
                 BU_OUT_PRODUCER_FIELDS[$producer_str]=$_ff_line
             fi
         fi
@@ -2559,14 +2553,16 @@ __bu_out_tab_execute_capture()
         _te_cmd_name=${_te_cmd_name%%[[:space:]]*}
         if [[ -f "${BU_COMMANDS[$_te_cmd_name]:-}" ]]
         then
-            local _te_line
+            local _te_val=
+            local _te_key
             if "$is_field_gate"
             then
-                _te_line=$(awk 'FNR>8{exit} /^#[[:space:]]*Tab-Execute-Field:[[:space:]]*true[[:space:]]*$/ {print "1"; exit}' "${BU_COMMANDS[$_te_cmd_name]}" 2>/dev/null)
+                _te_key=Tab-Execute-Field
             else
-                _te_line=$(awk 'FNR>8{exit} /^#[[:space:]]*Tab-Execute:[[:space:]]*true[[:space:]]*$/ {print "1"; exit}' "${BU_COMMANDS[$_te_cmd_name]}" 2>/dev/null)
+                _te_key=Tab-Execute
             fi
-            if [[ -n "$_te_line" ]]
+            __bu_command_header_get "${BU_COMMANDS[$_te_cmd_name]}" "$_te_key" _te_val
+            if [[ "$_te_val" == true ]]
             then
                 _gate_registry[$producer_str]=1
                 best_key=$producer_str
@@ -2642,75 +2638,132 @@ __bu_out_complete_field_values()
 # MARK: Multi-stage pipeline static analysis
 
 # Maps command names to how they transform record fields in a pipeline.
-# Values:
+# Populated lazily from each command script's `# Pipeline:` header (no
+# hand-maintained list); `bu_register_stage_effect` writes explicit entries
+# for function/alias commands that have no file. Values:
 #   producer           - emits initial fields (looked up in BU_OUT_PRODUCER_FIELDS)
-#   passthrough        - output fields = input fields (where, sort, distinct, format-*, etc.)
-#   project            - output fields = parsed from positional field-spec argument (compare-object)
-#   query              - output fields determined by running the stage with --debug (query-object, where/select/grep/sort)
+#   passthrough        - output fields = input fields (distinct, foreach, measure)
+#   project            - output fields = parsed from positional field-spec (compare-object)
+#   query              - output fields from the --debug plan (query-object, where/select/grep/sort)
 #   recordify_tsv      - output fields = parsed from --columns (convert-from-tsv)
 #   recordify_lines    - output field = parsed from --column (convert-from-lines)
 #   recordify_new      - output fields = keys from key=value pairs (new-record)
-declare -A -g BU_OUT_STAGE_EFFECT=(
-    ["bu get-command"]=producer
-    ["bu get-module"]=producer
-    ["bu get-alias"]=producer
-    ["bu get-shell-alias"]=producer
-    ["bu distinct-object"]=passthrough
-    ["bu format-table"]=passthrough
-    ["bu format-list"]=passthrough
-    ["bu convert-to-json"]=passthrough
-    ["bu convert-to-jsonl"]=passthrough
-    ["bu convert-to-tsv"]=passthrough
-    ["bu out-default"]=passthrough
-    ["bu query-object"]=query
-    ["bu where"]=query
-    ["bu select"]=query
-    ["bu grep"]=query
-    ["bu sort"]=query
-    ["bu convert-from-tsv"]=recordify_tsv
-    ["bu convert-from-lines"]=recordify_lines
-    ["bu new-record"]=recordify_new
-    ["bu convert-from-jc"]=recordify_jc
-    ["bu get-npm-package"]=producer
-    ["bu get-npm-outdated"]=producer
-    ["bu get-pnpm-package"]=producer
-    ["bu get-pgrep-process"]=producer
-    ["bu get-npm-audit"]=producer
-    ["bu get-pnpm-outdated"]=producer
-    ["bu get-docker-container"]=producer
-    ["bu get-docker-image"]=producer
-    ["bu get-docker-volume"]=producer
-    ["bu get-docker-network"]=producer
-    ["bu get-file"]=producer
-    ["bu get-process"]=producer
-    ["bu get-disk"]=producer
-    ["bu get-dns"]=producer
-    ["bu get-memory"]=producer
-    ["bu get-mount"]=producer
-    ["bu get-uptime"]=producer
-    ["bu get-system"]=producer
-    ["bu get-version"]=producer
-    ["bu get-environment"]=producer
-    ["bu get-identity"]=producer
-    ["bu get-file-usage"]=producer
-    ["bu get-file-stat"]=producer
-    ["bu get-interface"]=producer
-    ["bu get-socket"]=producer
-    ["bu get-network"]=producer
-    ["bu get-arp-entry"]=producer
-    ["bu get-cpu-stat"]=producer
-    ["bu get-memory-stat"]=producer
-    ["bu get-open-file"]=producer
-    ["bu get-count"]=producer
-    ["bu format-list"]=passthrough
-    ["bu foreach-object"]=passthrough
-    ["bu measure-object"]=passthrough
-    ["bu group-object"]=query
-    ["bu compare-object"]=project
-    ["bu convert-to-tsv"]=passthrough
-    ["bu convert-to-csv"]=passthrough
-    ["bu get-dpkg-package"]=producer
+#   recordify_jc       - output fields = jc parser field map (convert-from-jc)
+#   sink               - jsonl -> display (format-table, format-list, out-default)
+#   codec              - format conversion (convert-to-X / convert-from-X)
+declare -A -g BU_OUT_STAGE_EFFECT=()
+
+# Effect -> "input:output" format tokens. `codec` is derived from the noun.
+declare -A -g BU_OUT_EFFECT_IO=(
+    [producer]="none:jsonl"
+    [passthrough]="jsonl:jsonl"
+    [project]="jsonl:jsonl"
+    [query]="jsonl:jsonl"
+    [sink]="jsonl:display"
+    [recordify_tsv]="tsv:jsonl"
+    [recordify_lines]="text:jsonl"
+    [recordify_new]="none:jsonl"
+    [recordify_jc]="text:jsonl"
 )
+
+# ```
+# *Description*:
+# Derive the (input, output) format tokens for a pipeline effect.  For a
+# `codec` the non-jsonl format comes from the command noun (e.g.
+# convert-to-json -> jsonl:json; convert-from-base64 -> base64:text).
+#
+# *Params*:
+# - `$1`: Effect (see BU_OUT_STAGE_EFFECT values)
+# - `$2`: Command name without the `bu ` prefix (e.g. "convert-to-json")
+# - `$3`: Name of the variable to receive the input format (nameref)
+# - `$4`: Name of the variable to receive the output format (nameref)
+#
+# *Returns*:
+# - Always exits 0 (unknown effect yields empty tokens)
+# ```
+__bu_out_effect_io()
+{
+    local -r effect=$1
+    local -r command_name=$2
+    local -n _eff_in=$3
+    local -n _eff_out=$4
+    _eff_in=
+    _eff_out=
+
+    case "$effect" in
+    codec)
+        case "$command_name" in
+        convert-to-base64)
+            _eff_in=text
+            _eff_out=base64
+            ;;
+        convert-from-base64)
+            _eff_in=base64
+            _eff_out=text
+            ;;
+        convert-to-*)
+            _eff_in=jsonl
+            _eff_out=${command_name#convert-to-}
+            ;;
+        convert-from-*)
+            _eff_in=${command_name#convert-from-}
+            _eff_out=jsonl
+            ;;
+        esac
+        ;;
+    *)
+        local io=${BU_OUT_EFFECT_IO[$effect]:-}
+        if [[ -n "$io" ]]
+        then
+            _eff_in=${io%%:*}
+            _eff_out=${io#*:}
+        fi
+        ;;
+    esac
+    return 0
+}
+
+# ```
+# *Description*:
+# Resolve a command's pipeline stage effect.  Consulted in this order:
+# 1. The in-memory cache BU_OUT_STAGE_EFFECT (populated by
+#    bu_register_stage_effect and by previous header lookups).
+# 2. The command script's `# Pipeline:` header, cached back into the registry
+#    so the header is read at most once per file.
+#
+# *Params*:
+# - `$1`: Command name without the `bu ` prefix (e.g. "convert-to-json")
+# - `$2`: Name of the variable to receive the effect (nameref)
+#
+# *Returns*:
+# - Sets the named variable to the effect (empty if unknown); always exits 0
+# ```
+__bu_out_stage_effect_lookup()
+{
+    local -r command_name=$1
+    local -n _sel_out=$2
+    _sel_out=
+    local key="bu $command_name"
+
+    if [[ -v BU_OUT_STAGE_EFFECT[$key] ]]
+    then
+        _sel_out=${BU_OUT_STAGE_EFFECT[$key]}
+        return 0
+    fi
+
+    local file=${BU_COMMANDS[$command_name]:-}
+    if [[ -f "$file" ]]
+    then
+        local _effect_val=
+        __bu_command_header_get "$file" "Pipeline" _effect_val
+        if [[ -n "$_effect_val" ]]
+        then
+            BU_OUT_STAGE_EFFECT[$key]=$_effect_val
+            _sel_out=$_effect_val
+        fi
+    fi
+    return 0
+}
 
 # ```
 # *Description*:
@@ -2718,8 +2771,8 @@ declare -A -g BU_OUT_STAGE_EFFECT=(
 #
 # *Params*:
 # - `$1`: Command name (e.g. `bu get-command`, `bu query-object`)
-# - `$2`: Effect type: producer, passthrough, project, query, recordify_tsv,
-#         recordify_lines, recordify_new
+# - `$2`: Effect type: producer, passthrough, project, query, sink, codec,
+#         recordify_tsv, recordify_lines, recordify_new, recordify_jc
 #
 # *Examples*:
 # ```bash
@@ -2815,18 +2868,7 @@ __bu_out_pipeline_help()
     local canon=$BU_CANONICAL_STAGE
 
     local effect=
-    local key best_key=
-    for key in "${!BU_OUT_STAGE_EFFECT[@]}"
-    do
-        if [[ "$canon" == "$key" || "$canon" == "$key "* ]] && (( ${#key} > ${#best_key} ))
-        then
-            best_key=$key
-        fi
-    done
-    if [[ -n "$best_key" ]]
-    then
-        effect=${BU_OUT_STAGE_EFFECT[$best_key]}
-    fi
+    __bu_out_stage_effect_lookup "${canon#bu }" effect
     [[ -z "$effect" ]] && return 0
 
     local role=
@@ -2842,6 +2884,12 @@ __bu_out_pipeline_help()
         ;;
     query)
         role="Reads JSONL records from stdin, applies SQL-style clauses (where, group-by, select, order-by, ...), and emits JSONL to stdout."
+        ;;
+    sink)
+        role="Reads JSONL records from stdin and renders them for display on the terminal."
+        ;;
+    codec)
+        role="Converts between JSONL and another format (json, tsv, csv, base64, ...)."
         ;;
     recordify_tsv)
         role="Converts TSV from stdin to JSONL records."
@@ -2860,7 +2908,26 @@ __bu_out_pipeline_help()
         ;;
     esac
 
+    # Pipeline signature: <input> -> <output> format tokens.
+    local _io_in= _io_out=
+    __bu_out_effect_io "$effect" "${canon#bu }" _io_in _io_out
     local help_text="${indent}${role}"
+    if [[ -n "$_io_in" && -n "$_io_out" ]]
+    then
+        help_text+=$'\n'"${indent}${_io_in} → ${_io_out}"
+    fi
+
+    # Fixed input contract (# Requires:) when declared.
+    local file=${BU_COMMANDS[${canon#bu }]:-}
+    if [[ -f "$file" ]]
+    then
+        local _req=
+        __bu_command_header_get "$file" "Requires" _req
+        if [[ -n "$_req" ]]
+        then
+            help_text+=$'\n'"${indent}Requires fields: ${_req// /, }"
+        fi
+    fi
 
     # Check for pipeline context (available during autocomplete via dynamic scope)
     local producer_str=${command_line_front_before_pipe:-${pipe_before:-}}
@@ -3136,20 +3203,11 @@ __bu_out_analyze_stage()
     local cmd_name
     cmd_name=$(__bu_out_extract_command "$canon") || return 1
 
-    # Look up effect: longest prefix match on canonical stage text so flags don't break it
+    # Resolve the effect from the command's `# Pipeline:` header (or the
+    # in-memory registry cache).  cmd_name is "bu <verb-noun>"; strip the
+    # "bu " prefix for the lookup.
     local effect=
-    local key best_key=
-    for key in "${!BU_OUT_STAGE_EFFECT[@]}"
-    do
-        if [[ "$canon" == "$key" || "$canon" == "$key "* ]] && (( ${#key} > ${#best_key} ))
-        then
-            best_key=$key
-        fi
-    done
-    if [[ -n "$best_key" ]]
-    then
-        effect=${BU_OUT_STAGE_EFFECT[$best_key]}
-    fi
+    __bu_out_stage_effect_lookup "${cmd_name#bu }" effect
     if [[ -z "$effect" ]]
     then
         return 1
@@ -3173,6 +3231,11 @@ __bu_out_analyze_stage()
         fi
         ;;
     passthrough)
+        _out_fields=("${_in_fields[@]}")
+        ;;
+    sink)
+        # A sink renders records for display; field names pass through
+        # unchanged (it terminates the JSONL stream anyway).
         _out_fields=("${_in_fields[@]}")
         ;;
     project)

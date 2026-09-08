@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: recordify_jc
 # Dispatch: source
 # Synopsis: Convert structured command output to JSONL via jc parsers
 function __bu_bu_convert_from_jc_main()

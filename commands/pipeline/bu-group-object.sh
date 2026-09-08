@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: query
 # Dispatch: source
 # Synopsis: Group a JSONL stream by key fields with aggregate functions
 function __bu_bu_group_object_main()

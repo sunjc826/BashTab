@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: List Docker containers
 # Fields: ID Image Command CreatedAt RunningFor Ports State Status Size Names Labels Mounts Networks

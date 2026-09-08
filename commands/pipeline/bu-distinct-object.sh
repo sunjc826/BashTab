@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: passthrough
 # Dispatch: source
 # Synopsis: Remove duplicate records from a JSONL stream
 function __bu_bu_distinct_object_main()

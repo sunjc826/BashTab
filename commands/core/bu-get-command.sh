@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Tab-Execute: true
 # Synopsis: List registered commands and their properties
 # Help-Topic: commands
-# Fields: name verb noun namespace type definition synopsis fields stage module shadows shadowed_by
+# Fields: name verb noun namespace type definition synopsis fields stage input output requires module shadows shadowed_by
 function __bu_bu_get_command_main()
 {
 local -r invocation_dir=$PWD
@@ -96,7 +97,7 @@ do
         ;;
     --columns)# COLUMNS
         # Fields to display, in order (comma-separated)
-        bu_parse_positional $# --delimited name verb noun namespace type definition synopsis fields stage module shadows shadowed_by delimited-- --hint "Comma-separated fields"
+        bu_parse_positional $# --delimited name verb noun namespace type definition synopsis fields stage input output requires module shadows shadowed_by delimited-- --hint "Comma-separated fields"
         columns=${!shift_by}
         ;;
     -h|--help)# _FLAG
@@ -262,8 +263,9 @@ __bu_get_cmd_registry_lookup()
     fi
 }
 
-# ── Phase 3: Emit TSV records with all 10 columns ──
-# Columns: name verb noun namespace type definition synopsis fields stage module
+# ── Phase 3: Emit TSV records (all schema columns) ──
+# Columns: name verb noun namespace type definition synopsis fields stage
+#          input output requires module shadows shadowed_by
 # Default --columns for table projection is name,type,definition,synopsis
 {
     for command in "${filtered_commands[@]}"
@@ -296,9 +298,23 @@ __bu_get_cmd_registry_lookup()
         __bu_get_cmd_registry_lookup BU_OUT_PRODUCER_FIELDS "$command"
         local fields=$BU_RET
 
-        # Stage from BU_OUT_STAGE_EFFECT
-        __bu_get_cmd_registry_lookup BU_OUT_STAGE_EFFECT "$command"
-        local stage=$BU_RET
+        # Stage + derived input/output from the # Pipeline: header (or the
+        # registry cache populated by bu_register_stage_effect).
+        local stage=
+        __bu_out_stage_effect_lookup "$command" stage
+        local input= output=
+        if [[ -n "$stage" ]]
+        then
+            __bu_out_effect_io "$stage" "$command" input output
+        fi
+
+        # Fixed input contract (# Requires: header).
+        local requires=
+        local _req_file=${BU_COMMANDS[$command]:-}
+        if [[ -f "$_req_file" ]]
+        then
+            __bu_command_header_get "$_req_file" "Requires" requires
+        fi
 
         # Definition: BU_COMMANDS value (falling back to the qualified store
         # for --all collision-parked losers) — script path (execute/source),
@@ -320,12 +336,12 @@ __bu_get_cmd_registry_lookup()
             fi
         fi
 
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
             "$command" "$command_verb" "$command_noun" "$command_namespace" \
-            "$command_type" "$definition" "$synopsis" "$fields" "$stage" "$command_module" \
-            "$shadows" "$shadowed_by"
+            "$command_type" "$definition" "$synopsis" "$fields" "$stage" "$input" \
+            "$output" "$requires" "$command_module" "$shadows" "$shadowed_by"
     done
-} | sort | bu_out_from_tsv --columns name,verb,noun,namespace,type,definition,synopsis,fields,stage,module,shadows,shadowed_by \
+} | sort | bu_out_from_tsv --columns name,verb,noun,namespace,type,definition,synopsis,fields,stage,input,output,requires,module,shadows,shadowed_by \
     | "$BU_OUT_JQ" -c '.shadows = (if .shadows == "" then null else .shadows end) | .shadowed_by = (if .shadowed_by == "" then null else .shadowed_by end)' \
     | bu_out --format "$format" --columns "${columns:-name,type,definition,synopsis}"
 

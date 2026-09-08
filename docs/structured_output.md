@@ -218,9 +218,9 @@ narrow terminals.
 After a pipe, field names of the producer's records are offered:
 
 ```bash
-bu get-command | bu select <TAB>     # name verb noun namespace type definition synopsis fields stage
+bu get-command | bu select <TAB>     # name verb noun namespace type definition synopsis fields stage input output requires module shadows shadowed_by
 bu get-command | bu select name,<TAB>  # comma-aware: the remaining fields
-bu get-command | bu where <TAB>      # .name .verb .noun .namespace .type .definition .synopsis .fields .stage
+bu get-command | bu where <TAB>      # .name .verb .noun .namespace .type .definition .synopsis .fields .stage .input .output .requires
 ```
 
 Sources, in order:
@@ -286,6 +286,31 @@ Rules:
   registered synopsis has an empty synopsis; its expansion is exposed as
   the `definition` field of `bu get-command`.
 
+### Pipeline contract headers
+
+Command scripts declare their pipeline behavior with `# Key: value` headers
+in the same first-30-lines block. All of them are read by a single shared
+header parser (`__bu_command_header_get`), so adding a header is cheap and
+needs no central registry.
+
+```bash
+#!/usr/bin/env bash
+# Pipeline: codec            # stage effect: producer | passthrough | project |
+                            #   query | sink | codec | recordify_tsv |
+                            #   recordify_lines | recordify_new | recordify_jc
+# Requires: host port        # (optional) fixed fields consumed from piped JSONL
+# Fields: name path version  # (optional) output fields this producer emits
+```
+
+- `# Pipeline:` — the pipeline stage effect. `input`/`output` format tokens
+  in `bu get-command` are derived from it (and, for `codec`, from the noun:
+  `convert-to-json` → `jsonl → json`). Function/alias commands that have no
+  file register via `bu_register_stage_effect` instead.
+- `# Requires:` — fixed field names a cmdlet must receive on piped JSONL
+  (surfaced in `bu get-command` and the `--help` PIPELINE section).
+- `# Fields:` — output field names a producer emits, used for pipeline-aware
+  completion after a pipe.
+
 ### Agent and script integration
 
 Agents and scripts should enumerate capabilities via:
@@ -294,13 +319,14 @@ Agents and scripts should enumerate capabilities via:
 bu get-command --format jsonl
 ```
 
-Each record includes all nine fields:
+Each record includes all fifteen fields:
 
 ```json
 {"name":"get-command","verb":"get","noun":"command","namespace":"bu",
  "type":"source","definition":"/path/to/commands/core/bu-get-command.sh",
  "synopsis":"List registered commands and their properties",
- "fields":"name verb noun namespace type definition synopsis fields stage","stage":"producer"}
+ "fields":"name verb noun namespace type definition synopsis fields stage input output requires module shadows shadowed_by",
+ "stage":"producer","input":"none","output":"jsonl","requires":""}
 ```
 
 - `definition` — what the name resolves to: the script path for `execute`/`source`
@@ -309,7 +335,12 @@ Each record includes all nine fields:
 - `synopsis` — one-line description (static, safe to parse)
 - `fields` — output fields this command produces (space-joined, for pipeline composition)
 - `stage` — pipeline stage effect: `producer`, `passthrough`, `project`, `query`,
-  `recordify_*`, or empty if unregistered
+  `sink`, `codec`, `recordify_*`, or empty if unregistered
+- `input` / `output` — stream format tokens (`jsonl`, `json`, `tsv`, `csv`,
+  `text`, `base64`, `display`, `none`): what the cmdlet accepts as pipeline
+  input and what it emits. Derived from `stage` (and, for `codec`, the noun)
+- `requires` — fixed fields the cmdlet must receive from an upstream producer
+  (`# Requires:` header), space-joined; empty when there is no fixed contract
 
 This is a single fast call (~7ms awk scan) that gives agents a complete
 manifest of available commands — no per-command `--help` forks needed.

@@ -477,19 +477,7 @@ bu_autohelp()
         case "$_ah_type" in
         execute|source)
             # Scan script_path (which is BU_COMMANDS[$command]) for # Synopsis:
-            if [[ -f "$script_path" ]]
-            then
-                autohelp_synopsis=$(awk '
-                    FNR > 30 { exit }
-                    /^#[[:space:]]*Synopsis:[[:space:]]/ {
-                        line = $0
-                        sub(/^#[[:space:]]*Synopsis:[[:space:]]*/, "", line)
-                        sub(/[[:space:]]+$/, "", line)
-                        print line
-                        exit
-                    }
-                ' "$script_path" 2>/dev/null)
-            fi
+            __bu_command_header_get "$script_path" "Synopsis" autohelp_synopsis
             ;;
         alias)
             autohelp_synopsis="alias for: ${BU_COMMANDS[$command]}"

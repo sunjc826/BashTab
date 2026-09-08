@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: Show memory usage statistics
 # Fields: type total used free shared buff_cache available

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: Count lines, words, and characters in a file or stream
 # Fields: filename lines words characters

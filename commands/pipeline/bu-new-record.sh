@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: recordify_new
 # Dispatch: source
 # Synopsis: Construct a single JSONL record from key=value arguments
 function __bu_bu_new_record_main()

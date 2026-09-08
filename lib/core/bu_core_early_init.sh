@@ -25,17 +25,19 @@ __bu_command_dispatch_decl()
 {
     BU_RET=
     local -r file=$1
-    [[ -f "$file" ]] || return 0
-    BU_RET=$(awk '
-        FNR > 8 { exit }
-        /^#[[:space:]]*Dispatch:[[:space:]]*(source|execute)[[:space:]]*$/ {
-            line = $0
-            sub(/^#[[:space:]]*Dispatch:[[:space:]]*/, "", line)
-            sub(/[[:space:]]+$/, "", line)
-            print line
-            exit
-        }
-    ' "$file" 2>/dev/null)
+    local _decl=
+    if [[ -v __BU_COMMAND_HEADER_DISPATCH[$file] ]]
+    then
+        # Fast path: batch-scanned files have their Dispatch pre-extracted.
+        _decl=${__BU_COMMAND_HEADER_DISPATCH[$file]}
+    else
+        __bu_command_header_get "$file" "Dispatch" _decl
+    fi
+    # Only "source" or "execute" are valid dispatch types.
+    case "$_decl" in
+    source|execute) BU_RET=$_decl ;;
+    esac
+    return 0
 }
 
 __bu_init_env_commands()
@@ -71,6 +73,15 @@ __bu_init_env_commands()
 
     local _scan_lazy=${BU_COMMAND_SCAN_LAZY:-false}
 
+    # The command scan is the header cache's invalidation boundary: files may
+    # have changed since the last scan, so drop the memo before re-reading.
+    # No per-file stat fingerprinting needed — the scan re-reads everything.
+    if ! "$_scan_lazy"; then
+        __BU_COMMAND_HEADER_BLOCK=()
+        __BU_COMMAND_HEADER_PARSED=()
+        __BU_COMMAND_HEADER_DISPATCH=()
+    fi
+
     local dir
     local file
     local convert_file_to_subcommand
@@ -104,12 +115,45 @@ __bu_init_env_commands()
             done < "$dir/.bashtabignore"
         fi
 
-        for file in $(find "$dir" "${find_opts[@]}" -printf "%P\n")
+        # Collect candidate files once, then batch-parse their headers in a
+        # single awk process so the per-file registration loop below only
+        # reads the memo (no per-file awk fork).
+        local -a _dir_files=()
+        local _dir_file
+        while IFS= read -r _dir_file
         do
-            bu_dirname "$file"
-            local file_dir=$BU_RET
-            bu_basename "$file"
-            local file_name=$BU_RET
+            _dir_files+=("$_dir_file")
+        done < <(find "$dir" "${find_opts[@]}" -printf "%P\n" 2>/dev/null)
+
+        __bu_command_headers_batch "$dir" "${_dir_files[@]}"
+
+        # Batch-detect --is-compatible scripts with a single grep so the
+        # per-file loop below does a pure membership test (no per-file fork).
+        local -A _dir_compat_files=()
+        if ((${#_dir_files[@]}))
+        then
+            local -a _compat_paths=()
+            local _cr
+            for _cr in "${_dir_files[@]}"
+            do
+                _compat_paths+=("$dir/$_cr")
+            done
+            local _cf
+            while IFS= read -r _cf
+            do
+                _dir_compat_files[$_cf]=1
+            done < <(grep -lE -- '--is-compatible[)"]' "${_compat_paths[@]}" 2>/dev/null)
+        fi
+
+        for file in "${_dir_files[@]}"
+        do
+            # Inline dirname/basename (bu_dirname/bu_basename are function
+            # calls; this hot loop runs once per file).
+            local file_dir file_name
+            case "$file" in
+            */*) file_dir=${file%/*}; file_name=${file##*/} ;;
+            *)   file_dir=.; file_name=$file ;;
+            esac
 
             if [[ ! -e "$dir"/"$file_dir"/__bu_entrypoint_decl.sh ]]
             then
@@ -165,7 +209,7 @@ __bu_init_env_commands()
             # If the script declares --is-compatible, run it to check.
             # Scripts without it are assumed compatible (backward compat).
             # Matches both case-style (--is-compatible)) and if-style (--is-compatible").
-            if grep -qE -- '--is-compatible[)"]' "$script_path" 2>/dev/null; then
+            if [[ -n "${_dir_compat_files[$script_path]:-}" ]]; then
                 if $compat_cache_valid; then
                     # Cache hit — check if this command was marked unavailable
                     if [[ -n "${BU_COMMAND_UNAVAILABLE[$command]:-}" ]]; then

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: Show the system ARP table
 # Fields: name address hwtype hwaddress iface

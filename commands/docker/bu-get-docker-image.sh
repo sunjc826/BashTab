@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: List Docker images
 # Fields: ID Repository Tag CreatedAt CreatedSince Size

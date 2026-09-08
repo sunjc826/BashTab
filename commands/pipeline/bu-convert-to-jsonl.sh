@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: codec
 # Dispatch: source
 # Synopsis: Normalize and emit JSONL records
 function __bu_bu_convert_to_jsonl_main()

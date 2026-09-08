@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: Show npm security audit results
 # Fields: name severity is_direct title url range fix_version fix_is_breaking via

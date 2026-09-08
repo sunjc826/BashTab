@@ -71,7 +71,7 @@ function test_cli_rename_pipeline_field_completion { #@test
     # so "xx get-command" must be canonicalized to "bu get-command".
     local command_line_front_before_pipe="xx get-command"
     __bu_out_complete_pipeline_fields ""
-    assert_equal "${BU_RET[*]}" "name verb noun namespace type definition synopsis fields stage module shadows shadowed_by"
+    assert_equal "${BU_RET[*]}" "name verb noun namespace type definition synopsis fields stage input output requires module shadows shadowed_by"
 }
 
 function test_cli_rename_alias_completion { #@test

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: Show bash shell aliases (alias builtin)
 # Help-Topic: aliases

@@ -834,4 +834,12 @@ bu_preinit_register_new_alias where query-object --where {...}
 bu_preinit_register_new_alias select query-object --select {...}
 bu_preinit_register_new_alias grep query-object --grep {...}
 bu_preinit_register_new_alias sort query-object --order-by {...}
+
+# Stage effects for the aliases above — they have no script file to carry a
+# `# Pipeline:` header, so register explicitly (query-object reads JSONL and
+# emits JSONL).
+bu_register_stage_effect "bu where" query
+bu_register_stage_effect "bu select" query
+bu_register_stage_effect "bu grep" query
+bu_register_stage_effect "bu sort" query
 BU_CURRENT_MODULE=$_bu_cur_module_prev

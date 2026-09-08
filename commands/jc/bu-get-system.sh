@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: Show kernel and system version information
 # Fields: kernel_name node_name kernel_release operating_system processor hardware_platform machine kernel_version

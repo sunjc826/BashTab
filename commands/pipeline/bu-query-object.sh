@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: query
 # Dispatch: source
 # Synopsis: Apply SQL-style clauses (where, group-by, select, order-by) to a JSONL stream
 function __bu_bu_query_object_main()

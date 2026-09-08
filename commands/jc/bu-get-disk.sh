@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: Show disk usage and free space
 # Fields: filesystem 1k_blocks used available mounted_on use_percent

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: Show virtual memory statistics
 # Fields: runnable_procs uninterruptible_sleeping_procs virtual_mem_used free_mem buffer_mem cache_mem inactive_mem active_mem swap_in swap_out blocks_in blocks_out interrupts context_switches user_time system_time idle_time io_wait_time stolen_time timestamp timezone

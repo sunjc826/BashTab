@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: List outdated pnpm packages
 # Fields: name current wanted latest is_deprecated dependency_type

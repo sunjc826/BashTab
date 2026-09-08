@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Tab-Execute: true
 # Synopsis: List the CLI's registered aliases

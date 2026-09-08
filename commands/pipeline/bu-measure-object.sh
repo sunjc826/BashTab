@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: passthrough
 # Dispatch: source
 # Synopsis: Calculate statistics (count, sum, avg) on a JSONL stream
 function __bu_bu_measure_object_main()

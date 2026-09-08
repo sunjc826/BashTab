@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: Show CPU utilization statistics
 # Fields: percent_user percent_nice percent_system percent_iowait percent_steal percent_idle type

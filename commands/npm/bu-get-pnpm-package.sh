@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: List installed pnpm packages with metadata
 # Fields: name version resolved from description license path depth _path _parent_path

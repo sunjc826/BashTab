@@ -59,17 +59,9 @@ __bu_help_topic_synopsis()
 {
     BU_RET=
     local file=$1
-    [[ -f "$file" ]] || return 0
-    BU_RET=$(awk '
-        FNR > 30 { exit }
-        /^#[[:space:]]*Synopsis:[[:space:]]/ {
-            line = $0
-            sub(/^#[[:space:]]*Synopsis:[[:space:]]*/, "", line)
-            sub(/[[:space:]]+$/, "", line)
-            print line
-            exit
-        }
-    ' "$file" 2>/dev/null)
+    local _s=
+    __bu_command_header_get "$file" "Synopsis" _s
+    BU_RET=$_s
     return 0
 }
 
@@ -88,17 +80,9 @@ __bu_help_topic_header()
 {
     BU_RET=
     local file=$1
-    [[ -f "$file" ]] || return 0
-    BU_RET=$(awk '
-        FNR > 30 { exit }
-        /^#[[:space:]]*Help-Topic:[[:space:]]/ {
-            line = $0
-            sub(/^#[[:space:]]*Help-Topic:[[:space:]]*/, "", line)
-            sub(/[[:space:]]+$/, "", line)
-            print line
-            exit
-        }
-    ' "$file" 2>/dev/null)
+    local _t=
+    __bu_command_header_get "$file" "Help-Topic" _t
+    BU_RET=$_t
     return 0
 }
 

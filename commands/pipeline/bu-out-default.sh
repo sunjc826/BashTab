@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: sink
 # Dispatch: source
 # Synopsis: Dispatch a JSONL stream to the appropriate output formatter
 function __bu_bu_out_default_main()
