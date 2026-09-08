@@ -1621,6 +1621,99 @@ function test_query_object_value_completion_eq { #@test
     assert_equal "${COMPREPLY[*]}" "alias execute source"
 }
 
+# ===========================================================================
+# query-object where/having value-position connector-jump + delimited -in
+# ===========================================================================
+
+function test_query_object_value_completion_cursor_on_value { #@test
+    # Regression: a partial value that parses as a complete condition must
+    # still complete the VALUE, not jump ahead to the and/or connector.
+    local command_line_front_before_pipe="qo_value_producer | "
+    qo_value_producer() {
+        printf '%s\n' \
+            '{"name":"get-command","type":"source","namespace":"bu"}' \
+            '{"name":"get-module","type":"source","namespace":"bu"}' \
+            '{"name":"set-module","type":"execute","namespace":"bu"}' \
+            '{"name":"query-object","type":"alias","namespace":"bu"}'
+    }
+    bu_register_tab_execute "qo_value_producer"
+
+    bu_autocomplete_get_autocompletions bu query-object --where name -eq get-comm
+    assert_equal "${COMPREPLY[*]}" "get-command"
+}
+
+function test_query_object_value_completion_cursor_past_value_connectors { #@test
+    # Cursor moved onto a new empty word past a complete value: connectors.
+    local command_line_front_before_pipe="qo_value_producer | "
+    qo_value_producer() {
+        printf '%s\n' '{"name":"get-command","type":"source"}'
+    }
+    bu_register_tab_execute "qo_value_producer"
+
+    bu_autocomplete_get_autocompletions bu query-object --where name -eq get-command ""
+    assert_equal "${COMPREPLY[*]}" "and or"
+}
+
+function test_query_object_value_completion_in_delimited { #@test
+    # -in values complete comma-segment by comma-segment via --delimited.
+    local command_line_front_before_pipe="qo_value_producer | "
+    qo_value_producer() {
+        printf '%s\n' \
+            '{"name":"get-command","type":"source"}' \
+            '{"name":"get-module","type":"source"}' \
+            '{"name":"set-module","type":"execute"}'
+    }
+    bu_register_tab_execute "qo_value_producer"
+
+    bu_autocomplete_get_autocompletions bu query-object --where name -in get-command,get-mod
+    assert_equal "${COMPREPLY[*]}" "get-command,get-module"
+}
+
+function test_query_object_value_completion_in_excludes_used { #@test
+    # Already-selected list members are excluded from the next segment.
+    local command_line_front_before_pipe="qo_value_producer | "
+    qo_value_producer() {
+        printf '%s\n' '{"type":"source"}' '{"type":"execute"}' '{"type":"alias"}'
+    }
+    bu_register_tab_execute "qo_value_producer"
+
+    bu_autocomplete_get_autocompletions bu query-object --where type -in source,
+    assert_equal "${COMPREPLY[*]}" "source,alias source,execute"
+}
+
+function test_query_object_value_completion_after_connector { #@test
+    # Same behavior for a condition after and/or inside one --where.
+    local command_line_front_before_pipe="qo_value_producer | "
+    qo_value_producer() {
+        printf '%s\n' \
+            '{"name":"get-command","namespace":"bu"}' \
+            '{"name":"get-module","namespace":"bu"}' \
+            '{"name":"set-module","namespace":"bu"}'
+    }
+    bu_register_tab_execute "qo_value_producer"
+
+    bu_autocomplete_get_autocompletions bu query-object --where namespace -eq bu and name -in get-command,get-mod
+    assert_equal "${COMPREPLY[*]}" "get-command,get-module"
+}
+
+function test_query_object_having_value_completion_matches_where { #@test
+    # --having mirrors --where: cursor-on-value completes the value; -notin
+    # uses --delimited and excludes already-used members.
+    local command_line_front_before_pipe="qo_value_producer | "
+    qo_value_producer() {
+        printf '%s\n' \
+            '{"name":"get-command","type":"source"}' \
+            '{"name":"get-module","type":"source"}' \
+            '{"name":"set-module","type":"execute"}'
+    }
+    bu_register_tab_execute "qo_value_producer"
+
+    bu_autocomplete_get_autocompletions bu query-object group-by verb --having name -eq get-comm
+    assert_equal "${COMPREPLY[*]}" "get-command"
+    bu_autocomplete_get_autocompletions bu query-object group-by verb --having type -notin source,
+    assert_equal "${COMPREPLY[*]}" "source,execute"
+}
+
 function test_value_completion_get_alias_root { #@test
     local command_line_front_before_pipe="bu get-alias | "
     bu_autocomplete_get_autocompletions bu where root -eq ""

@@ -80,6 +80,7 @@ do
             local _w_extra=0          # extra args consumed (beyond field name)
             local _w_field=$where_raw
             local _w_complete=false   # last condition is fully parsed
+            local _w_value_is_last=false # parsed value token is the cursor word
 
             while true; do
                 # --- Parse operator for current field ---
@@ -95,6 +96,7 @@ do
                             local _w_v_arg=${!_w_v_idx}
                             if [[ "$_w_v_arg" != -* ]] || [[ "$_w_v_arg" =~ ^-[0-9] ]]; then
                                 _w_val=$_w_v_arg; _w_cond_consume=2
+                                (( _w_v_idx == $# )) && _w_value_is_last=true
                             fi
                         fi
                         ;;
@@ -195,15 +197,22 @@ do
             elif [[ -z "$_w_op" && -z "$_w_field" ]] && ((${#_w_connectors[@]} > 0)); then
                 # After and/or connector, waiting for next field name
                 autocompletion=(--hint "Field name (after ${_w_connectors[-1]})" --pipeline-fields pipeline-fields--)
-            elif [[ "$_w_complete" == true ]]; then
-                # Have a complete condition; suggest and/or
-                autocompletion=(--enum and or enum-- --hint "Logical connector (and/or)")
-            elif [[ -n "$_w_op" && -z "$_w_val" && "$_w_op" != -isnull && "$_w_op" != -isnotnull ]]; then
-                # Have field + operator, waiting for value
+            elif [[ -n "$_w_op" && "$_w_op" != -isnull && "$_w_op" != -isnotnull && ( -z "$_w_val" || "$_w_value_is_last" == true ) ]]; then
+                # Have field + operator. Fire when the value is still missing OR
+                # when the cursor is on the value word itself (a partial value
+                # being completed). In both cases complete the value, never the
+                # and/or connector.
                 case "$_w_op" in
-                -eq|-ne|-in|-notin)
+                -eq|-ne)
                     if __bu_out_complete_field_values "$_w_field" && ((${#BU_RET[@]} > 0)); then
                         autocompletion=(--enum "${BU_RET[@]}" enum-- --hint "Values of $_w_field")
+                    else
+                        autocompletion=(--hint "Value for $_w_field $_w_op")
+                    fi
+                    ;;
+                -in|-notin)
+                    if __bu_out_complete_field_values "$_w_field" && ((${#BU_RET[@]} > 0)); then
+                        autocompletion=(--delimited "${BU_RET[@]}" delimited-- --hint "Values of $_w_field")
                     else
                         autocompletion=(--hint "Value for $_w_field $_w_op")
                     fi
@@ -212,6 +221,10 @@ do
                     autocompletion=(--hint "Value for $_w_field $_w_op")
                     ;;
                 esac
+            elif [[ "$_w_complete" == true ]]; then
+                # Have a complete condition with the cursor past the value;
+                # suggest the and/or connector.
+                autocompletion=(--enum and or enum-- --hint "Logical connector (and/or)")
             fi
             if [[ -z "$_w_op" && -z "$_w_field" ]] && ((${#_w_connectors[@]} == 0)); then
                 # Waiting for first field name — force field completions
@@ -307,6 +320,7 @@ do
             local _h_extra=0
             local _h_field=$having_raw
             local _h_complete=false
+            local _h_value_is_last=false # parsed value token is the cursor word
 
             while true; do
                 local _h_op= _h_val= _h_cond_consume=0
@@ -321,6 +335,7 @@ do
                             local _h_v_arg=${!_h_v_idx}
                             if [[ "$_h_v_arg" != -* ]] || [[ "$_h_v_arg" =~ ^-[0-9] ]]; then
                                 _h_val=$_h_v_arg; _h_cond_consume=2
+                                (( _h_v_idx == $# )) && _h_value_is_last=true
                             fi
                         fi
                         ;;
@@ -405,13 +420,22 @@ do
                 autocompletion=(--enum -eq -ne -gt -lt -ge -le -like -notlike -match -notmatch -contains -notcontains -in -notin -isnull -isnotnull enum-- --hint "Comparison operator")
             elif [[ -z "$_h_op" && -z "$_h_field" ]] && ((${#_h_connectors[@]} > 0)); then
                 autocompletion=(--hint "Field name (after ${_h_connectors[-1]})" --pipeline-fields pipeline-fields--)
-            elif [[ "$_h_complete" == true ]]; then
-                autocompletion=(--enum and or enum-- --hint "Logical connector (and/or)")
-            elif [[ -n "$_h_op" && -z "$_h_val" && "$_h_op" != -isnull && "$_h_op" != -isnotnull ]]; then
+            elif [[ -n "$_h_op" && "$_h_op" != -isnull && "$_h_op" != -isnotnull && ( -z "$_h_val" || "$_h_value_is_last" == true ) ]]; then
+                # Have field + operator. Fire when the value is still missing OR
+                # when the cursor is on the value word itself (a partial value
+                # being completed). In both cases complete the value, never the
+                # and/or connector.
                 case "$_h_op" in
-                -eq|-ne|-in|-notin)
+                -eq|-ne)
                     if __bu_out_complete_field_values "$_h_field" && ((${#BU_RET[@]} > 0)); then
                         autocompletion=(--enum "${BU_RET[@]}" enum-- --hint "Values of $_h_field")
+                    else
+                        autocompletion=(--hint "Value for $_h_field $_h_op")
+                    fi
+                    ;;
+                -in|-notin)
+                    if __bu_out_complete_field_values "$_h_field" && ((${#BU_RET[@]} > 0)); then
+                        autocompletion=(--delimited "${BU_RET[@]}" delimited-- --hint "Values of $_h_field")
                     else
                         autocompletion=(--hint "Value for $_h_field $_h_op")
                     fi
@@ -420,6 +444,8 @@ do
                     autocompletion=(--hint "Value for $_h_field $_h_op")
                     ;;
                 esac
+            elif [[ "$_h_complete" == true ]]; then
+                autocompletion=(--enum and or enum-- --hint "Logical connector (and/or)")
             fi
             if [[ -z "$_h_op" && -z "$_h_field" ]] && ((${#_h_connectors[@]} == 0)); then
                 autocompletion=(--hint "Field name" --pipeline-fields pipeline-fields--)
