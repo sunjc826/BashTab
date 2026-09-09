@@ -283,6 +283,41 @@ declared order), even when the producer emitted no records; inferred-only
 fields follow. This is the type-level complement to the name-only `# Fields:`
 header — types are inferred, never hand-authored.
 
+### File schema inference
+
+Cmdlets and clauses that read a data file infer the record schema directly
+from the file — the header row for CSV/TSV, the first record's keys for
+JSONL/JSON — and feed it into the same field-aware completion machinery as a
+pipeline producer. No producer execution and no hand-authored registry
+entry:
+
+```bash
+bu query-object --from data.csv select <TAB>   # type name verb version ...
+bu query-object --from data.csv where <TAB>    # field names from the header
+bu import-tsv data.tsv | bu select <TAB>       # same, via a recordify_file stage
+```
+
+Formats are detected by extension: `.csv` (via `jc`), `.tsv`/`.tab`,
+`.jsonl`/`.ndjson`, and `.json`. `query-object --from` dispatches the same
+way at runtime, so `--from data.csv` / `--from data.tsv` query a file
+directly instead of requiring a `convert-from-*` stage first.
+
+The `import-*` cmdlets are thin `# Pipeline: recordify_file` file producers
+that emit JSONL and register the file's schema for downstream completion:
+
+```bash
+bu import-csv   data.csv    # jc --csv; header row becomes the keys
+bu import-tsv   data.tsv    # first row is the header
+bu import-jsonl data.jsonl  # passthrough (identity), registers the schema
+bu import-json  data.json   # unroll an array / pass an object through
+```
+
+Inference is read-only and bounded: it inspects only regular files (never
+FIFOs/devices), reads at most the header plus one row (CSV/TSV) or the first
+record (JSONL/JSON), and is memoized per `path:mtime:size` for the session.
+Distinct field *values* are also completed at the `where -eq` / `-in` value
+position from the same bounded file sample.
+
 ### Runtime strict mode
 
 `BU_OUT_STRICT=true` makes pipeline consumers (`# Pipeline: consume`)
@@ -361,7 +396,7 @@ needs no central registry.
 # Pipeline: codec            # stage effect: producer | passthrough | project |
                             #   query | transform | consume | standalone | sink |
                             #   codec | recordify_tsv | recordify_lines |
-                            #   recordify_new | recordify_jc
+                            #   recordify_new | recordify_jc | recordify_file
 # Requires-All: host port   # (optional) EVERY field must be present
 # Requires-Any: unit name    # (optional) at least ONE field must be present
 # Fields: name path version  # (optional) output fields this producer emits

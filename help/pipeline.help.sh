@@ -45,7 +45,7 @@ ${BU_TPUT_BOLD}THE PROTOCOL${BU_TPUT_RESET}
 
     Layer          Core functions                                        Cmdlets
     -------------  ----------------------------------------------------  ------------------------------------------
-    Recordifiers   bu_out_record, bu_out_from_tsv, bu_out_from_lines     new-record, convert-from-tsv, convert-from-lines
+    Recordifiers   bu_out_record, bu_out_from_tsv, bu_out_from_lines     new-record, convert-from-tsv, convert-from-lines, import-csv, import-tsv, import-jsonl, import-json
     Transforms     bu_out_where, bu_out_select, bu_out_sort_by,          where, select, sort, query-object,
                    bu_out_group_by, bu_out_distinct                      distinct-object
     Sinks          bu_format_table, bu_format_list, bu_format_json,      format-table, format-list, convert-to-json,
