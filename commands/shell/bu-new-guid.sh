@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: guid
 # Dispatch: source
 # Synopsis: Generate a new GUID/UUID
 function __bu_bu_new_guid_main()

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: command bash_completion on_path location
 # Dispatch: source
 # Synopsis: Show Fig completion status
 function __bu_bu_get_fig_status_main()

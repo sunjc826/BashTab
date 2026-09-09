@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-All: path
+# Fields: path mode_before owner_before group_before mode_would_be owner_would_be group_would_be dry_run mode_after owner_after group_after error
 # Dispatch: source
 # Synopsis: Change file permissions and ownership
 function __bu_bu_set_file_permission_main()

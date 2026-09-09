@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: List remote ControlMaster sessions and their status
 # Tab-Execute: true

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: remote ref status before after
 # Dispatch: source
 # Synopsis: Fetch and integrate remote Git changes
 function __bu_bu_pull_git_ref_main()

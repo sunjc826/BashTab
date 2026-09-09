@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: standalone
 # Dispatch: source
 # Synopsis: Source environment variables from a file
 # Help-Topic: environment

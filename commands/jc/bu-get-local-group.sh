@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: List local system groups
 function __bu_bu_get_local_group_main()

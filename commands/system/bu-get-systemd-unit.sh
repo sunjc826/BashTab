@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: List systemd units and their status
 # Fields: unit load active sub description

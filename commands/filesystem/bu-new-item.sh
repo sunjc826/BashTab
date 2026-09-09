@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-Any: path filename name
+# Fields: path type created error
 # Dispatch: source
 # Synopsis: Create a new file or directory
 function __bu_bu_new_item_main()

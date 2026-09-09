@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: path parent leaf extension stem
 # Dispatch: source
 # Synopsis: Split a file path into its components
 function __bu_bu_split_path_main()

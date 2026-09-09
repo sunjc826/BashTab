@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: name path on_enter action dry_run
 # Dispatch: source
 # Synopsis: Change the current working directory
 # Help-Topic: locations

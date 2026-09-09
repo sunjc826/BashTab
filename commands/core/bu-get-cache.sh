@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: project date size
 # Dispatch: source
 # Synopsis: Show the BashTab command cache status and entries
 # Help-Topic: modules

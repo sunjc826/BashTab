@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: command compatible reason
 # Dispatch: source
 # Synopsis: Show platform compatibility information
 function __bu_bu_get_compat_main()

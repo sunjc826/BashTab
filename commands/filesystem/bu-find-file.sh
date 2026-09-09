@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: path name type size mode owner group mtime ctime
 # Dispatch: source
 # Synopsis: Search for files matching a pattern
 function __bu_bu_find_file_main()

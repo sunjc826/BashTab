@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: name url kind
 # Dispatch: source
 # Synopsis: List Git remote repositories
 function __bu_bu_get_git_remote_main()

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: index path
 # Dispatch: source
 # Synopsis: Show the pushd/popd directory stack
 # Help-Topic: locations

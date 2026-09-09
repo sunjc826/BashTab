@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: sink
 # Synopsis: Display a file as an fzf-browsable table
 function __bu_bu_view_table_main()
 {

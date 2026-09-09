@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: text
 # Dispatch: source
 # Synopsis: Read the system clipboard contents
 function __bu_bu_get_clipboard_main()

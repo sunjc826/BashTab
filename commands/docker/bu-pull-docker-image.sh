@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-Any: Repository name image
+# Fields: image action pulled error
 # Dispatch: source
 # Synopsis: Pull a Docker image from a registry
 function __bu_bu_pull_docker_image_main()

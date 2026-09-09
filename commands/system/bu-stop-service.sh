@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Pipeline: consume
+# Pipeline: transform
 # Requires-Any: unit name
+# Fields: unit action stopped error
 # Dispatch: source
 # Synopsis: Stop a running system service
 # Completion helper: unit names from the live system (units + service unit files).

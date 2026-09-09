@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: path
 # Dispatch: source
 # Synopsis: Print the current working directory
 function __bu_bu_get_location_main()

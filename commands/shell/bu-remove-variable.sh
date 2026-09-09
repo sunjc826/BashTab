@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Pipeline: consume
+# Pipeline: transform
 # Requires-All: name
+# Fields: name removed error
 # Dispatch: source
 # Synopsis: Unset a shell variable
 # Completion helper: currently set variable names.

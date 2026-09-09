@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: List or filter bash builtin commands
 function __bu_bu_get_builtin_main()

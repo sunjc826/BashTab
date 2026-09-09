@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Pipeline: consume
+# Pipeline: transform
 # Requires-All: name
+# Fields: name status remote error
 # Dispatch: source
 # Synopsis: Delete a Git tag
 function __bu_bu_remove_git_tag_main()

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: path format destination entry_count size type
 # Dispatch: source
 # Synopsis: Decompress a compressed file
 function __bu_bu_expand_file_main()

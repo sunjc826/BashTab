@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: Display TLS certificate information for a domain
 function __bu_bu_get_certificate_main()

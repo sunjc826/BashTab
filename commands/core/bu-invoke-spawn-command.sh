@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: standalone
 # Dispatch: source
 # Synopsis: Spawn a background process and track its status
 function __bu_bu_invoke_spawn_command_main()

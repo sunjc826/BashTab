@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: action dry_run
 # Dispatch: source
 # Synopsis: Upgrade RPM packages
 function __bu_bu_update_rpm_package_main()

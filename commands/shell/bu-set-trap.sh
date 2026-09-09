@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-All: signal
+# Fields: signal handler set error
 # Dispatch: source
 # Synopsis: Set a shell trap handler
 # Common signal names for completion.

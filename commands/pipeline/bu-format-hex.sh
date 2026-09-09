@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: standalone
 # Dispatch: source
 # Synopsis: Format binary data as a hex dump
 function __bu_bu_format_hex_main()

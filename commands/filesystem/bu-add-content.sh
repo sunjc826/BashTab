@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-All: line
+# Fields: path bytes_appended appended error
 # Dispatch: source
 # Synopsis: Append content to a file
 function __bu_bu_add_content_main()

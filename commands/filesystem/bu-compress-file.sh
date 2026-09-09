@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: path format size file_count
 # Dispatch: source
 # Synopsis: Compress a file using gzip, bzip2, or xz
 function __bu_bu_compress_file_main()

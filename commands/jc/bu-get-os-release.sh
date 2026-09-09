@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: Show operating system identification data
 function __bu_bu_get_os_release_main()

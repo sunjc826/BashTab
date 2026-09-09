@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: path exists type
 # Dispatch: source
 # Synopsis: Test whether a file or directory exists
 function __bu_bu_test_path_main()

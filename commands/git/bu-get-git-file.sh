@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: path revision line_number line
 # Dispatch: source
 # Synopsis: List files tracked by Git
 function __bu_bu_get_git_file_main()

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: standalone
 # Dispatch: source
 # Synopsis: Open an interactive bash on a remote host with the project loaded
 function __bu_bu_enter_remote_session_main()

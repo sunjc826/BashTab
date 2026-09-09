@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-All: flag
+# Fields: flag value old_value set hard error
 # Dispatch: source
 # Synopsis: Set a shell resource limit
 # Completion helper: resource limit flag letters from ulimit -a.

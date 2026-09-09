@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Pipeline: consume
+# Pipeline: transform
 # Requires-Any: unit name
+# Fields: unit action disabled error
 # Dispatch: source
 # Synopsis: Disable a system service from starting at boot
 # Completion helper: unit names from the live system (enabled units only).

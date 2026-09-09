@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Pipeline: consume
+# Pipeline: transform
 # Requires-All: pid
+# Fields: pid signal stopped error
 # Dispatch: source
 # Synopsis: Terminate a running process
 function __bu_bu_stop_process_main()

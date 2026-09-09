@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-Any: Names ID name id
+# Fields: container action started error
 # Dispatch: source
 # Synopsis: Start a Docker container
 # Completion helper: all container names (including stopped) from docker ps -a.

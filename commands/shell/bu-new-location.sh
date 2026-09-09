@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: standalone
 # Dispatch: source
 # Synopsis: Add or remove a persistent named location
 # Help-Topic: locations

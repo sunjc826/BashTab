@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-Any: Names ID name id
+# Fields: container action removed error
 # Dispatch: source
 # Synopsis: Remove a Docker container
 # Completion helper: all container names from docker ps -a.

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-All: job_number
+# Fields: job_number signal stopped error
 # Dispatch: source
 # Synopsis: Stop a background job
 function __bu_bu_stop_job_main()

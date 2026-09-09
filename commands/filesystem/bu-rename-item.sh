@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-Any: path filename new_name
+# Fields: path new_name renamed error
 # Dispatch: source
 # Synopsis: Rename a file or directory
 function __bu_bu_rename_item_main()

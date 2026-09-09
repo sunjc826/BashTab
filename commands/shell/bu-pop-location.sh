@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: path action dry_run
 # Dispatch: source
 # Synopsis: Pop the top directory off the pushd stack
 # Help-Topic: locations

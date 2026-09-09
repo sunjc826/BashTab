@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-Any: path filename name
+# Fields: path removed error
 # Dispatch: source
 # Synopsis: Delete a file or directory
 function __bu_bu_remove_item_main()

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: action dry_run
 # Dispatch: source
 # Synopsis: Upgrade Alpine Linux packages
 function __bu_bu_update_apk_package_main()

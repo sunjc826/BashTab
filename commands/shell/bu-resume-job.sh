@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-All: job_number
+# Fields: job_number action resumed error
 # Dispatch: source
 # Synopsis: Resume a suspended background job
 function __bu_bu_resume_job_main()

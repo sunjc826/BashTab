@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: line_number commit author author_date line
 # Dispatch: source
 # Synopsis: Show line-by-line Git authorship information
 function __bu_bu_get_git_blame_main()

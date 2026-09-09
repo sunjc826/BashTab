@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Pipeline: consume
+# Pipeline: transform
 # Requires-All: name
+# Fields: name value action dry_run error
 # Dispatch: source
 # Synopsis: Set a bash shell option
 function __bu_bu_set_shell_option_main()

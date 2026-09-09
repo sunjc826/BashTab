@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: flag resource units value
 # Dispatch: source
 # Synopsis: Show shell resource limits
 function __bu_bu_get_resource_limit_main()

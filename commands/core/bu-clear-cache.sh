@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: standalone
 # Dispatch: source
 # Synopsis: Clear the BashTab command and compatibility cache
 # Help-Topic: modules

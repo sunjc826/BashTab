@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: Close (or clean up) a remote ControlMaster session
 # Fields: host action socket

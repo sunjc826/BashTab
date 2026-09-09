@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: remote ref status from to
 # Dispatch: source
 # Synopsis: Push local Git commits to a remote
 function __bu_bu_push_git_ref_main()

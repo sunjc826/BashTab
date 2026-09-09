@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-All: name
+# Fields: name definition set error
 # Dispatch: source
 # Synopsis: Register a new command alias
 # Help-Topic: aliases

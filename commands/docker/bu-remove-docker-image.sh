@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-Any: Repository ID name id
+# Fields: image action removed error
 # Dispatch: source
 # Synopsis: Remove a Docker image
 # Completion helper: image names from docker images.

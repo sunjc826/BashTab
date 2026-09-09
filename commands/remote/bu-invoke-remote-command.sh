@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: standalone
 # Dispatch: source
 # Synopsis: Run a command or script on remote hosts over ssh
 function __bu_bu_invoke_remote_command_main()

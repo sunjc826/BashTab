@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: passthrough
 # Dispatch: source
 # Synopsis: Display a JSONL stream in an interactive fzf selector
 function __bu_bu_out_fzf_main()

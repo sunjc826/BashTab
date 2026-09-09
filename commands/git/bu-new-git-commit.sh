@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: commit message amended
 # Dispatch: source
 # Synopsis: Create a new Git commit
 function __bu_bu_new_git_commit_main()

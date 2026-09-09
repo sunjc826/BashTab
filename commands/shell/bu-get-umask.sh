@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: symbolic
 # Dispatch: source
 # Synopsis: Show the current file creation mask
 function __bu_bu_get_umask_main()

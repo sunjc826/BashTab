@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-All: url
 # Dispatch: source
 # Synopsis: Make an HTTP REST API call
 function __bu_bu_invoke_rest_method_main()

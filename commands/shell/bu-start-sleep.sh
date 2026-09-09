@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: standalone
 # Dispatch: source
 # Synopsis: Suspend execution for a specified duration
 function __bu_bu_start_sleep_main()

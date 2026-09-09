@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: List loaded kernel modules
 function __bu_bu_get_kernel_module_main()

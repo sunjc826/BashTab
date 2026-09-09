@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: Compute the cryptographic hash of a file
 function __bu_bu_get_file_hash_main()

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: action dry_run
 # Dispatch: source
 # Synopsis: Upgrade Arch Linux packages
 function __bu_bu_update_pacman_package_main()

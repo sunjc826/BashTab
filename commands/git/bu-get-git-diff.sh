@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: path added deleted status orig_path
 # Dispatch: source
 # Synopsis: Show Git working-tree differences
 function __bu_bu_get_git_diff_main()

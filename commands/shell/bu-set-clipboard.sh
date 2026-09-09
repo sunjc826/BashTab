@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: consume
+# Requires-All: text
 # Dispatch: source
 # Synopsis: Write content to the system clipboard
 function __bu_bu_set_clipboard_main()

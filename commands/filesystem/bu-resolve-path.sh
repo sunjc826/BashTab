@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: path resolved exists
 # Dispatch: source
 # Synopsis: Resolve a relative path to an absolute path
 function __bu_bu_resolve_path_main()

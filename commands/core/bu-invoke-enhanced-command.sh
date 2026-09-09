@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: standalone
 # Dispatch: source
 # Synopsis: Execute a command with progress bar and enhanced output
 function __bu_bu_invoke_enhanced_command_main()

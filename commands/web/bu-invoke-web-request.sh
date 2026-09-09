@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-All: url
 # Dispatch: source
 # Synopsis: Make an HTTP request and return the response
 function __bu_bu_invoke_web_request_main()

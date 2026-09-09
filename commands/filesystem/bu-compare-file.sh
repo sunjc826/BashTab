@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: reference difference status type line_number line path
 # Dispatch: source
 # Synopsis: Compare two files line by line
 function __bu_bu_compare_file_main()

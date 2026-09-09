@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: index action status
 # Dispatch: source
 # Synopsis: Restore files from a Git stash
 function __bu_bu_restore_git_stash_main()

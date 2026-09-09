@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: standalone
 # Dispatch: source
 # Synopsis: Execute a command and cache its output
 function __bu_bu_invoke_cached_command_main()

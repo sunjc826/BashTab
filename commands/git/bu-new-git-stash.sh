@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: index message status
 # Dispatch: source
 # Synopsis: Stash uncommitted Git changes
 function __bu_bu_new_git_stash_main()

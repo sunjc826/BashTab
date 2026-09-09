@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: command duration_ms exit_code
 # Dispatch: source
 # Synopsis: Time the execution of a command
 function __bu_bu_measure_command_main()

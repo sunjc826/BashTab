@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: name commit previous_branch dry_run
 # Dispatch: source
 # Synopsis: Switch to a different Git branch
 function __bu_bu_switch_git_branch_main()

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: List GitHub pull requests via the gh CLI
 # Fields: number title state author branch base is_draft url updated_at

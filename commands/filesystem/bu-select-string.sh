@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: recordify_lines
+# Fields: path line_number line
 # Dispatch: source
 # Synopsis: Search for patterns in text and show matching lines
 function __bu_bu_select_string_main()

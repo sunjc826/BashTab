@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-Any: Names ID name id
+# Fields: container action restarted error
 # Dispatch: source
 # Synopsis: Restart a Docker container
 # Completion helper: all container names (including stopped) from docker ps -a.

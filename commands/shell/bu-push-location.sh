@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: path action dry_run
 # Dispatch: source
 # Synopsis: Push the current directory onto the pushd stack
 # Help-Topic: locations

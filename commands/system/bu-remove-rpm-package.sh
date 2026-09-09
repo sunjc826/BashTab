@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Pipeline: consume
+# Pipeline: transform
 # Requires-All: name
+# Fields: name action dry_run
 # Dispatch: source
 # Synopsis: Uninstall RPM packages
 function __bu_bu_remove_rpm_package_main()

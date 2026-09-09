@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Pipeline: consume
+# Pipeline: transform
 # Requires-All: signal
+# Fields: signal removed error
 # Dispatch: source
 # Synopsis: Remove a shell trap handler
 # Common signal names for completion.

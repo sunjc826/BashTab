@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: branch status before after strategy
 # Dispatch: source
 # Synopsis: Merge a Git branch into the current branch
 function __bu_bu_merge_git_branch_main()

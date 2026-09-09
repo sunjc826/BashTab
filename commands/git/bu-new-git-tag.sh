@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: name commit type status
 # Dispatch: source
 # Synopsis: Create a new Git tag
 function __bu_bu_new_git_tag_main()

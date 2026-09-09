@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: Test network connectivity to a remote host
 function __bu_bu_test_connection_main()

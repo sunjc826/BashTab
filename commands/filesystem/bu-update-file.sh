@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-All: path
+# Fields: path would_create dry_run mtime_before mtime_after atime_before atime_after error
 # Dispatch: source
 # Synopsis: Modify file timestamps or create empty files
 function __bu_bu_update_file_main()

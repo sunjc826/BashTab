@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-Any: source path filename
+# Fields: source destination copied error
 # Dispatch: source
 # Synopsis: Copy a file or directory
 function __bu_bu_copy_item_main()

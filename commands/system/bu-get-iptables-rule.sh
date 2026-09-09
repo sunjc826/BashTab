@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: List iptables firewall rules
 # Fields: chain num pkts bytes target prot opt in out source destination

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-Any: source path filename
+# Fields: source destination moved error
 # Dispatch: source
 # Synopsis: Move or rename a file or directory
 function __bu_bu_move_item_main()

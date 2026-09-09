@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Pipeline: consume
+# Pipeline: transform
 # Requires-All: name
+# Fields: name value action dry_run error
 # Dispatch: source
 # Synopsis: Set a bash shopt option
 function __bu_bu_set_shopt_option_main()

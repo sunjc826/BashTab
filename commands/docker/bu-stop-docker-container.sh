@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-Any: Names ID name id
+# Fields: container action stopped error
 # Dispatch: source
 # Synopsis: Stop a running Docker container
 # Completion helper: running container names from docker ps.

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Pipeline: transform
+# Requires-All: line
+# Fields: path bytes_written overwritten error
 # Dispatch: source
 # Synopsis: Write content to a file
 function __bu_bu_set_content_main()

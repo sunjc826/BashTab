@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: passthrough
 # Dispatch: source
 # Synopsis: Tee a JSONL stream to a file while passing it through
 function __bu_bu_tee_object_main()

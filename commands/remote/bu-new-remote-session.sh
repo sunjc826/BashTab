@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: producer
 # Dispatch: source
 # Synopsis: Start (or adopt) a persistent ControlMaster session to a host
 # Fields: host action socket master_pid

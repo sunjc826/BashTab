@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: sink
 # Dispatch: source
 # Synopsis: Write a JSONL stream to a file
 function __bu_bu_out_file_main()

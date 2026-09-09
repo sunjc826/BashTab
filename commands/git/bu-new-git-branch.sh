@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: producer
+# Fields: name commit from switched_to dry_run
 # Dispatch: source
 # Synopsis: Create a new Git branch
 function __bu_bu_new_git_branch_main()
