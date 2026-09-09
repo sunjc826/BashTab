@@ -840,6 +840,98 @@ function test_pipeline_fields_comp_line_no_pipe { #@test
     unset COMP_LINE COMP_POINT
 }
 
+# ===========================================================================
+# File schema inference (__bu_out_infer_file_fields / --from self-producer)
+# ===========================================================================
+
+__bt_write_data_files() {
+    printf 'type,name,verb,version\nsource,get-command,get,1.0\nalias,query-object,query,2.1\n' > "$BATS_TEST_TMPDIR/data.csv"
+    printf 'type\tname\tverb\tversion\nsource\tget-command\tget\t1.0\nalias\tquery-object\tquery\t2.1\n' > "$BATS_TEST_TMPDIR/data.tsv"
+    printf '{"type":"source","name":"get-command","verb":"get","version":"1.0"}\n{"type":"alias","name":"query-object","verb":"query","version":"2.1"}\n' > "$BATS_TEST_TMPDIR/data.jsonl"
+    printf '[{"type":"source","name":"get-command","verb":"get","version":"1.0"},{"type":"alias","name":"query-object","verb":"query","version":"2.1"}]\n' > "$BATS_TEST_TMPDIR/data.json"
+}
+
+function test_file_schema_infer_csv { #@test
+    command -v jc >/dev/null || skip "jc not installed"
+    __bt_write_data_files
+    local -a fields=()
+    __bu_out_infer_file_fields "$BATS_TEST_TMPDIR/data.csv" fields
+    assert_equal "${fields[*]}" "type name verb version"
+}
+
+function test_file_schema_infer_tsv { #@test
+    __bt_write_data_files
+    local -a fields=()
+    __bu_out_infer_file_fields "$BATS_TEST_TMPDIR/data.tsv" fields
+    assert_equal "${fields[*]}" "type name verb version"
+}
+
+function test_file_schema_infer_jsonl { #@test
+    __bt_write_data_files
+    local -a fields=()
+    __bu_out_infer_file_fields "$BATS_TEST_TMPDIR/data.jsonl" fields
+    assert_equal "${fields[*]}" "type name verb version"
+}
+
+function test_file_schema_infer_json { #@test
+    __bt_write_data_files
+    local -a fields=()
+    __bu_out_infer_file_fields "$BATS_TEST_TMPDIR/data.json" fields
+    assert_equal "${fields[*]}" "type name verb version"
+}
+
+function test_file_schema_self_from_completion { #@test
+    # query-object --from <file> completes fields with no upstream pipe
+    __bt_write_data_files
+    local command_line_front_before_pipe= pipe_before=
+    COMP_LINE="bu query-object --from $BATS_TEST_TMPDIR/data.tsv select "
+    COMP_POINT=${#COMP_LINE}
+    __bu_out_complete_pipeline_fields ""
+    assert_equal "${BU_RET[*]}" "type name verb version"
+    unset COMP_LINE COMP_POINT
+}
+
+function test_file_schema_recordify_file_pipeline { #@test
+    # import-* registers a recordify_file stage; a downstream pipe sees the schema
+    __bt_write_data_files
+    local pipe_before="bu import-tsv $BATS_TEST_TMPDIR/data.tsv | "
+    __bu_out_complete_pipeline_fields ""
+    assert_equal "${BU_RET[*]}" "type name verb version"
+}
+
+function test_file_schema_field_values { #@test
+    # where type -eq <TAB> offers distinct values sampled from the --from file
+    __bt_write_data_files
+    COMP_LINE="bu query-object --from $BATS_TEST_TMPDIR/data.tsv where type -eq "
+    COMP_POINT=${#COMP_LINE}
+    __bu_out_complete_field_values type
+    assert_equal "${BU_RET[*]}" "alias source"
+    unset COMP_LINE COMP_POINT
+}
+
+function test_import_tsv_runtime { #@test
+    __bt_write_data_files
+    local out
+    out=$(bu import-tsv "$BATS_TEST_TMPDIR/data.tsv" --format jsonl)
+    assert_equal "$out" '{"type":"source","name":"get-command","verb":"get","version":"1.0"}
+{"type":"alias","name":"query-object","verb":"query","version":"2.1"}'
+}
+
+function test_import_jsonl_runtime { #@test
+    __bt_write_data_files
+    local out
+    out=$(bu import-jsonl "$BATS_TEST_TMPDIR/data.jsonl" --format jsonl)
+    assert_equal "$out" '{"type":"source","name":"get-command","verb":"get","version":"1.0"}
+{"type":"alias","name":"query-object","verb":"query","version":"2.1"}'
+}
+
+function test_query_object_from_tsv_runtime { #@test
+    __bt_write_data_files
+    local out
+    out=$(bu query-object --from "$BATS_TEST_TMPDIR/data.tsv" where type -eq source select name,verb order-by name)
+    assert_equal "$out" '{"name":"get-command","verb":"get"}'
+}
+
 function test_master_impl_hint_without_ansi_local { #@test
     # Regression: with the fzf binding disabled (plain bash completion),
     # BU_AUTOCOMPLETE_ACCEPT_ANSI_COLORS is unset; the hint path must not
