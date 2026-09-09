@@ -1,16 +1,9 @@
 #!/usr/bin/env bash
+# Pipeline: standalone
 # Dispatch: source
 # Synopsis: Exit the current remote session shell (refuses outside one)
 function __bu_bu_exit_remote_session_main()
 {
-# Guard FIRST: refuse outside a session, before pushing any scope whose
-# cleanup could mask the terminating exit.
-if [[ -z "${BU_REMOTE_SESSION:-}" ]]
-then
-    bu_log_err "Not inside a remote session (BU_REMOTE_SESSION is unset); refusing to exit this shell"
-    return 1
-fi
-
 local -r invocation_dir=$PWD
 
 # shellcheck source=./__bu_entrypoint_decl.sh
@@ -76,6 +69,14 @@ value on the calling side.
         --example "Exit the session" "" \
         --example "Exit with a specific code" "7"
     return 0
+fi
+
+# Refuse outside a session before terminating the shell — --help above still
+# works, but an actual exit must never end the wrong shell.
+if [[ -z "${BU_REMOTE_SESSION:-}" ]]
+then
+    bu_log_err "Not inside a remote session (BU_REMOTE_SESSION is unset); refusing to exit this shell"
+    return 1
 fi
 
 bu_log_info "Exiting remote session[$BU_REMOTE_SESSION] (origin: ${BU_REMOTE_SESSION_ORIGIN:-unknown})"

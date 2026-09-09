@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Pipeline: passthrough
+# Fields: name types count null_count
 # Dispatch: source
 # Synopsis: Show the schema of records in a JSONL stream
 function __bu_bu_get_member_main()
@@ -66,13 +68,14 @@ many of those values are null. Requires a full pass over the stream.
 fi
 
 jq -sc '
-    ((map(keys_unsorted) | add) // []) | unique as $keys
+    . as $all
+    | ((map(keys_unsorted) | add) // []) | unique as $keys
     | $keys[] as $k
     | {
         name: $k,
-        types: ([.[] | select(has($k)) | .[$k] | type] | unique | join("|")),
-        count: ([.[] | select(has($k))] | length),
-        null_count: ([.[] | select(has($k) and .[$k] == null)] | length)
+        types: ([$all[] | select(has($k)) | .[$k] | type] | unique | join("|")),
+        count: ([$all[] | select(has($k))] | length),
+        null_count: ([$all[] | select(has($k) and .[$k] == null)] | length)
     }
 ' | bu_out --format "$format"
 
