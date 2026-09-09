@@ -46,8 +46,8 @@ do
         is_select_expand=true
         ;;
     --from|from)# FROM
-        # Query a particular file. Defaults to /dev/stdin
-        bu_parse_positional $# "${BU_AUTOCOMPLETE_SPEC_FILE[@]}" --hint "Input file (JSONL). Defaults to stdin"
+        # Query a particular file (JSONL, CSV, TSV, or JSON). Defaults to /dev/stdin
+        bu_parse_positional $# "${BU_AUTOCOMPLETE_SPEC_FILE[@]}" --hint "Input file (JSONL/CSV/TSV/JSON). Defaults to stdin"
         from_file=${!shift_by}
         ;;
     --where|where)# WHERE
@@ -564,7 +564,8 @@ order: WHERE -> GROUP BY -> HAVING -> SELECT -> ORDER BY -> FIRST.
   distinct  removes duplicate records after projection (SELECT DISTINCT)
   order-by  uses output field names  (after renames, like SQL aliases)
   first     takes the first N records (SQL LIMIT)
-  from      reads records from a file instead of stdin
+  from      reads records from a file instead of stdin (JSONL, CSV, TSV, or
+            JSON, detected by extension)
   outfile   writes results to a file instead of stdout (defaults to JSONL
             there, since a file is not a terminal)
 
@@ -591,6 +592,8 @@ Output ends at Out-Default: a table on a terminal, JSONL when piped.
         --example "Group with aggregates and having" "group-by verb agg count,avg:len having count -gt 1 order-by count desc" \
         --example "Dashed forms work too" "--where type -eq source --select name" \
         --example "Query a file instead of stdin" "from data.jsonl where type -eq source select name" \
+        --example "Query a CSV file" "from data.csv where type -eq source select name" \
+        --example "Query a TSV file" "from data.tsv select name,verb order-by name" \
         --example "Save results to a file" "select name,verb order-by name outfile verbs.jsonl"
     return 0
 fi
@@ -663,6 +666,11 @@ then
     then
         error_msg="--from file is not readable[$from_file]"
     fi
+fi
+
+if [[ -z "$error_msg" && -n "$from_file" && "${from_file,,}" == *.csv ]] && ! command -v jc &>/dev/null
+then
+    error_msg="--from CSV file requires jc (pip install jc)"
 fi
 
 if [[ -z "$error_msg" && -n "$out_file" ]]
@@ -855,12 +863,22 @@ __bu_query_object_pipeline()
     __bu_query_object_where | __bu_query_object_group | __bu_query_object_having | __bu_query_object_select | __bu_query_object_distinct | __bu_query_object_sort | __bu_query_object_first | bu_out "${out_args[@]}"
 }
 
+__bu_query_object_input()
+{
+    if [[ -z "$from_file" || "$from_file" == /dev/stdin || "$from_file" == - ]]
+    then
+        cat
+    else
+        __bu_out_read_file_jsonl "$from_file"
+    fi
+}
+
 if [[ -n "$out_file" ]]
 then
     # A file is never a terminal, so --format auto resolves to JSONL there
-    __bu_query_object_pipeline < "${from_file:-/dev/stdin}" > "$out_file"
+    __bu_query_object_input | __bu_query_object_pipeline > "$out_file"
 else
-    __bu_query_object_pipeline < "${from_file:-/dev/stdin}"
+    __bu_query_object_input | __bu_query_object_pipeline
 fi
 
 bu_scope_pop_function
