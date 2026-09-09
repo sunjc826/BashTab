@@ -86,6 +86,10 @@ __bu_init_env_commands()
     local file
     local convert_file_to_subcommand
     local command
+    # Scan-time pipeline-contract coverage buckets (aggregated into one warning
+    # per bucket after the full scan, not one warning per command).
+    local -a _pipeline_contract_missing=()
+    local -a _pipeline_contract_missing_fields=()
     for dir in "${!BU_COMMAND_SEARCH_DIRS[@]}"
     do
         bu_env_append_path "$dir"
@@ -239,8 +243,64 @@ __bu_init_env_commands()
             __bu_command_register "$command" "$script_path" \
                 --settle-from-file "$script_path" \
                 --module "$_dir_module"
+
+            # ── Pipeline-contract coverage collection (memo-only reads) ──
+            # Gated behind BU_PIPELINE_CONTRACT_WARN (on by default). Reads the
+            # batch header memo populated above — no per-file forks.
+            if [[ "${BU_PIPELINE_CONTRACT_WARN:-true}" != false ]]
+            then
+                local _pc_effect=${BU_OUT_STAGE_EFFECT["bu $command"]:-}
+                local _pc_header=
+                if [[ -z "$_pc_effect" ]]
+                then
+                    __bu_command_header_get "$script_path" "Pipeline" _pc_header
+                fi
+                if [[ -z "$_pc_effect" && -z "$_pc_header" ]]
+                then
+                    # No # Pipeline: header and no registered stage effect.
+                    _pipeline_contract_missing+=("$command")
+                elif [[ "$_pc_header" == transform || "$_pc_header" == consume ]]
+                then
+                    # A stdin-extracting stage must declare the fields it reads,
+                    # otherwise it passes the post-pipe filter on format alone.
+                    local _pc_req_all= _pc_req_any=
+                    __bu_command_header_get "$script_path" "Requires-All" _pc_req_all
+                    __bu_command_header_get "$script_path" "Requires-Any" _pc_req_any
+                    if [[ -z "$_pc_req_all" && -z "$_pc_req_any" ]]
+                    then
+                        _pipeline_contract_missing_fields+=("$command")
+                    fi
+                fi
+            fi
         done
     done
+
+    # ── Aggregated pipeline-contract warnings ──
+    # One message per bucket after the full scan.  Gated behind
+    # BU_PIPELINE_CONTRACT_WARN (on by default; "false" silences).
+    if [[ "${BU_PIPELINE_CONTRACT_WARN:-true}" != false ]]
+    then
+        if ((${#_pipeline_contract_missing[@]} > 0))
+        then
+            local -a _pcw_head=("${_pipeline_contract_missing[@]:0:5}")
+            local _pcw_names="${_pcw_head[*]}"
+            if ((${#_pipeline_contract_missing[@]} > 5))
+            then
+                _pcw_names+=" ..."
+            fi
+            bu_log_warn "${#_pipeline_contract_missing[@]} command(s) have no pipeline contract (${_pcw_names}): add a '# Pipeline:' header or register a stage effect"
+        fi
+        if ((${#_pipeline_contract_missing_fields[@]} > 0))
+        then
+            local -a _pcw_head2=("${_pipeline_contract_missing_fields[@]:0:5}")
+            local _pcw_names2="${_pcw_head2[*]}"
+            if ((${#_pipeline_contract_missing_fields[@]} > 5))
+            then
+                _pcw_names2+=" ..."
+            fi
+            bu_log_warn "${#_pipeline_contract_missing_fields[@]} consume/transform command(s) are missing a field contract (${_pcw_names2}): declare the fields their stdin extraction reads via '# Requires-All:' or '# Requires-Any:'"
+        fi
+    fi
 
     # Save compat cache if we probed fresh (only when caching is enabled,
     # the command cache wasn't loaded, and deferred mode is off — nothing

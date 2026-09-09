@@ -2478,6 +2478,18 @@ __bu_autocomplete_completion_func_cli()
 
                 __bu_cli_command_type "$_lookup"
                 BU_COMPREPLY_METADATA[i]="${BU_TPUT_GREY}$BU_RET${BU_TPUT_RESET}"
+                if [[ "$_completion_kind" == command ]]
+                then
+                    # Post-pipe satisfied-contract fields (UI-advisory): append
+                    # the fields that satisfied this command's Requires contract,
+                    # comma-joined and dim, when the upstream filter recorded them.
+                    local _pipe_match=${BU_OUT_PIPE_MATCH_FIELDS[$_lookup]:-}
+                    if [[ -n "$_pipe_match" ]]
+                    then
+                        local _pipe_match_joined=${_pipe_match// /,}
+                        BU_COMPREPLY_METADATA[i]+=" ${BU_TPUT_GREY}(${_pipe_match_joined})${BU_TPUT_RESET}"
+                    fi
+                fi
                 if "$_show_module_tag"
                 then
                     local _mod=${BU_COMMAND_PROPERTIES[$_lookup,module]:-}

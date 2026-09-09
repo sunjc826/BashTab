@@ -2646,6 +2646,9 @@ __bu_out_complete_field_values()
 #   passthrough        - output fields = input fields (distinct, foreach, measure)
 #   project            - output fields = parsed from positional field-spec (compare-object)
 #   query              - output fields from the --debug plan (query-object, where/select/grep/sort)
+#   transform          - jsonl in/out; output fields = own `# Fields:` header (fallback: input)
+#   consume            - jsonl -> none (acts on each record, no stream out)
+#   standalone         - none:none (participates in no pipeline)
 #   recordify_tsv      - output fields = parsed from --columns (convert-from-tsv)
 #   recordify_lines    - output field = parsed from --column (convert-from-lines)
 #   recordify_new      - output fields = keys from key=value pairs (new-record)
@@ -2660,13 +2663,23 @@ declare -A -g BU_OUT_EFFECT_IO=(
     [passthrough]="jsonl:jsonl"
     [project]="jsonl:jsonl"
     [query]="jsonl:jsonl"
+    [transform]="jsonl:jsonl"
     [sink]="jsonl:display"
     [consume]="jsonl:none"
+    [standalone]="none:none"
     [recordify_tsv]="tsv:jsonl"
     [recordify_lines]="text:jsonl"
     [recordify_new]="none:jsonl"
     [recordify_jc]="text:jsonl"
 )
+
+# UI-advisory map: command name -> space-joined field names that satisfied the
+# command's `# Requires-All:` / `# Requires-Any:` contract during the most
+# recent post-pipe completion filter. Populated by
+# __bu_out_filter_compatible_commands (reset at the start of each run) and
+# consumed by the completion UI to annotate surviving command rows. Format-only
+# matches (no Requires contract) get NO entry.
+declare -A -g BU_OUT_PIPE_MATCH_FIELDS=()
 
 # ```
 # *Description*:
@@ -2773,8 +2786,9 @@ __bu_out_stage_effect_lookup()
 #
 # *Params*:
 # - `$1`: Command name (e.g. `bu get-command`, `bu query-object`)
-# - `$2`: Effect type: producer, passthrough, project, query, sink, codec,
-#         recordify_tsv, recordify_lines, recordify_new, recordify_jc
+# - `$2`: Effect type: producer, passthrough, project, query, transform,
+#         consume, standalone, sink, codec, recordify_tsv, recordify_lines,
+#         recordify_new, recordify_jc
 #
 # *Examples*:
 # ```bash
@@ -3081,12 +3095,19 @@ __bu_out_static_pipeline_fields()
 # commands whose `# Requires:` fields are not all present upstream.  When no
 # pipe context exists, or the upstream is unknown, the list is left unchanged.
 #
+# Side effect (UI-advisory only): records the satisfied required fields of
+# each surviving contract-carrying candidate in BU_OUT_PIPE_MATCH_FIELDS
+# (reset at the start of every run; format-only matches get no entry).
+#
 # *Params*:
 # - `$1`: Name of the candidate command array (nameref, filtered in place)
 # ```
 __bu_out_filter_compatible_commands()
 {
     local -n _fcc_in=$1
+
+    # Reset the UI-advisory satisfied-fields map at the start of every run.
+    BU_OUT_PIPE_MATCH_FIELDS=()
 
     if ! __bu_out_resolve_producer
     then
@@ -3119,6 +3140,11 @@ __bu_out_filter_compatible_commands()
             fi
         fi
 
+        # Satisfied required fields for the UI (advisory only — filtering
+        # behavior is unchanged). Populated only when the upstream fields are
+        # statically known AND the command carries a Requires contract.
+        local -a _fcc_match_fields=()
+
         if "$_fcc_up_known"
         then
             # Requires-All: every field must be present upstream.
@@ -3138,6 +3164,8 @@ __bu_out_filter_compatible_commands()
                     fi
                 done
                 "$_fcc_all_ok" || continue
+                # All required fields are satisfied (record all of them).
+                _fcc_match_fields=("${_fcc_all_fields[@]}")
             fi
             # Requires-Any: at least one field must be present upstream.
             local _fcc_req_any=
@@ -3152,11 +3180,16 @@ __bu_out_filter_compatible_commands()
                     if __bu_out_field_present "$_fcc_r2" _fcc_up_fields
                     then
                         _fcc_any_found=true
-                        break
+                        _fcc_match_fields+=("$_fcc_r2")
                     fi
                 done
                 "$_fcc_any_found" || continue
             fi
+        fi
+
+        if ((${#_fcc_match_fields[@]} > 0))
+        then
+            BU_OUT_PIPE_MATCH_FIELDS[$_fcc_cmd]="${_fcc_match_fields[*]}"
         fi
 
         _fcc_result+=("$_fcc_cmd")
@@ -3263,6 +3296,12 @@ __bu_out_pipeline_help()
         ;;
     consume)
         role="Reads JSONL records from stdin and acts on each record (no structured output)."
+        ;;
+    transform)
+        role="Reads JSONL records from stdin, acts on each record, and emits its own result records as JSONL."
+        ;;
+    standalone)
+        role="Standalone — participates in no pipeline (neither reads nor emits a stream)."
         ;;
     codec)
         role="Converts between JSONL and another format (json, tsv, csv, base64, ...)."
@@ -3631,6 +3670,23 @@ __bu_out_analyze_stage()
         # A sink renders records for display; field names pass through
         # unchanged (it terminates the JSONL stream anyway).
         _out_fields=("${_in_fields[@]}")
+        ;;
+    transform)
+        # A transform consumes JSONL records and emits its own result records.
+        # Its output schema is its own `# Fields:` header (the result records
+        # REPLACE the input records); fall back to the input fields when no
+        # `# Fields:` is declared.
+        local _tr_file=${BU_COMMANDS[${cmd_name#bu }]:-}
+        if [[ -f "$_tr_file" ]]
+        then
+            local _tr_line=
+            __bu_command_header_get "$_tr_file" "Fields" _tr_line
+            [[ -n "$_tr_line" ]] && _out_fields=($_tr_line)
+        fi
+        if ((${#_out_fields[@]} == 0))
+        then
+            _out_fields=("${_in_fields[@]}")
+        fi
         ;;
     consume)
         # A consume command reads records and acts on them (no stream out);
@@ -4021,7 +4077,7 @@ __bu_out_parse_query_reads()
 # *Description*:
 # Determine which upstream fields a pipeline stage READS, from its effect and
 # command name:
-# - consume commands read their `# Requires:` fields
+# - consume/transform commands read their `# Requires:` fields
 # - project (compare-object) reads the right-hand names of its field spec
 # - query stages read sort/select/where/group-by field arguments
 #
@@ -4048,7 +4104,7 @@ __bu_out_stage_reads()
     [[ -z "$effect" ]] && return 0
 
     case "$effect" in
-    consume)
+    consume|transform)
         local req_all=
         __bu_out_command_requires_all "$plain" req_all
         read -r -a _sr_all <<< "$req_all"

@@ -2196,7 +2196,7 @@ function test_bu_distinct_object_metadata { #@test
     def=$(printf '%s' "$out" | jq -r .definition)
     [[ -f "$def" ]]
     [[ "$def" == */bu-distinct-object.sh ]]
-    assert_equal "$(printf '%s' "$out" | jq -c 'del(.definition, .shadows, .shadowed_by)')" '{"name":"distinct-object","verb":"distinct","noun":"object","namespace":"bu","type":"source","synopsis":"Remove duplicate records from a JSONL stream","fields":"","stage":"passthrough","module":"bu"}'
+    assert_equal "$(printf '%s' "$out" | jq -c 'del(.definition, .shadows, .shadowed_by)')" '{"name":"distinct-object","verb":"distinct","noun":"object","namespace":"bu","type":"source","synopsis":"Remove duplicate records from a JSONL stream","fields":"","stage":"passthrough","input":"jsonl","output":"jsonl","requires_all":"","requires_any":"","module":"bu"}'
 }
 
 # ===========================================================================
@@ -2292,4 +2292,290 @@ function test_bu_table_pager_register_preset { #@test
     # bu_register_table_pager_preset extends the presets at runtime.
     bu_register_table_pager_preset "my-pager" "my-custom-pager --flag"
     assert_equal "${__BU_TABLE_PAGER_PRESETS[my-pager]}" "my-custom-pager --flag"
+}
+
+# ===========================================================================
+# transform / standalone stage effects
+# ===========================================================================
+
+function test_transform_effect_io { #@test
+    local in= out=
+    __bu_out_effect_io transform stop-thing in out
+    assert_equal "$in" jsonl
+    assert_equal "$out" jsonl
+}
+
+function test_standalone_effect_io { #@test
+    local in= out=
+    __bu_out_effect_io standalone some-cmd in out
+    assert_equal "$in" none
+    assert_equal "$out" none
+}
+
+function test_transform_multi_stage_fields { #@test
+    # A transform's output schema is its own # Fields: header, replacing the
+    # upstream fields; fallback is the input fields when undeclared.
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    cat > "$tmpdir/bu-prod-things.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: producer
+# Fields: thing_id size owner
+function __bu_bu_prod_things_main() { :; }
+EOF
+    cat > "$tmpdir/bu-stop-thing.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: transform
+# Requires-All: thing_id
+# Fields: thing_id action result
+function __bu_bu_stop_thing_main() { :; }
+EOF
+    bu_preinit_register_user_defined_subcommand_file "$tmpdir/bu-prod-things.sh" prod-things source
+    bu_preinit_register_user_defined_subcommand_file "$tmpdir/bu-stop-thing.sh" stop-thing source
+
+    local -a fields=()
+    __bu_out_analyze_pipeline "bu prod-things | bu stop-thing" fields
+    assert_equal "${fields[*]}" "thing_id action result"
+
+    # Downstream validation now runs against the transform's result schema.
+    __bu_out_validate_pipeline "bu prod-things | bu stop-thing | bu sort size"
+    assert_equal "${BU_RET[*]}" "size"
+    __bu_out_validate_pipeline "bu prod-things | bu stop-thing | bu sort action"
+    assert_equal "${BU_RET[*]}" ""
+
+    rm -rf "$tmpdir"
+}
+
+function test_transform_post_pipe_completion { #@test
+    # After a producer emitting thing_id, a transform requiring thing_id is
+    # offered; after one that doesn't emit it, the transform is hidden.
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    cat > "$tmpdir/bu-prod-things.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: producer
+# Fields: thing_id size owner
+function __bu_bu_prod_things_main() { :; }
+EOF
+    cat > "$tmpdir/bu-prod-other.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: producer
+# Fields: name version
+function __bu_bu_prod_other_main() { :; }
+EOF
+    cat > "$tmpdir/bu-stop-thing.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: transform
+# Requires-All: thing_id
+# Fields: thing_id action result
+function __bu_bu_stop_thing_main() { :; }
+EOF
+    bu_preinit_register_user_defined_subcommand_file "$tmpdir/bu-prod-things.sh" prod-things source
+    bu_preinit_register_user_defined_subcommand_file "$tmpdir/bu-prod-other.sh" prod-other source
+    bu_preinit_register_user_defined_subcommand_file "$tmpdir/bu-stop-thing.sh" stop-thing source
+
+    local command_line_front_before_pipe="bu prod-things | "
+    bu_autocomplete_get_autocompletions bu ""
+    assert_regex " ${COMPREPLY[*]} " ' stop-thing '
+
+    command_line_front_before_pipe="bu prod-other | "
+    bu_autocomplete_get_autocompletions bu ""
+    refute_regex " ${COMPREPLY[*]} " ' stop-thing '
+
+    rm -rf "$tmpdir"
+}
+
+function test_standalone_completion_positions { #@test
+    # A standalone command is offered at the bare command position but hidden
+    # after a pipe (its none input is a positive mismatch with any upstream).
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    cat > "$tmpdir/bu-standalone-thing.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: standalone
+function __bu_bu_standalone_thing_main() { :; }
+EOF
+    bu_preinit_register_user_defined_subcommand_file "$tmpdir/bu-standalone-thing.sh" standalone-thing source
+
+    bu_autocomplete_get_autocompletions bu ""
+    assert_regex " ${COMPREPLY[*]} " ' standalone-thing '
+
+    local command_line_front_before_pipe="bu get-command | "
+    bu_autocomplete_get_autocompletions bu ""
+    refute_regex " ${COMPREPLY[*]} " ' standalone-thing '
+
+    rm -rf "$tmpdir"
+}
+
+# ===========================================================================
+# Satisfied contract fields in post-pipe completion metadata
+# ===========================================================================
+
+function test_pipe_match_fields_metadata { #@test
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    cat > "$tmpdir/bu-prod-gadgets.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: producer
+# Fields: gadget_id owner
+function __bu_bu_prod_gadgets_main() { :; }
+EOF
+    cat > "$tmpdir/bu-remove-gadget.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: transform
+# Requires-All: gadget_id
+# Fields: gadget_id action result
+function __bu_bu_remove_gadget_main() { :; }
+EOF
+    bu_preinit_register_user_defined_subcommand_file "$tmpdir/bu-prod-gadgets.sh" prod-gadgets source
+    bu_preinit_register_user_defined_subcommand_file "$tmpdir/bu-remove-gadget.sh" remove-gadget source
+
+    local command_line_front_before_pipe="bu prod-gadgets | "
+    bu_autocomplete_get_autocompletions --accept-ansi-colors bu ""
+
+    local i meta=
+    for (( i = 0; i < ${#COMPREPLY[@]}; i++ ))
+    do
+        if [[ "${COMPREPLY[i]}" == *remove-gadget* ]]
+        then
+            meta=${BU_COMPREPLY_METADATA[i]}
+        fi
+    done
+    assert_regex "$meta" '\(gadget_id\)'
+
+    # A contract-less survivor (format-table) shows no field tag.
+    local ft_meta=
+    for (( i = 0; i < ${#COMPREPLY[@]}; i++ ))
+    do
+        if [[ "${COMPREPLY[i]}" == *format-table* ]]
+        then
+            ft_meta=${BU_COMPREPLY_METADATA[i]}
+        fi
+    done
+    refute_regex "$ft_meta" '\([a-z_]'
+
+    rm -rf "$tmpdir"
+}
+
+# ===========================================================================
+# Scan-time pipeline-contract warnings
+# ===========================================================================
+
+function test_scan_warns_uncontracted_aggregated { #@test
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    cat > "$tmpdir/uncontracted-a.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+function __bu_uncontracted_a_main() { :; }
+EOF
+    cat > "$tmpdir/uncontracted-b.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+function __bu_uncontracted_b_main() { :; }
+EOF
+    cat > "$tmpdir/contracted-c.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: producer
+# Fields: a b
+function __bu_contracted_c_main() { :; }
+EOF
+    bu_preinit_register_user_defined_subcommand_dir "$tmpdir"
+
+    local out
+    out=$(BU_COMMAND_COMPAT_DEFERRED=true BU_PIPELINE_CONTRACT_WARN=true __bu_init_env_commands 2>&1 >/dev/null)
+    # Exactly one warning line names both uncontracted commands together.
+    local count
+    count=$(printf '%s' "$out" | grep -F 'have no pipeline contract' | grep -F 'uncontracted-a' | grep -F 'uncontracted-b' | wc -l)
+    assert_equal "$count" "1"
+    refute_regex "$out" 'contracted-c'
+
+    rm -rf "$tmpdir"
+}
+
+function test_scan_stage_effect_registration_covers { #@test
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    cat > "$tmpdir/effect-cmd.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+function __bu_effect_cmd_main() { :; }
+EOF
+    bu_preinit_register_user_defined_subcommand_dir "$tmpdir"
+    bu_register_stage_effect "bu effect-cmd" producer
+
+    local out
+    out=$(BU_COMMAND_COMPAT_DEFERRED=true BU_PIPELINE_CONTRACT_WARN=true __bu_init_env_commands 2>&1 >/dev/null)
+    refute_regex "$out" 'effect-cmd'
+
+    rm -rf "$tmpdir"
+}
+
+function test_scan_warn_silenced_by_knob { #@test
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    cat > "$tmpdir/uncontracted-a.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+function __bu_uncontracted_a_main() { :; }
+EOF
+    bu_preinit_register_user_defined_subcommand_dir "$tmpdir"
+
+    local out
+    out=$(BU_COMMAND_COMPAT_DEFERRED=true BU_PIPELINE_CONTRACT_WARN=false __bu_init_env_commands 2>&1 >/dev/null)
+    refute_regex "$out" 'uncontracted-a'
+
+    rm -rf "$tmpdir"
+}
+
+function test_scan_warns_missing_field_contract { #@test
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    cat > "$tmpdir/reqless-transform.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: transform
+# Fields: a b
+function __bu_reqless_transform_main() { :; }
+EOF
+    cat > "$tmpdir/reqless-consume.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: consume
+function __bu_reqless_consume_main() { :; }
+EOF
+    cat > "$tmpdir/contracted-transform.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: transform
+# Requires-All: x
+# Fields: a b
+function __bu_contracted_transform_main() { :; }
+EOF
+    cat > "$tmpdir/query-stage.sh" <<'EOF'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: query
+function __bu_query_stage_main() { :; }
+EOF
+    bu_preinit_register_user_defined_subcommand_dir "$tmpdir"
+
+    local out
+    out=$(BU_COMMAND_COMPAT_DEFERRED=true BU_PIPELINE_CONTRACT_WARN=true __bu_init_env_commands 2>&1 >/dev/null)
+    local count
+    count=$(printf '%s' "$out" | grep -F 'missing a field contract' | grep -F 'reqless-transform' | grep -F 'reqless-consume' | wc -l)
+    assert_equal "$count" "1"
+    refute_regex "$out" 'contracted-transform'
+    refute_regex "$out" 'query-stage'
+
+    rm -rf "$tmpdir"
 }

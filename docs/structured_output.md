@@ -323,6 +323,7 @@ verb=`convert-to`, noun=`jsonl`. Extend the array for custom multi-word verbs.
 | `BU_OUT_PRODUCER_FIELDS` | builtins | Assoc: producer prefix → field list |
 | `BU_OUT_PROBE_PIPELINE` | `false` | Master switch for live probing during completion |
 | `BU_OUT_PROBE_COMMANDS` | *(empty)* | Assoc allowlist of probe-safe producer heads |
+| `BU_PIPELINE_CONTRACT_WARN` | `true` | Scan-time warnings for commands missing a `# Pipeline:` header or field contract (`false` silences) |
 | `BU_MULTI_WORD_VERBS` | `convert-to convert-from` | Multi-word verb list for name parsing |
 
 **Dependency**: `jq` (≥1.6) is required for all of the above; the module
@@ -358,8 +359,9 @@ needs no central registry.
 ```bash
 #!/usr/bin/env bash
 # Pipeline: codec            # stage effect: producer | passthrough | project |
-                            #   query | sink | codec | recordify_tsv |
-                            #   recordify_lines | recordify_new | recordify_jc
+                            #   query | transform | consume | standalone | sink |
+                            #   codec | recordify_tsv | recordify_lines |
+                            #   recordify_new | recordify_jc
 # Requires-All: host port   # (optional) EVERY field must be present
 # Requires-Any: unit name    # (optional) at least ONE field must be present
 # Fields: name path version  # (optional) output fields this producer emits
@@ -369,6 +371,11 @@ needs no central registry.
   in `bu get-command` are derived from it (and, for `codec`, from the noun:
   `convert-to-json` → `jsonl → json`). Function/alias commands that have no
   file register via `bu_register_stage_effect` instead.
+  - `producer` — `none → jsonl`: emits records from its own data sources.
+  - `transform` — `jsonl → jsonl`: consumes records and emits its own result
+    records (output schema = its own `# Fields:`, falling back to input).
+  - `consume` — `jsonl → none`: acts on each record, no stream out.
+  - `standalone` — `none → none`: participates in no pipeline at all.
 - `# Requires-All:` — field names a cmdlet must ALL receive on piped JSONL
   (AND; surfaced in `bu get-command` and the `--help` PIPELINE section).
 - `# Requires-Any:` — field names a cmdlet accepts ANY one of (OR; the
@@ -400,7 +407,8 @@ Each record includes all sixteen fields:
 - `synopsis` — one-line description (static, safe to parse)
 - `fields` — output fields this command produces (space-joined, for pipeline composition)
 - `stage` — pipeline stage effect: `producer`, `passthrough`, `project`, `query`,
-  `sink`, `consume`, `codec`, `recordify_*`, or empty if unregistered
+  `transform`, `consume`, `standalone`, `sink`, `codec`, `recordify_*`, or empty
+  if unregistered
 - `input` / `output` — stream format tokens (`jsonl`, `json`, `tsv`, `csv`,
   `text`, `base64`, `display`, `none`): what the cmdlet accepts as pipeline
   input and what it emits. Derived from `stage` (and, for `codec`, the noun)
