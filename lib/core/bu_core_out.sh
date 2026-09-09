@@ -230,6 +230,11 @@ declare -g -r __BU_OUT_VALUE_DISTINCT_CAP=1000
 # No disk cache: datasets are live; re-source clears the memo.
 declare -A -g __BU_OUT_TAB_ROWS=()
 
+# Session-scoped memo of inferred data-file schemas, keyed "path:mtime:size".
+# Keying on mtime+size keeps file edits within a session correctly
+# invalidated; no disk cache (datasets are live).
+declare -A -g __BU_OUT_FILE_FIELDS=()
+
 # ```
 # *Description*:
 # Assert that jq is available for structured output
@@ -2296,6 +2301,211 @@ __bu_out_resolve_producer()
     BU_RET=$BU_CANONICAL_STAGE
 }
 
+# ```
+# *Description*:
+# Resolve a data file the CURRENT command reads via its own `--from`/`from`
+# clause (self-producer), for completion when there is no upstream pipe.
+# E.g. `bu query-object --from data.csv select <TAB>` completes fields from
+# data.csv's schema. Scans the raw command line up to the cursor
+# (COMP_LINE/COMP_POINT, falling back to the binding locals) for a
+# `--from <path>` / `from <path>` pair, stripping surrounding quotes.
+#
+# *Returns*:
+# - BU_RET: The file path (trimmed, unquoted)
+# - exit 0 on success, 1 if no --from file was found
+# ```
+__bu_out_resolve_self_from_file()
+{
+    BU_RET=
+    local line=${COMP_LINE:0:${COMP_POINT:-${#COMP_LINE}}}
+    if [[ -z "$line" ]]
+    then
+        line=${command_line_front_before_pipe:-${pipe_before:-}}
+    fi
+    [[ -z "$line" ]] && return 1
+
+    local -a words=()
+    # shellcheck disable=SC2206 # Intentional word splitting on the typed line
+    read -r -a words <<< "$line"
+    local i
+    for (( i = 0; i < ${#words[@]}; i++ ))
+    do
+        case "${words[i]}" in
+        --from|from)
+            local path=${words[i+1]:-}
+            [[ -n "$path" ]] || continue
+            path=${path#\"}; path=${path%\"}
+            path=${path#\'}; path=${path%\'}
+            [[ -n "$path" ]] || continue
+            BU_RET=$path
+            return 0
+            ;;
+        esac
+    done
+    return 1
+}
+
+# ```
+# *Description*:
+# Infer the record field names a data file would produce when read as a
+# stream. Detects the format from the file extension:
+#   csv          - header row (via jc, honors quoting/embedded commas)
+#   tsv/tab      - header row (tab-separated)
+#   jsonl/ndjson - keys of the first record
+#   json         - keys of the first object / array element
+# Only regular, readable files are inspected (a FIFO/device could block).
+# Results are memoized per path:mtime:size so repeated completions don't
+# re-read the file.
+#
+# *Params*:
+# - `$1`: File path
+# - `$2`: Name of the array to receive the field names (nameref)
+#
+# *Returns*:
+# - exit 0 with fields populated, 1 if the file can't be inspected or has no
+#   recognizable schema
+# ```
+__bu_out_infer_file_fields()
+{
+    local -r path=$1
+    local -n _iff_out=$2
+    _iff_out=()
+
+    [[ -f "$path" && -r "$path" ]] || return 1
+    [[ -n "$BU_OUT_JQ" ]] || return 1
+
+    local mtime size cache_key
+    mtime=$(stat -c %Y "$path" 2>/dev/null) || return 1
+    size=$(stat -c %s "$path" 2>/dev/null) || return 1
+    cache_key="$path:$mtime:$size"
+
+    if [[ -v __BU_OUT_FILE_FIELDS[$cache_key] ]]
+    then
+        [[ -n "${__BU_OUT_FILE_FIELDS[$cache_key]}" ]] || return 1
+        mapfile -t _iff_out <<< "${__BU_OUT_FILE_FIELDS[$cache_key]}"
+        return 0
+    fi
+
+    local -a _iff_fields=()
+    local ext=${path##*.}
+    ext=${ext,,}
+    case "$ext" in
+    csv)
+        # Header row via jc (honors quoting/embedded commas). Include one
+        # data row so jc emits a record whose keys ARE the header. Falls back
+        # to a naive comma split of the first line when jc is unavailable.
+        local hdr
+        hdr=$(head -2 "$path" 2>/dev/null | jc --csv 2>/dev/null | "$BU_OUT_JQ" -r '.[0] | keys_unsorted[]' 2>/dev/null)
+        if [[ -n "$hdr" ]]
+        then
+            mapfile -t _iff_fields <<< "$hdr"
+        else
+            local line
+            IFS= read -r line < "$path" || return 1
+            [[ -n "$line" ]] || return 1
+            local ifs=$IFS
+            IFS=','
+            # shellcheck disable=SC2206
+            _iff_fields=($line)
+            IFS=$ifs
+        fi
+        ;;
+    tsv|tab)
+        local line ifs
+        IFS= read -r line < "$path" || return 1
+        [[ -n "$line" ]] || return 1
+        ifs=$IFS
+        IFS=$'\t'
+        # shellcheck disable=SC2206
+        _iff_fields=($line)
+        IFS=$ifs
+        ;;
+    jsonl|ndjson|jsonlines)
+        local first
+        first=$(awk 'NF {print; exit}' "$path" 2>/dev/null)
+        [[ -n "$first" ]] || return 1
+        mapfile -t _iff_fields < <("$BU_OUT_JQ" -r 'if type == "object" then keys_unsorted[] else empty end' <<<"$first" 2>/dev/null)
+        ;;
+    json)
+        mapfile -t _iff_fields < <("$BU_OUT_JQ" -r '(if type == "array" then .[0] else . end) | if type == "object" then keys_unsorted[] else empty end' "$path" 2>/dev/null)
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+
+    ((${#_iff_fields[@]} == 0)) && return 1
+    __BU_OUT_FILE_FIELDS[$cache_key]=$(printf '%s\n' "${_iff_fields[@]}")
+    _iff_out=("${_iff_fields[@]}")
+    return 0
+}
+
+# ```
+# *Description*:
+# Emit a data file as a JSONL stream (the runtime counterpart to
+# __bu_out_infer_file_fields). Detects the format by extension:
+#   csv          - jc --csv; header row becomes the record keys
+#   tsv/tab      - first row is the header; subsequent rows become records
+#   json         - unroll an array / pass a single object through
+#   jsonl/ndjson - passthrough
+#   other        - passthrough (assumed JSONL)
+#
+# *Params*:
+# - `$1`: File path
+# - `$2` (optional): Cap on the number of data records emitted (bounds cost
+#   for value-completion sampling). Applied to data rows/records, not the
+#   header.
+# ```
+__bu_out_read_file_jsonl()
+{
+    local -r path=$1
+    local -r max=${2:-}
+    [[ -r "$path" ]] || return 1
+
+    local ext=${path##*.}
+    ext=${ext,,}
+    case "$ext" in
+    csv)
+        command -v jc &>/dev/null || return 1
+        if [[ -n "$max" ]]
+        then
+            head -n "$((max + 1))" "$path" 2>/dev/null | jc --csv 2>/dev/null | "$BU_OUT_JQ" -c 'if type == "array" then .[] else . end' 2>/dev/null
+        else
+            jc --csv < "$path" 2>/dev/null | "$BU_OUT_JQ" -c 'if type == "array" then .[] else . end' 2>/dev/null
+        fi
+        ;;
+    tsv|tab)
+        local hdr_line hdr_json
+        IFS= read -r hdr_line < "$path" || return 1
+        [[ -n "$hdr_line" ]] || return 1
+        hdr_json=$("$BU_OUT_JQ" -R 'split("\t")' <<<"$hdr_line" 2>/dev/null)
+        local -r tsv_jq='select(. != "") | split("\t") | reduce to_entries[] as $e ({}; if $cols[$e.key] != null and $cols[$e.key] != "" then .[$cols[$e.key]] = $e.value else . end)'
+        if [[ -n "$max" ]]
+        then
+            tail -n +2 "$path" 2>/dev/null | head -n "$max" | "$BU_OUT_JQ" -R -c --argjson cols "$hdr_json" "$tsv_jq" 2>/dev/null
+        else
+            tail -n +2 "$path" 2>/dev/null | "$BU_OUT_JQ" -R -c --argjson cols "$hdr_json" "$tsv_jq" 2>/dev/null
+        fi
+        ;;
+    json)
+        if [[ -n "$max" ]]
+        then
+            "$BU_OUT_JQ" -c --argjson n "$max" 'if type == "array" then .[0:$n][] else . end' "$path" 2>/dev/null
+        else
+            "$BU_OUT_JQ" -c 'if type == "array" then .[] else . end' "$path" 2>/dev/null
+        fi
+        ;;
+    *)
+        if [[ -n "$max" ]]
+        then
+            head -n "$max" "$path" 2>/dev/null
+        else
+            cat "$path"
+        fi
+        ;;
+    esac
+}
+
 __bu_out_complete_pipeline_fields()
 {
     local is_dot=false
@@ -2313,11 +2523,23 @@ __bu_out_complete_pipeline_fields()
     BU_RET=()
 
     # Resolve the producer pipeline text (and eval-able command) via the
-    # shared resolver.
-    __bu_out_resolve_producer || return 1
-    local producer_str=$BU_RET
-    local producer_eval=$BU_RET_EVAL
-    BU_RET=()
+    # shared resolver. When there is no upstream pipe, fall back to a
+    # self-producer: the current command's `--from <file>` clause.
+    local producer_str=
+    local producer_eval=
+    local self_from_file=
+    if __bu_out_resolve_producer
+    then
+        producer_str=$BU_RET
+        producer_eval=$BU_RET_EVAL
+        BU_RET=()
+    elif __bu_out_resolve_self_from_file
+    then
+        self_from_file=$BU_RET
+        BU_RET=()
+    else
+        return 1
+    fi
 
     local -r producer_head=${producer_str%%[[:space:]]*}
 
@@ -2328,7 +2550,8 @@ __bu_out_complete_pipeline_fields()
     if __bu_out_analyze_pipeline "$producer_str" fields && ((${#fields[@]} > 0))
     then
         : # fields populated by the analyzer
-    else
+    elif [[ -n "$producer_str" ]]
+    then
     # 2. Static registry fallback: longest matching producer prefix wins.
     #    This handles pipelines where static analysis bailed (unknown commands)
     #    or where no multi-stage transforms exist.
@@ -2406,6 +2629,15 @@ __bu_out_complete_pipeline_fields()
         fi
     fi
     fi
+
+    # 5. Self-producer: the current command reads a file via `--from <file>`
+    #    (query-object). Infer the schema from the file when no upstream pipe
+    #    produced fields.
+    if ((${#fields[@]} == 0)) && [[ -n "$self_from_file" ]]
+    then
+        __bu_out_infer_file_fields "$self_from_file" fields
+    fi
+
     ((${#fields[@]} == 0)) && return 1
 
     # --- nested probing: walk all scalar paths from the first record ---
@@ -2609,15 +2841,30 @@ __bu_out_complete_field_values()
     local -r cur_word=${2:-}
     BU_RET=()
 
-    __bu_out_resolve_producer || return 1
-    local producer_str=$BU_RET
-    local producer_eval=$BU_RET_EVAL
-    BU_RET=()
-
     [[ -z "$BU_OUT_JQ" ]] && return 1
-    __bu_out_tab_execute_capture "$producer_str" "$producer_eval" || return 1
-    local memo=$BU_RET
-    BU_RET=()
+
+    local memo=
+    if __bu_out_resolve_producer
+    then
+        local producer_str=$BU_RET
+        local producer_eval=$BU_RET_EVAL
+        BU_RET=()
+        __bu_out_tab_execute_capture "$producer_str" "$producer_eval" || return 1
+        memo=$BU_RET
+        BU_RET=()
+    elif __bu_out_resolve_self_from_file
+    then
+        local self_file=$BU_RET
+        BU_RET=()
+        # Only sample regular files (a FIFO/device would make head/read block).
+        if [[ -f "$self_file" && -r "$self_file" ]]
+        then
+            memo=$(__bu_out_read_file_jsonl "$self_file" "$__BU_OUT_VALUE_RECORD_CAP" 2>/dev/null)
+        fi
+    else
+        return 1
+    fi
+    [[ -n "$memo" ]] || return 1
 
     # Distinct scalar values for the field, capped. Skip values containing
     # newlines (they can't survive the enum round-trip line-oriented).
@@ -2671,6 +2918,7 @@ declare -A -g BU_OUT_EFFECT_IO=(
     [recordify_lines]="text:jsonl"
     [recordify_new]="none:jsonl"
     [recordify_jc]="text:jsonl"
+    [recordify_file]="none:jsonl"
 )
 
 # UI-advisory map: command name -> space-joined field names that satisfied the
@@ -2788,7 +3036,7 @@ __bu_out_stage_effect_lookup()
 # - `$1`: Command name (e.g. `bu get-command`, `bu query-object`)
 # - `$2`: Effect type: producer, passthrough, project, query, transform,
 #         consume, standalone, sink, codec, recordify_tsv, recordify_lines,
-#         recordify_new, recordify_jc
+#         recordify_new, recordify_jc, recordify_file
 #
 # *Examples*:
 # ```bash
@@ -3318,6 +3566,9 @@ __bu_out_pipeline_help()
     recordify_jc)
         role="Converts structured text from stdin to JSONL records via jc parsers."
         ;;
+    recordify_file)
+        role="Reads a data file (csv/tsv/jsonl/json) and emits its records as JSONL."
+        ;;
     *)
         return 0
         ;;
@@ -3816,6 +4067,16 @@ __bu_out_analyze_stage()
                     fi
                 fi
             fi
+        fi
+        ;;
+    recordify_file)
+        # bu import-csv/tsv/jsonl/json: the first non-flag positional is the
+        # file path; infer its record schema.
+        local -a _rf_file_words=()
+        __bu_out_first_field_arg "$canon" _rf_file_words
+        if ((${#_rf_file_words[@]} > 0)) && [[ -n "${_rf_file_words[0]}" ]]
+        then
+            __bu_out_infer_file_fields "${_rf_file_words[0]}" _out_fields
         fi
         ;;
     *)
