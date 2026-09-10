@@ -3794,6 +3794,59 @@ __bu_out_parse_field_spec()
     return 1
 }
 
+# Clause keywords that terminate a comma-separated field spec in a
+# query-object stage. This is the single source of truth: both the static
+# analyzer here and the runtime parser in commands/pipeline/bu-query-object.sh
+# reference this list.
+__bu_out_query_object_clause_keywords=(select expand from where grep group-by agg having order-by outfile desc distinct first format columns help debug)
+
+# ```
+# *Description*:
+# Collect a comma-separated field spec from a canonicalized stage's word list,
+# starting at _ccs_start. The spec may span multiple words with flexible comma
+# placement ("a,b", "a, b", "a ,b", "a , b"). Stops at the next clause keyword
+# or flag. Mirrors __bu_query_object_parse_comma_list in bu-query-object.sh.
+#
+# *Params*:
+# - $1: nameref to the words array
+# - $2: index of the first spec word
+# - $3: nameref to the output spec (concatenated words)
+# ```
+__bu_out_collect_comma_spec()
+{
+    local -n _ccs_words=$1
+    local -r _ccs_start=$2
+    local -n _ccs_spec=$3
+    _ccs_spec=
+
+    local _ccs_pending=false
+    local _ccs_first=true
+    local _ccs_idx _ccs_word _ccs_kw_word _ccs_is_stop
+    for (( _ccs_idx = _ccs_start; _ccs_idx < ${#_ccs_words[@]}; _ccs_idx++ )); do
+        _ccs_word=${_ccs_words[_ccs_idx]}
+        if ! "$_ccs_first"; then
+            _ccs_is_stop=false
+            if [[ "$_ccs_word" == -* && ! "$_ccs_word" =~ ^-[0-9] ]]; then
+                _ccs_is_stop=true
+            else
+                for _ccs_kw_word in "${__bu_out_query_object_clause_keywords[@]}"; do
+                    [[ "$_ccs_word" == "$_ccs_kw_word" ]] && { _ccs_is_stop=true; break; }
+                done
+            fi
+            "$_ccs_is_stop" && break
+            if ! "$_ccs_pending" && [[ "$_ccs_word" != ,* ]]; then
+                break
+            fi
+        fi
+        [[ -n "$_ccs_word" ]] && _ccs_spec+="$_ccs_word"
+        _ccs_first=false
+        case "$_ccs_word" in
+        *,) _ccs_pending=true ;;
+        *)   _ccs_pending=false ;;
+        esac
+    done
+}
+
 # ```
 # *Description*:
 # Statically extract the output field names from a query-object stage that
@@ -3836,7 +3889,8 @@ __bu_out_parse_query_select_fields()
                 continue
                 ;;
             esac
-            field_spec=${words[i+1]}
+            field_spec=
+            __bu_out_collect_comma_spec words $(( i + 1 )) field_spec
             [[ -z "$field_spec" || "$field_spec" == -* ]] && continue
             if __bu_out_parse_field_spec "$field_spec" out_fields
             then
@@ -4316,7 +4370,8 @@ __bu_out_parse_query_reads()
         select|--select|group-by|--group-by)
             # Skip a bare keyword that is actually a comparison value.
             case "$prev" in -eq|-ne|-gt|-lt|-ge|-le|-like|-notlike|-match|-notmatch|-contains|-notcontains|-in|-notin|-ilike|-i|grep) continue ;; esac
-            spec=${words[i+1]:-}
+            spec=
+            __bu_out_collect_comma_spec words $(( i + 1 )) spec
             [[ -n "$spec" && "$spec" != -* ]] || continue
             _pqr_tmp=()
             __bu_out_parse_field_spec_reads "$spec" _pqr_tmp

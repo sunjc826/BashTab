@@ -99,10 +99,6 @@ __bu_query_object_parse_comma_list()
     fi
 }
 
-# Clause keywords that terminate a comma-separated list (shared by the
-# comma-list parsers in the select/group-by/agg/columns/where/having arms).
-__bu_query_object_clause_keywords=(select expand from where grep group-by agg having order-by outfile desc distinct first format columns help debug)
-
 function __bu_bu_query_object_main()
 {
 local -r invocation_dir=$PWD
@@ -144,7 +140,7 @@ do
         local -a _s_words=("$@")
         local -A _s_used=()
         local _s_spec= _s_consumed=0 _s_continues=false
-        __bu_query_object_parse_comma_list _s_words 1 __bu_query_object_clause_keywords _s_spec _s_consumed _s_used _s_continues
+        __bu_query_object_parse_comma_list _s_words 1 __bu_out_query_object_clause_keywords _s_spec _s_consumed _s_used _s_continues
 
         local _s_shift_by=$(( 1 + _s_consumed ))
         if bu_env_is_in_autocomplete && (( $# >= 2 )) && "$_s_continues"; then
@@ -241,7 +237,7 @@ do
                             for (( _w_ii = _w_v_idx; _w_ii <= $#; _w_ii++ )); do
                                 _w_in_words+=("${!_w_ii}")
                             done
-                            local -a _w_in_stop=(and or "${__bu_query_object_clause_keywords[@]}")
+                            local -a _w_in_stop=(and or "${__bu_out_query_object_clause_keywords[@]}")
                             local _w_in_spec= _w_in_consumed=0 _w_in_continues=false
                             __bu_query_object_parse_comma_list _w_in_words 0 _w_in_stop _w_in_spec _w_in_consumed _w_in_used _w_in_continues
                             _w_val=$_w_in_spec
@@ -459,7 +455,7 @@ do
         local -a _g_words=("$@")
         local -A _g_used=()
         local _g_spec= _g_consumed=0 _g_continues=false
-        __bu_query_object_parse_comma_list _g_words 1 __bu_query_object_clause_keywords _g_spec _g_consumed _g_used _g_continues
+        __bu_query_object_parse_comma_list _g_words 1 __bu_out_query_object_clause_keywords _g_spec _g_consumed _g_used _g_continues
 
         local _g_shift_by=$(( 1 + _g_consumed ))
         if bu_env_is_in_autocomplete && (( $# >= 2 )) && "$_g_continues"; then
@@ -491,7 +487,7 @@ do
         local -a _a_words=("$@")
         local -A _a_used=()
         local _a_spec= _a_consumed=0 _a_continues=false
-        __bu_query_object_parse_comma_list _a_words 1 __bu_query_object_clause_keywords _a_spec _a_consumed _a_used _a_continues
+        __bu_query_object_parse_comma_list _a_words 1 __bu_out_query_object_clause_keywords _a_spec _a_consumed _a_used _a_continues
 
         local _a_shift_by=$(( 1 + _a_consumed ))
         if bu_env_is_in_autocomplete && (( $# >= 2 )) && "$_a_continues"; then
@@ -573,7 +569,7 @@ do
                             for (( _h_ii = _h_v_idx; _h_ii <= $#; _h_ii++ )); do
                                 _h_in_words+=("${!_h_ii}")
                             done
-                            local -a _h_in_stop=(and or "${__bu_query_object_clause_keywords[@]}")
+                            local -a _h_in_stop=(and or "${__bu_out_query_object_clause_keywords[@]}")
                             local _h_in_spec= _h_in_consumed=0 _h_in_continues=false
                             __bu_query_object_parse_comma_list _h_in_words 0 _h_in_stop _h_in_spec _h_in_consumed _h_in_used _h_in_continues
                             _h_val=$_h_in_spec
@@ -756,7 +752,7 @@ do
         local -a _c_words=("$@")
         local -A _c_used=()
         local _c_spec= _c_consumed=0 _c_continues=false
-        __bu_query_object_parse_comma_list _c_words 1 __bu_query_object_clause_keywords _c_spec _c_consumed _c_used _c_continues
+        __bu_query_object_parse_comma_list _c_words 1 __bu_out_query_object_clause_keywords _c_spec _c_consumed _c_used _c_continues
 
         local _c_shift_by=$(( 1 + _c_consumed ))
         if bu_env_is_in_autocomplete && (( $# >= 2 )) && "$_c_continues"; then

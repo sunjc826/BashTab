@@ -1434,6 +1434,34 @@ function test_query_object_analyze_select_value_not_clause { #@test
     assert_equal "${qas_out[*]}" "aa bb cc"
 }
 
+function test_query_object_analyze_select_multi_word_projection { #@test
+    # The static select parser accepts flexible comma placement across words.
+    local -a qas_in=(aa bb cc)
+    local -a qas_out=()
+    __bu_out_analyze_stage "bu query-object select name, ver=version" qas_in qas_out
+    assert_equal "${qas_out[*]}" "name ver"
+    __bu_out_analyze_stage "bu query-object select name , ver=version" qas_in qas_out
+    assert_equal "${qas_out[*]}" "name ver"
+    __bu_out_analyze_stage "bu query-object select name ,ver=version" qas_in qas_out
+    assert_equal "${qas_out[*]}" "name ver"
+}
+
+function test_query_object_analyze_select_multi_word_stops_at_clause { #@test
+    # A following clause keyword terminates the multi-word select spec.
+    local -a qas_in=(aa bb cc)
+    local -a qas_out=()
+    __bu_out_analyze_stage "bu query-object select name, ver where verb -eq get" qas_in qas_out
+    assert_equal "${qas_out[*]}" "name ver"
+}
+
+function test_query_object_pipeline_select_multi_word_propagation { #@test
+    # The projected fields from a multi-word select are what the next stage sees.
+    local pipe_before="bu get-command | bu query-object select name, ver=version"
+    local command_line_front_before_pipe=
+    __bu_out_complete_pipeline_fields ""
+    assert_equal "${BU_RET[*]}" "name ver"
+}
+
 function test_query_object_pipeline_select_propagation { #@test
     # Full completion path: the projected field is what the next stage sees
     local pipe_before="bu get-command | bu query-object select name"
