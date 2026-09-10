@@ -187,6 +187,15 @@ do
                 local _w_tail=${!_w_tail_idx}
                 if [[ -z "$_w_tail" || ( "$_w_tail" == -* && "$_w_tail" != --* ) ]]; then
                     : $((shift_by++))
+                elif bu_env_is_in_autocomplete && [[ "$_w_complete" == true ]] && (( _w_tail_idx == $# )); then
+                    # A non-empty prefix of a connector at the cursor is a
+                    # connector-in-progress, not a new clause keyword; consume
+                    # it so the and/or enum survives to bu_autocomplete.
+                    case "$_w_tail" in
+                    a|an|and|o|or)
+                        : $((shift_by++))
+                        ;;
+                    esac
                 fi
             fi
 
@@ -413,6 +422,12 @@ do
                 local _h_tail=${!_h_tail_idx}
                 if [[ -z "$_h_tail" || ( "$_h_tail" == -* && "$_h_tail" != --* ) ]]; then
                     : $((shift_by++))
+                elif bu_env_is_in_autocomplete && [[ "$_h_complete" == true ]] && (( _h_tail_idx == $# )); then
+                    case "$_h_tail" in
+                    a|an|and|o|or)
+                        : $((shift_by++))
+                        ;;
+                    esac
                 fi
             fi
 

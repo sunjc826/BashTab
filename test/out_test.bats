@@ -1746,6 +1746,48 @@ function test_query_object_value_completion_cursor_past_value_connectors { #@tes
     assert_equal "${COMPREPLY[*]}" "and or"
 }
 
+function test_query_object_where_partial_connector_prefix { #@test
+    # Regression: after a complete condition, a non-empty prefix of and/or at
+    # the cursor is a connector-in-progress, not a clause keyword (a<TAB> must
+    # offer "and", not "agg"; o<TAB> must offer "or").
+    local command_line_front_before_pipe="qo_value_producer | "
+    qo_value_producer() {
+        printf '%s\n' '{"name":"get-command","type":"source"}'
+    }
+    bu_register_tab_execute "qo_value_producer"
+
+    bu_autocomplete_get_autocompletions bu query-object --where name -eq get-command a
+    assert_equal "${COMPREPLY[*]}" "and"
+    bu_autocomplete_get_autocompletions bu query-object --where name -eq get-command o
+    assert_equal "${COMPREPLY[*]}" "or"
+    bu_autocomplete_get_autocompletions bu query-object --where name -eq get-command an
+    assert_equal "${COMPREPLY[*]}" "and"
+}
+
+function test_query_object_where_partial_connector_bare_alias { #@test
+    # The bare `where` alias takes the same --where path.
+    local command_line_front_before_pipe="qo_value_producer | "
+    qo_value_producer() {
+        printf '%s\n' '{"name":"get-command","type":"source"}'
+    }
+    bu_register_tab_execute "qo_value_producer"
+
+    bu_autocomplete_get_autocompletions bu where name -eq get-command a
+    assert_equal "${COMPREPLY[*]}" "and"
+}
+
+function test_query_object_having_partial_connector_prefix { #@test
+    # --having mirrors --where.
+    local command_line_front_before_pipe="qo_value_producer | "
+    qo_value_producer() {
+        printf '%s\n' '{"name":"get-command","type":"source"}'
+    }
+    bu_register_tab_execute "qo_value_producer"
+
+    bu_autocomplete_get_autocompletions bu query-object group-by verb --having name -eq get-command a
+    assert_equal "${COMPREPLY[*]}" "and"
+}
+
 function test_query_object_value_completion_in_delimited { #@test
     # -in values complete comma-segment by comma-segment via --delimited.
     local command_line_front_before_pipe="qo_value_producer | "
