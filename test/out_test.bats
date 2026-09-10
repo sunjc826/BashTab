@@ -1452,6 +1452,115 @@ function test_query_object_pipeline_group_by_propagation { #@test
 }
 
 # ===========================================================================
+# Flexible comma placement across words (select/group-by/agg/columns/-in)
+# ===========================================================================
+
+function test_query_object_select_comma_multi_word_runtime { #@test
+    local data single
+    data=$(printf '%s\n' '{"name":"get-command","type":"source","verb":"get"}' '{"name":"set-module","type":"execute","verb":"set"}')
+    single=$(printf '%s\n' "$data" | bu query-object select name,type)
+    assert_equal "$(printf '%s\n' "$data" | bu query-object select name, type)" "$single"
+    assert_equal "$(printf '%s\n' "$data" | bu query-object select name , type)" "$single"
+    assert_equal "$(printf '%s\n' "$data" | bu query-object select name ,type)" "$single"
+}
+
+function test_query_object_group_by_comma_multi_word_runtime { #@test
+    local data single
+    data=$(printf '%s\n' '{"verb":"get","type":"source"}' '{"verb":"get","type":"execute"}' '{"verb":"set","type":"source"}')
+    single=$(printf '%s\n' "$data" | bu query-object group-by verb,type --format jsonl)
+    assert_equal "$(printf '%s\n' "$data" | bu query-object group-by verb, type --format jsonl)" "$single"
+    assert_equal "$(printf '%s\n' "$data" | bu query-object group-by verb , type --format jsonl)" "$single"
+    assert_equal "$(printf '%s\n' "$data" | bu query-object group-by verb ,type --format jsonl)" "$single"
+}
+
+function test_query_object_agg_comma_multi_word_runtime { #@test
+    local data single
+    data=$(printf '%s\n' '{"verb":"get","hp":100}' '{"verb":"get","hp":200}' '{"verb":"set","hp":300}')
+    single=$(printf '%s\n' "$data" | bu query-object group-by verb agg count,avg:hp select verb,count,avg_hp order-by verb)
+    assert_equal "$(printf '%s\n' "$data" | bu query-object group-by verb agg count, avg:hp select verb,count,avg_hp order-by verb)" "$single"
+    assert_equal "$(printf '%s\n' "$data" | bu query-object group-by verb agg count , avg:hp select verb,count,avg_hp order-by verb)" "$single"
+}
+
+function test_query_object_columns_comma_multi_word_runtime { #@test
+    local data single
+    data=$(printf '%s\n' '{"name":"a","type":"source"}' '{"name":"b","type":"execute"}')
+    single=$(printf '%s\n' "$data" | bu query-object select name,type --format tsv --columns name,type)
+    assert_equal "$(printf '%s\n' "$data" | bu query-object select name,type --format tsv --columns name, type)" "$single"
+    assert_equal "$(printf '%s\n' "$data" | bu query-object select name,type --format tsv --columns name , type)" "$single"
+}
+
+function test_query_object_where_in_comma_multi_word_runtime { #@test
+    local data single
+    data=$(printf '%s\n' '{"name":"get-command","type":"source","verb":"get"}' '{"name":"set-module","type":"execute","verb":"set"}' '{"name":"gc","type":"alias","verb":"get"}')
+    single=$(printf '%s\n' "$data" | bu query-object where type -in source,execute select name)
+    assert_equal "$(printf '%s\n' "$data" | bu query-object where type -in source, execute select name)" "$single"
+    assert_equal "$(printf '%s\n' "$data" | bu query-object where type -in source , execute select name)" "$single"
+    # -notin mirrors -in
+    single=$(printf '%s\n' "$data" | bu query-object where type -notin source,execute select name)
+    assert_equal "$(printf '%s\n' "$data" | bu query-object where type -notin source, execute select name)" "$single"
+    # A connector still terminates a multi-word value list.
+    single=$(printf '%s\n' "$data" | bu query-object where type -in source,execute and verb -eq get select name)
+    assert_equal "$(printf '%s\n' "$data" | bu query-object where type -in source, execute and verb -eq get select name)" "$single"
+}
+
+function test_query_object_select_comma_multi_word_completion { #@test
+    local command_line_front_before_pipe="bu get-command | "
+    bu_autocomplete_get_autocompletions bu query-object select name, ""
+    assert_equal "${COMPREPLY[*]}" "verb noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by"
+    bu_autocomplete_get_autocompletions bu query-object select name , ""
+    assert_equal "${COMPREPLY[*]}" "verb noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by"
+    bu_autocomplete_get_autocompletions bu query-object select name, ve
+    assert_equal "${COMPREPLY[*]}" "verb"
+    bu_autocomplete_get_autocompletions bu query-object select name ,ve
+    assert_equal "${COMPREPLY[*]}" ",verb"
+}
+
+function test_query_object_group_by_comma_multi_word_completion { #@test
+    local command_line_front_before_pipe="bu get-command | "
+    bu_autocomplete_get_autocompletions bu query-object group-by verb, ""
+    assert_equal "${COMPREPLY[*]}" "name noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by"
+    bu_autocomplete_get_autocompletions bu query-object group-by verb, na
+    assert_equal "${COMPREPLY[*]}" "name namespace"
+}
+
+function test_query_object_columns_comma_multi_word_completion { #@test
+    local command_line_front_before_pipe="bu get-command | "
+    bu_autocomplete_get_autocompletions bu query-object --columns name, ""
+    assert_equal "${COMPREPLY[*]}" "verb noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by"
+    bu_autocomplete_get_autocompletions bu query-object --columns name, ve
+    assert_equal "${COMPREPLY[*]}" "verb"
+}
+
+function test_query_object_agg_comma_multi_word_completion { #@test
+    local command_line_front_before_pipe="bu get-command | "
+    bu_autocomplete_get_autocompletions bu query-object group-by verb agg cou
+    assert_equal "${COMPREPLY[*]}" "count"
+    bu_autocomplete_get_autocompletions bu query-object group-by verb agg count, av
+    assert_equal "${COMPREPLY[*]}" "avg"
+    bu_autocomplete_get_autocompletions bu query-object group-by verb agg count , av
+    assert_equal "${COMPREPLY[*]}" "avg"
+}
+
+function test_query_object_where_in_comma_multi_word_completion { #@test
+    local command_line_front_before_pipe="qo_value_producer | "
+    qo_value_producer() {
+        printf '%s\n' '{"type":"source"}' '{"type":"execute"}' '{"type":"alias"}'
+    }
+    bu_register_tab_execute "qo_value_producer"
+
+    bu_autocomplete_get_autocompletions bu query-object where type -in source, ""
+    assert_equal "${COMPREPLY[*]}" "alias execute"
+    bu_autocomplete_get_autocompletions bu query-object where type -in source, ex
+    assert_equal "${COMPREPLY[*]}" "execute"
+    bu_autocomplete_get_autocompletions bu query-object where type -in source , ""
+    assert_equal "${COMPREPLY[*]}" "alias execute"
+    bu_autocomplete_get_autocompletions bu query-object where type -notin source, ex
+    assert_equal "${COMPREPLY[*]}" "execute"
+    bu_autocomplete_get_autocompletions bu query-object group-by verb --having type -in source, ex
+    assert_equal "${COMPREPLY[*]}" "execute"
+}
+
+# ===========================================================================
 # -like / -notlike bare-pattern substring semantics
 # ===========================================================================
 

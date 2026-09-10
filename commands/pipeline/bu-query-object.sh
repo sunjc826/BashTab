@@ -2,6 +2,107 @@
 # Pipeline: query
 # Dispatch: source
 # Synopsis: Apply SQL-style clauses (where, group-by, select, order-by) to a JSONL stream
+# ```
+# *Description*:
+# Tokenize a comma-separated list that may span multiple words with flexible
+# comma placement ("a,b", "a, b", "a ,b", "a , b"). The list words begin at
+# _cl_start in the caller-provided words array. A word continues the list when
+# it is the first list word, when the previous word ended in a comma, or when
+# it starts with a comma. During autocomplete the final word is the in-progress
+# cursor word: it is excluded from the finalized spec and analyzed separately.
+#
+# *Params*:
+# - $1: nameref to the words array
+# - $2: index of the first list word
+# - $3: nameref to a stop-words array (exact matches terminate the list;
+#       pass an empty array for no stop words)
+# - $4: nameref to the output raw spec (concatenated finalized words)
+# - $5: nameref to the output consumed count (finalized list words)
+# - $6: nameref to the output used-set (associative array)
+# - $7: nameref to the output continues flag (true/false)
+# ```
+__bu_query_object_parse_comma_list()
+{
+    local -n _cl_words=$1
+    local -r _cl_start=$2
+    local -n _cl_stop=$3
+    local -n _cl_spec=$4
+    local -n _cl_consumed=$5
+    local -n _cl_used=$6
+    local -n _cl_continues=$7
+
+    _cl_spec=
+    _cl_consumed=0
+    _cl_used=()
+    _cl_continues=false
+
+    local -r _cl_count=${#_cl_words[@]}
+    local _cl_last=$_cl_count
+    bu_env_is_in_autocomplete && _cl_last=$(( _cl_count - 1 ))
+
+    local _cl_pending=false
+    local _cl_idx _cl_word _cl_stop_word _cl_is_stop
+    for (( _cl_idx = _cl_start; _cl_idx < _cl_last; _cl_idx++ )); do
+        _cl_word=${_cl_words[_cl_idx]}
+        _cl_is_stop=false
+        if (( _cl_idx != _cl_start )); then
+            # A flag (other than a negative number) or an exact stop-word
+            # always terminates the list, even after a trailing comma.
+            if [[ "$_cl_word" == -* && ! "$_cl_word" =~ ^-[0-9] ]]; then
+                _cl_is_stop=true
+            else
+                for _cl_stop_word in "${_cl_stop[@]}"; do
+                    if [[ "$_cl_word" == "$_cl_stop_word" ]]; then
+                        _cl_is_stop=true
+                        break
+                    fi
+                done
+            fi
+        fi
+        "$_cl_is_stop" && break
+        if (( _cl_idx != _cl_start )) && ! "$_cl_pending" && [[ "$_cl_word" != ,* ]]; then
+            break
+        fi
+        [[ -n "$_cl_word" ]] && _cl_spec+="$_cl_word"
+        _cl_consumed=$(( _cl_idx - _cl_start + 1 ))
+        case "$_cl_word" in
+        *,) _cl_pending=true ;;
+        *)   _cl_pending=false ;;
+        esac
+    done
+
+    local _cl_used_item _cl_ifs=$IFS
+    IFS=','
+    for _cl_used_item in $_cl_spec; do
+        [[ -n "$_cl_used_item" ]] && _cl_used[$_cl_used_item]=1
+    done
+    IFS=$_cl_ifs
+
+    if bu_env_is_in_autocomplete; then
+        local _cl_cur=${_cl_words[-1]}
+        local _cl_reaches=false
+        if (( _cl_consumed == _cl_last - _cl_start )); then
+            _cl_reaches=true
+        fi
+        if "$_cl_reaches" && ( (( _cl_consumed == 0 )) || "$_cl_pending" || [[ "$_cl_cur" == ,* ]] ); then
+            _cl_continues=true
+        fi
+        # Fold the cursor word's own comma-prefix tokens into the used set
+        # (e.g. cursor "a,ve" already used field "a").
+        local _cl_active=${_cl_cur##*,}
+        local _cl_prefix=${_cl_cur%"$_cl_active"}
+        IFS=','
+        for _cl_used_item in $_cl_prefix; do
+            [[ -n "$_cl_used_item" ]] && _cl_used[$_cl_used_item]=1
+        done
+        IFS=$_cl_ifs
+    fi
+}
+
+# Clause keywords that terminate a comma-separated list (shared by the
+# comma-list parsers in the select/group-by/agg/columns/where/having arms).
+__bu_query_object_clause_keywords=(select expand from where grep group-by agg having order-by outfile desc distinct first format columns help debug)
+
 function __bu_bu_query_object_main()
 {
 local -r invocation_dir=$PWD
@@ -37,9 +138,37 @@ do
     bu_parse_multiselect $# "$1"
     case "$1" in
     --select|select)# SELECT
-        # Fields to keep, in order (comma-separated; new=old renames)
-        bu_parse_positional $# --hint "Fields, new=old renames" --pipeline-fields pipeline-fields--
-        select_fields=${!shift_by}
+        # Fields to keep, in order (comma-separated; new=old renames).
+        # The field spec may span multiple words with flexible comma
+        # placement: "a,b,c", "a, b, c", "a , b , c", "a ,b ,c".
+        local -a _s_words=("$@")
+        local -A _s_used=()
+        local _s_spec= _s_consumed=0 _s_continues=false
+        __bu_query_object_parse_comma_list _s_words 1 __bu_query_object_clause_keywords _s_spec _s_consumed _s_used _s_continues
+
+        local _s_shift_by=$(( 1 + _s_consumed ))
+        if bu_env_is_in_autocomplete && (( $# >= 2 )) && "$_s_continues"; then
+            local _s_cur=${_s_words[-1]}
+            local _s_active=${_s_cur##*,}
+            local _s_prefix=${_s_cur%"$_s_active"}
+            local -a _s_candidates=()
+            local _s_cand=
+            if __bu_out_complete_pipeline_fields "$_s_active"; then
+                for _s_cand in "${BU_RET[@]}"; do
+                    [[ -n "${_s_used[$_s_cand]:-}" ]] && continue
+                    _s_candidates+=("${_s_prefix}${_s_cand}")
+                done
+            fi
+            if ((${#_s_candidates[@]} > 0)); then
+                autocompletion=(--enum "${_s_candidates[@]}" enum-- --hint "Fields, new=old renames")
+            else
+                autocompletion=(--hint "Fields, new=old renames")
+            fi
+            _s_shift_by=$(( _s_shift_by + 1 ))
+        fi
+
+        shift_by=$_s_shift_by
+        select_fields=$_s_spec
         ;;
     --expand|expand)# _FLAG
         # Lift a single nested object field to top level (applies to select clause)
@@ -81,6 +210,9 @@ do
             local _w_field=$where_raw
             local _w_complete=false   # last condition is fully parsed
             local _w_value_is_last=false # parsed value token is the cursor word
+            local -A _w_in_used=()
+            local _w_in_active=
+            local _w_in_prefix=
 
             while true; do
                 # --- Parse operator for current field ---
@@ -89,7 +221,7 @@ do
                 if (( _w_o_idx <= $# )); then
                     local _w_o_arg=${!_w_o_idx}
                     case "$_w_o_arg" in
-                    -eq|-ne|-gt|-lt|-ge|-le|-like|-notlike|-match|-notmatch|-contains|-notcontains|-in|-notin)
+                    -eq|-ne|-gt|-lt|-ge|-le|-like|-notlike|-match|-notmatch|-contains|-notcontains)
                         _w_op=$_w_o_arg; _w_cond_consume=1
                         local _w_v_idx=$(( shift_by + _w_extra + 2 ))
                         if (( _w_v_idx <= $# )); then
@@ -98,6 +230,26 @@ do
                                 _w_val=$_w_v_arg; _w_cond_consume=2
                                 (( _w_v_idx == $# )) && _w_value_is_last=true
                             fi
+                        fi
+                        ;;
+                    -in|-notin)
+                        _w_op=$_w_o_arg; _w_cond_consume=1
+                        local _w_v_idx=$(( shift_by + _w_extra + 2 ))
+                        if (( _w_v_idx <= $# )); then
+                            local -a _w_in_words=()
+                            local _w_ii
+                            for (( _w_ii = _w_v_idx; _w_ii <= $#; _w_ii++ )); do
+                                _w_in_words+=("${!_w_ii}")
+                            done
+                            local -a _w_in_stop=(and or "${__bu_query_object_clause_keywords[@]}")
+                            local _w_in_spec= _w_in_consumed=0 _w_in_continues=false
+                            __bu_query_object_parse_comma_list _w_in_words 0 _w_in_stop _w_in_spec _w_in_consumed _w_in_used _w_in_continues
+                            _w_val=$_w_in_spec
+                            _w_value_is_last=$_w_in_continues
+                            _w_cond_consume=$(( 1 + _w_in_consumed ))
+                            "$_w_in_continues" && _w_cond_consume=$(( _w_cond_consume + 1 ))
+                            _w_in_active=${_w_in_words[-1]##*,}
+                            _w_in_prefix=${_w_in_words[-1]%"$_w_in_active"}
                         fi
                         ;;
                     -isnull|-isnotnull)
@@ -220,8 +372,17 @@ do
                     fi
                     ;;
                 -in|-notin)
+                    local -a _w_in_candidates=()
+                    local _w_in_cand=
                     if __bu_out_complete_field_values "$_w_field" && ((${#BU_RET[@]} > 0)); then
-                        autocompletion=(--delimited "${BU_RET[@]}" delimited-- --hint "Values of $_w_field")
+                        for _w_in_cand in "${BU_RET[@]}"; do
+                            [[ -n "${_w_in_used[$_w_in_cand]:-}" ]] && continue
+                            [[ "$_w_in_cand" == "$_w_in_active"* ]] || continue
+                            _w_in_candidates+=("${_w_in_prefix}${_w_in_cand}")
+                        done
+                    fi
+                    if ((${#_w_in_candidates[@]} > 0)); then
+                        autocompletion=(--enum "${_w_in_candidates[@]}" enum-- --hint "Values of $_w_field")
                     else
                         autocompletion=(--hint "Value for $_w_field $_w_op")
                     fi
@@ -295,18 +456,70 @@ do
     --group-by|group-by)# GROUP_BY
         # Group records by key fields (comma-separated), collapsing each group
         # into one record. Use agg to add aggregates; no agg emits distinct keys.
-        bu_parse_positional $# --hint "Group key fields" --pipeline-fields pipeline-fields--
-        group_keys=${!shift_by}
+        local -a _g_words=("$@")
+        local -A _g_used=()
+        local _g_spec= _g_consumed=0 _g_continues=false
+        __bu_query_object_parse_comma_list _g_words 1 __bu_query_object_clause_keywords _g_spec _g_consumed _g_used _g_continues
+
+        local _g_shift_by=$(( 1 + _g_consumed ))
+        if bu_env_is_in_autocomplete && (( $# >= 2 )) && "$_g_continues"; then
+            local _g_cur=${_g_words[-1]}
+            local _g_active=${_g_cur##*,}
+            local _g_prefix=${_g_cur%"$_g_active"}
+            local -a _g_candidates=()
+            local _g_cand=
+            if __bu_out_complete_pipeline_fields "$_g_active"; then
+                for _g_cand in "${BU_RET[@]}"; do
+                    [[ -n "${_g_used[$_g_cand]:-}" ]] && continue
+                    _g_candidates+=("${_g_prefix}${_g_cand}")
+                done
+            fi
+            if ((${#_g_candidates[@]} > 0)); then
+                autocompletion=(--enum "${_g_candidates[@]}" enum-- --hint "Group key fields")
+            else
+                autocompletion=(--hint "Group key fields")
+            fi
+            _g_shift_by=$(( _g_shift_by + 1 ))
+        fi
+
+        shift_by=$_g_shift_by
+        group_keys=$_g_spec
         ;;
     --agg|agg)# AGG
         # Aggregates for group-by: [name=]func[:field], comma-separated and/or
         # repeatable. funcs: count, sum, avg, min, max, first, last, collect
-        bu_parse_positional $# --enum count sum avg min max first last collect enum-- --hint "Aggregates: [name=]func[:field]"
+        local -a _a_words=("$@")
+        local -A _a_used=()
+        local _a_spec= _a_consumed=0 _a_continues=false
+        __bu_query_object_parse_comma_list _a_words 1 __bu_query_object_clause_keywords _a_spec _a_consumed _a_used _a_continues
+
+        local _a_shift_by=$(( 1 + _a_consumed ))
+        if bu_env_is_in_autocomplete && (( $# >= 2 )) && "$_a_continues"; then
+            local _a_cur=${_a_words[-1]}
+            local _a_active=${_a_cur##*,}
+            local _a_prefix=${_a_cur%"$_a_active"}
+            local -a _a_funcs=(count sum avg min max first last collect)
+            local -a _a_candidates=()
+            local _a_func=
+            for _a_func in "${_a_funcs[@]}"; do
+                [[ "$_a_func" == "$_a_active"* ]] || continue
+                _a_candidates+=("${_a_prefix}${_a_func}")
+            done
+            if ((${#_a_candidates[@]} > 0)); then
+                autocompletion=(--enum "${_a_candidates[@]}" enum-- --hint "Aggregates: [name=]func[:field]")
+            else
+                autocompletion=(--hint "Aggregates: [name=]func[:field]")
+            fi
+            _a_shift_by=$(( _a_shift_by + 1 ))
+        fi
+
+        shift_by=$_a_shift_by
+        # Split the (possibly multi-word) spec into repeatable agg specs.
         local agg_spec
         local ifs=$IFS
         IFS=','
         # shellcheck disable=SC2206 # Intentional word splitting on commas
-        for agg_spec in ${!shift_by}; do [[ -n "$agg_spec" ]] && agg_specs+=("$agg_spec"); done
+        for agg_spec in $_a_spec; do [[ -n "$agg_spec" ]] && agg_specs+=("$agg_spec"); done
         IFS=$ifs
         ;;
     --having|having)# HAVING
@@ -330,6 +543,9 @@ do
             local _h_field=$having_raw
             local _h_complete=false
             local _h_value_is_last=false # parsed value token is the cursor word
+            local -A _h_in_used=()
+            local _h_in_active=
+            local _h_in_prefix=
 
             while true; do
                 local _h_op= _h_val= _h_cond_consume=0
@@ -337,7 +553,7 @@ do
                 if (( _h_o_idx <= $# )); then
                     local _h_o_arg=${!_h_o_idx}
                     case "$_h_o_arg" in
-                    -eq|-ne|-gt|-lt|-ge|-le|-like|-notlike|-match|-notmatch|-contains|-notcontains|-in|-notin)
+                    -eq|-ne|-gt|-lt|-ge|-le|-like|-notlike|-match|-notmatch|-contains|-notcontains)
                         _h_op=$_h_o_arg; _h_cond_consume=1
                         local _h_v_idx=$(( shift_by + _h_extra + 2 ))
                         if (( _h_v_idx <= $# )); then
@@ -346,6 +562,26 @@ do
                                 _h_val=$_h_v_arg; _h_cond_consume=2
                                 (( _h_v_idx == $# )) && _h_value_is_last=true
                             fi
+                        fi
+                        ;;
+                    -in|-notin)
+                        _h_op=$_h_o_arg; _h_cond_consume=1
+                        local _h_v_idx=$(( shift_by + _h_extra + 2 ))
+                        if (( _h_v_idx <= $# )); then
+                            local -a _h_in_words=()
+                            local _h_ii
+                            for (( _h_ii = _h_v_idx; _h_ii <= $#; _h_ii++ )); do
+                                _h_in_words+=("${!_h_ii}")
+                            done
+                            local -a _h_in_stop=(and or "${__bu_query_object_clause_keywords[@]}")
+                            local _h_in_spec= _h_in_consumed=0 _h_in_continues=false
+                            __bu_query_object_parse_comma_list _h_in_words 0 _h_in_stop _h_in_spec _h_in_consumed _h_in_used _h_in_continues
+                            _h_val=$_h_in_spec
+                            _h_value_is_last=$_h_in_continues
+                            _h_cond_consume=$(( 1 + _h_in_consumed ))
+                            "$_h_in_continues" && _h_cond_consume=$(( _h_cond_consume + 1 ))
+                            _h_in_active=${_h_in_words[-1]##*,}
+                            _h_in_prefix=${_h_in_words[-1]%"$_h_in_active"}
                         fi
                         ;;
                     -isnull|-isnotnull)
@@ -449,8 +685,17 @@ do
                     fi
                     ;;
                 -in|-notin)
+                    local -a _h_in_candidates=()
+                    local _h_in_cand=
                     if __bu_out_complete_field_values "$_h_field" && ((${#BU_RET[@]} > 0)); then
-                        autocompletion=(--delimited "${BU_RET[@]}" delimited-- --hint "Values of $_h_field")
+                        for _h_in_cand in "${BU_RET[@]}"; do
+                            [[ -n "${_h_in_used[$_h_in_cand]:-}" ]] && continue
+                            [[ "$_h_in_cand" == "$_h_in_active"* ]] || continue
+                            _h_in_candidates+=("${_h_in_prefix}${_h_in_cand}")
+                        done
+                    fi
+                    if ((${#_h_in_candidates[@]} > 0)); then
+                        autocompletion=(--enum "${_h_in_candidates[@]}" enum-- --hint "Values of $_h_field")
                     else
                         autocompletion=(--hint "Value for $_h_field $_h_op")
                     fi
@@ -508,8 +753,34 @@ do
         ;;
     --columns)# COLUMNS
         # Display columns as key:Label (comma-separated). Forwarded to table/list/tsv.
-        bu_parse_positional $# --hint "Comma-separated columns, key:Label renames headers" --pipeline-fields pipeline-fields--
-        columns=${!shift_by}
+        local -a _c_words=("$@")
+        local -A _c_used=()
+        local _c_spec= _c_consumed=0 _c_continues=false
+        __bu_query_object_parse_comma_list _c_words 1 __bu_query_object_clause_keywords _c_spec _c_consumed _c_used _c_continues
+
+        local _c_shift_by=$(( 1 + _c_consumed ))
+        if bu_env_is_in_autocomplete && (( $# >= 2 )) && "$_c_continues"; then
+            local _c_cur=${_c_words[-1]}
+            local _c_active=${_c_cur##*,}
+            local _c_prefix=${_c_cur%"$_c_active"}
+            local -a _c_candidates=()
+            local _c_cand=
+            if __bu_out_complete_pipeline_fields "$_c_active"; then
+                for _c_cand in "${BU_RET[@]}"; do
+                    [[ -n "${_c_used[$_c_cand]:-}" ]] && continue
+                    _c_candidates+=("${_c_prefix}${_c_cand}")
+                done
+            fi
+            if ((${#_c_candidates[@]} > 0)); then
+                autocompletion=(--enum "${_c_candidates[@]}" enum-- --hint "Comma-separated columns, key:Label renames headers")
+            else
+                autocompletion=(--hint "Comma-separated columns, key:Label renames headers")
+            fi
+            _c_shift_by=$(( _c_shift_by + 1 ))
+        fi
+
+        shift_by=$_c_shift_by
+        columns=$_c_spec
         ;;
     -h|--help)# _FLAG
         # Print help
