@@ -14,12 +14,14 @@ Set Padding 16
 Set Theme "Catppuccin Mocha"
 Set TypingSpeed 50ms
 
-# ── Setup: clean prompt, clean module path ─────────────────
-Type "export BU_MODULE_PATH=; cd /home/user/AgentProjects/BashTab && source ./activate 2>/dev/null"
+# ── Invisible pre-roll: activate BashTab and prepare a clean prompt ──
+Hide
+Type@0ms "export BU_MODULE_PATH=; source ./activate 2>/dev/null"
 Enter
 Sleep 2s
-Type "PROMPT_COMMAND=; PS1='$ '; clear"
+Type@0ms "PROMPT_COMMAND=; PS1='$ '; clear"
 Enter
+Show
 Sleep 500ms
 
 # ── Beat 1: records render as a table on a terminal ───────
