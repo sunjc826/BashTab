@@ -70,15 +70,15 @@ BU_OUTPUT_FORMAT=${BU_OUTPUT_FORMAT:-}
 #   "preset:less"   → less -R      "preset:bat" → bat --paging=always
 #   "preset:never"  → cat (no paging)
 #   "less -R"       → custom command, used verbatim
-bu_config_register BU_TABLE_PAGER --default "" \
+bu_config_register BU_TABLE_PAGER --default "preset:less" \
     --presets less less-quit bat never presets-- \
     --hint "Pager for tabular output (preset:less, preset:bat, or a custom command). Empty disables."
-BU_TABLE_PAGER=${BU_TABLE_PAGER:-""}
+BU_TABLE_PAGER=${BU_TABLE_PAGER:-"preset:less"}
 
 # Default table display style for `bu format-table` / `bu out --format table`.
 # Overridable per-invocation with --style. One of: classic, plain, ascii,
 # unicode, double, markdown, mysql, psql.
-bu_config_register BU_TABLE_STYLE --default classic \
+bu_config_register BU_TABLE_STYLE --default unicode \
     --enum classic plain ascii unicode double clickhouse markdown mysql psql enum-- \
     --hint "Table border/separator style for bu format-table"
 BU_TABLE_STYLE=${BU_TABLE_STYLE:-${BU_CONFIG_PROPERTIES[BU_TABLE_STYLE,default]}}
@@ -90,11 +90,18 @@ bu_config_register BU_OUT_PROBE_PIPELINE --bool --default false \
     --hint "Allow pipeline field completion to execute the pipeline prefix (probing)"
 BU_OUT_PROBE_PIPELINE=${BU_OUT_PROBE_PIPELINE:-${BU_CONFIG_PROPERTIES[BU_OUT_PROBE_PIPELINE,default]}}
 
+# When true, pipeline consumers that declare a `# Requires-All:` /
+# `# Requires-Any:` field contract warn to stderr when the upstream record
+# does not satisfy it (see __bu_out_strict_guard in bu_core_out.sh).
+bu_config_register BU_OUT_STRICT --bool --default true \
+    --hint "Warn when a pipeline consumer's declared field contract is unmet by upstream records"
+BU_OUT_STRICT=${BU_OUT_STRICT:-${BU_CONFIG_PROPERTIES[BU_OUT_STRICT,default]}}
+
 # ```
 # Show the active top-level module name in PS1, like Python venvs.
 # When enabled, PS1 is prefixed with e.g. "[myproject] ".
 # ```
-bu_config_register BU_PROMPT_SHOW_MODULE --bool --default false \
+bu_config_register BU_PROMPT_SHOW_MODULE --bool --default true \
     --hint "Show the active top-level module name in the shell prompt (PS1)"
 BU_PROMPT_SHOW_MODULE=${BU_PROMPT_SHOW_MODULE:-${BU_CONFIG_PROPERTIES[BU_PROMPT_SHOW_MODULE,default]}}
 
@@ -108,13 +115,13 @@ BU_EXPOSE_COMMANDS=${BU_EXPOSE_COMMANDS:-false}
 
 # ```
 # How the exit-handler traceback is rendered when a command fails.
-#   short - one compact line per stack frame (default)
-#   full  - Python-style frames plus the surrounding source lines
+#   short - one compact line per stack frame
+#   full  - Python-style frames plus the surrounding source lines (default)
 # The number of context lines shown by "full" is BU_STACKTRACE_CONTEXT_LINES
 # (a tunable global in bu_core_base.sh; not registered because it is a plain
 # integer).
 # ```
-bu_config_register BU_STACKTRACE_STYLE --default short \
+bu_config_register BU_STACKTRACE_STYLE --default full \
     --enum short full enum-- \
     --hint "Traceback rendering style (short: one line per frame, full: source context)"
 BU_STACKTRACE_STYLE=${BU_STACKTRACE_STYLE:-${BU_CONFIG_PROPERTIES[BU_STACKTRACE_STYLE,default]}}

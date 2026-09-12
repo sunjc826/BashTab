@@ -168,20 +168,20 @@ of the call stack. The rendering style is controlled by the registered setting
 
 | Value | Description |
 |---|---|
-| `short` | One compact line per frame: `0: false at script.sh:42` (default) |
-| `full` | Python-style frames with the surrounding source lines, fault line highlighted |
+| `short` | One compact line per frame: `0: false at script.sh:42` |
+| `full` | Python-style frames with the surrounding source lines, fault line highlighted (default) |
 
 ```sh
-# Compact (default)
+# Compact
 bu set-config BU_STACKTRACE_STYLE short
 
-# Verbose — show surrounding source lines
+# Verbose — show surrounding source lines (default)
 bu set-config BU_STACKTRACE_STYLE full
 ```
 
 The `full` style renders each frame as a `File "...", line N, in func` header
 followed by a source window. The number of lines shown before/after each frame
-is `BU_STACKTRACE_CONTEXT_LINES` (default `2`), a tunable global in
+is `BU_STACKTRACE_CONTEXT_LINES` (default `4`), a tunable global in
 `bu_core_base.sh` that can be exported before sourcing to widen the window:
 
 ```sh

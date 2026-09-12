@@ -1799,7 +1799,7 @@ bu_scoped_pushd()
 # Number of source lines shown before and after each frame when
 # BU_STACKTRACE_STYLE=full. Tunable via the environment (export it before
 # sourcing) — not a registered setting because it is a plain integer.
-BU_STACKTRACE_CONTEXT_LINES=${BU_STACKTRACE_CONTEXT_LINES:-2}
+BU_STACKTRACE_CONTEXT_LINES=${BU_STACKTRACE_CONTEXT_LINES:-4}
 
 # awk program used by __bu_traceback_highlight. Kept as a quoted heredoc so
 # the shell performs no expansion on the awk source. It performs a light,
