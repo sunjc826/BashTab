@@ -182,7 +182,7 @@ Design notes:
 - `--columns a,b:Label` — order/select fields, rename headers.
 - `--colors name=green,version=yellow` — per-column color (keys, not labels).
 - `--style name` — table border/separator style (see below); default
-  `classic`, overridable via `BU_TABLE_STYLE`.
+  `unicode`, overridable via `BU_TABLE_STYLE`.
 - `--stream` — emit immediately with proportional widths from `$COLUMNS`
   (requires `--columns`). Use for large/slow streams.
 - Empty input → no output (PowerShell semantics).
@@ -190,8 +190,8 @@ Design notes:
 ### Table styles
 
 `bu format-table --style <name>` (or `BU_TABLE_STYLE=<name>`) picks a
-border/separator look. `classic` (bold header, dashed underline, two-space
-gutter) is the default and unchanged. The rest:
+border/separator look. `unicode` (single-line box-drawing `┌─┬┐ │ ├┼┤ └┴┘`)
+is the default. The rest:
 
 | Style | Look |
 |---|---|
@@ -331,7 +331,8 @@ printf '{"index":1}\n' | BU_OUT_STRICT=true bu remove-git-tag
 ```
 
 Records are always passed through unchanged, so strict mode only adds
-diagnostics; it never alters the stream. Off by default (a plain `cat`).
+diagnostics; it never alters the stream. On by default (falls back to a plain
+`cat` when disabled).
 
 ### Alias merging in option completion
 
@@ -353,11 +354,12 @@ verb=`convert-to`, noun=`jsonl`. Extend the array for custom multi-word verbs.
 | Variable | Default | Purpose |
 |---|---|---|
 | `BU_OUTPUT_FORMAT` | *(empty)* | Force output format when `--format auto` |
-| `BU_TABLE_STYLE` | `classic` | Default table style. `plain`, `ascii`, `unicode`, `double`, `clickhouse`, `markdown`, `mysql`, or `psql` (see [Table styles](#table-styles)). Overridden per-call by `--style`. |
-| `BU_TABLE_PAGER` | *(empty)* | Pager for tables. `preset:less` → `less -R`, `preset:bat` → `bat --paging=always`, `preset:never` → cat, or a raw command like `less -R`. Empty disables. |
+| `BU_TABLE_STYLE` | `unicode` | Default table style. `plain`, `ascii`, `unicode`, `double`, `clickhouse`, `markdown`, `mysql`, or `psql` (see [Table styles](#table-styles)). Overridden per-call by `--style`. |
+| `BU_TABLE_PAGER` | `preset:less` | Pager for tables. `preset:less` → `less -R`, `preset:bat` → `bat --paging=always`, `preset:never` → cat, or a raw command like `less -R`. Empty disables. |
 | `BU_OUT_PRODUCER_FIELDS` | builtins | Assoc: producer prefix → field list |
 | `BU_OUT_PROBE_PIPELINE` | `false` | Master switch for live probing during completion |
 | `BU_OUT_PROBE_COMMANDS` | *(empty)* | Assoc allowlist of probe-safe producer heads |
+| `BU_OUT_STRICT` | `true` | Warn when a pipeline consumer's `# Requires-All:`/`# Requires-Any:` contract is unmet by upstream records |
 | `BU_PIPELINE_CONTRACT_WARN` | `true` | Scan-time warnings for commands missing a `# Pipeline:` header or field contract (`false` silences) |
 | `BU_MULTI_WORD_VERBS` | `convert-to convert-from` | Multi-word verb list for name parsing |
 
