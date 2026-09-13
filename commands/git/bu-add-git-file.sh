@@ -13,6 +13,7 @@ if [[ "$1" == "--is-compatible" ]]; then
     exit 0
 fi
 local -r invocation_dir=$PWD
+local validation_fd validation_pid validation_status=0
 
 # shellcheck source=./__bu_entrypoint_decl.sh
 source "$BU_NULL"
@@ -97,11 +98,19 @@ fi
 # Read paths from stdin pipeline if no positional paths and stdin has data
 if ((${#paths[@]} == 0)) && read -t 0 2>/dev/null; then
     local line
+    __bu_out_strict_open validation_fd validation_pid "add-git-file" || { bu_scope_pop_function || true; return 1; }
     while IFS= read -r line; do
         local p
         p=$(jq -r '.path // empty' <<<"$line" 2>/dev/null) || true
         [[ -n "$p" ]] && paths+=("$p")
-    done < <(__bu_out_strict_guard "add-git-file")
+    done <&"$validation_fd"
+    if __bu_out_strict_close "$validation_fd" "$validation_pid"; then
+        :
+    else
+        validation_status=$?
+        bu_scope_pop_function || true
+        return "$validation_status"
+    fi
 fi
 
 if ((${#paths[@]} == 0)) && ! "$is_all" && ! "$is_update"; then

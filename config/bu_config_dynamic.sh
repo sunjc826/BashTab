@@ -98,11 +98,21 @@ bu_config_register BU_OUT_PROBE_PIPELINE --bool --default false \
 BU_OUT_PROBE_PIPELINE=${BU_OUT_PROBE_PIPELINE:-${BU_CONFIG_PROPERTIES[BU_OUT_PROBE_PIPELINE,default]}}
 
 # When true, pipeline consumers that declare a `# Requires-All:` /
-# `# Requires-Any:` field contract warn to stderr when the upstream record
-# does not satisfy it (see __bu_out_strict_guard in bu_core_out.sh).
+# `# Requires-Any:` field contract apply the configured record validation.
+# Defaults warn on the first record (see __bu_out_strict_guard).
 bu_config_register BU_OUT_STRICT --bool --default true \
-    --hint "Warn when a pipeline consumer's declared field contract is unmet by upstream records"
+    --hint "Enable validation of pipeline consumers' declared field contracts"
 BU_OUT_STRICT=${BU_OUT_STRICT:-${BU_CONFIG_PROPERTIES[BU_OUT_STRICT,default]}}
+
+# Keep BU_OUT_STRICT=false as the legacy master switch.
+bu_config_register BU_OUT_VALIDATION --default warn \
+    --enum off warn error enum-- \
+    --hint "Record contract validation: off, warn and pass through, or reject invalid records"
+BU_OUT_VALIDATION=${BU_OUT_VALIDATION:-${BU_CONFIG_PROPERTIES[BU_OUT_VALIDATION,default]}}
+bu_config_register BU_OUT_VALIDATE_RECORDS --default first \
+    --enum first all enum-- \
+    --hint "Check required fields on the first record or every record"
+BU_OUT_VALIDATE_RECORDS=${BU_OUT_VALIDATE_RECORDS:-${BU_CONFIG_PROPERTIES[BU_OUT_VALIDATE_RECORDS,default]}}
 
 # ```
 # Show the active top-level module name in PS1, like Python venvs.

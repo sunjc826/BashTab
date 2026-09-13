@@ -27,6 +27,7 @@ if [[ "$1" == "--is-compatible" ]]; then
     exit 0
 fi
 local -r invocation_dir=$PWD
+local validation_fd validation_pid validation_status=0
 local script_name
 local script_dir
 case "$BASH_SOURCE" in
@@ -141,10 +142,18 @@ fi
 if ((${#units[@]} == 0)) && [[ ! -t 0 ]]
 then
     local _u
+    __bu_out_strict_open validation_fd validation_pid "enable-service" '.unit // .name // empty' || { bu_scope_pop_function || true; return 1; }
     while IFS= read -r _u
     do
         [[ -n "$_u" ]] && units+=("$_u")
-    done < <(__bu_out_strict_guard "enable-service" | jq -r '.unit // .name // empty' 2>/dev/null)
+    done <&"$validation_fd"
+    if __bu_out_strict_close "$validation_fd" "$validation_pid"; then
+        :
+    else
+        validation_status=$?
+        bu_scope_pop_function || true
+        return "$validation_status"
+    fi
 fi
 
 if ((${#units[@]} == 0))

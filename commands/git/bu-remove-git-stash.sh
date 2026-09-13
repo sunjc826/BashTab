@@ -13,6 +13,7 @@ if [[ "$1" == "--is-compatible" ]]; then
     exit 0
 fi
 local -r invocation_dir=$PWD
+local validation_fd validation_pid validation_status=0
 
 # shellcheck source=./__bu_entrypoint_decl.sh
 source "$BU_NULL"
@@ -76,11 +77,19 @@ fi
 # Read indices from stdin pipeline if stdin has data
 if ((${#indices[@]} == 0)) && ! "$is_all" && read -t 0 2>/dev/null; then
     local line
+    __bu_out_strict_open validation_fd validation_pid "remove-git-stash" || { bu_scope_pop_function || true; return 1; }
     while IFS= read -r line; do
         local idx
         idx=$(jq -r '.index // empty' <<<"$line" 2>/dev/null) || true
         [[ -n "$idx" ]] && indices+=("$idx")
-    done < <(__bu_out_strict_guard "remove-git-stash")
+    done <&"$validation_fd"
+    if __bu_out_strict_close "$validation_fd" "$validation_pid"; then
+        :
+    else
+        validation_status=$?
+        bu_scope_pop_function || true
+        return "$validation_status"
+    fi
 fi
 
 if ((${#indices[@]} == 0)) && ! "$is_all"; then
