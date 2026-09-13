@@ -1131,7 +1131,7 @@ __bu_query_object_explain_plan()
                 if $where != "" then stage("where"; $where; "streaming") else empty end,
                 if $grep != "" then stage("grep"; $grep; "streaming") else empty end,
                 if $group != "" then
-                    stage("group-by"; {keys: $group, aggregates: $ARGS.positional}; "buffers-input")
+                    stage("group-by"; {keys: $group, aggregates: $ARGS.positional}; "retains-group-state")
                 else empty end,
                 if $having != "" then stage("having"; $having; "streaming") else empty end,
                 if $projection != "" then
@@ -1165,6 +1165,7 @@ __bu_query_object_explain_plan()
                 elif $first != "" then "The query can stop reading once enough matching results reach first."
                 else "No first limit is set; normal processing continues to end of input." end,
                 if $inputFormat == "json" and ($bypass | not) then "Each JSON value is parsed in full before array elements can be queried." else empty end,
+                if $group != "" then "Grouping reads all input but retains aggregate state per group; collect also retains collected field values." else empty end,
                 if $distinct then "Distinct retains seen values; memory grows with the number of unique results." else empty end,
                 if $outputFormat == "table" or $outputFormat == "json" then "The formatter buffers query results, which may already be limited by first." else empty end,
                 if $first != "" then "External upstream producers can receive SIGPIPE when reading stops." else empty end,
@@ -1259,7 +1260,7 @@ __bu_query_object_compile()
     if [[ -n "$group_keys" ]]; then
         __bu_out_group_filter "$group_keys" "${agg_specs[@]}" || return 1
         filter=$BU_RET
-        program="[$program] | ($filter)"
+        program="$filter __bu_group($program)"
     fi
     if [[ -n "$having_expr" ]]; then
         program="($program) | select($having_expr)"

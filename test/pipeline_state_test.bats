@@ -110,3 +110,34 @@ function test_record_validation_extractor_failure { #@test
     assert_equal "$status" 3
     assert_equal "${#values[@]}" 0
 }
+
+function test_incremental_group_matches_buffered_oracle { #@test
+    local expected actual mode
+    jq -nc 'range(600) | {k: (. % 7), x: ([null,false,1,2.5,"3",[],{}][. % 7])}' > "$records"
+    printf '%s\n' '{"missing":true}' '{"k":{"a":1,"b":2},"x":4}' '{"k":{"b":2,"a":1},"x":5}' >> "$records"
+    expected=$(jq -sc 'group_by(.k) | .[] | . as $g | {
+        k: .[0].k, count: length,
+        sum_x: (map(.x) | map(select(type == "number")) | add // 0),
+        avg_x: ((map(.x) | map(select(type == "number"))) as $v | if ($v|length)>0 then ($v|add)/($v|length) else null end),
+        min_x: (map(.x) | map(select(. != null)) | min),
+        max_x: (map(.x) | map(select(. != null)) | max),
+        first_x: .[0].x, last_x: .[-1].x, collect_x: map(.x)
+    }' "$records")
+    for mode in pipeline combined; do
+        actual=$(BU_QUERY_EXECUTOR=$mode bu query-object --from "$records" group-by k agg count,sum:x,avg:x,min:x,max:x,first:x,last:x,collect:x)
+        assert_equal "$actual" "$expected"
+    done
+}
+
+function test_incremental_group_numeric_keys_and_aliases { #@test
+    local expected actual mode
+    printf '%s\n' '{"k":0,"x":1}' '{"k":-0,"x":2}' '{"k":1,"x":3}' '{"k":1.0,"x":4}' \
+        '{"k":9007199254740992,"x":5}' '{"k":9007199254740993,"x":9007199254740993}' > "$records"
+    expected=$(jq -sc 'group_by(.k) | .[] | {k: .[0].k, sum_x: (map(.x)|add), min_x: (map(.x)|min), max_x: (map(.x)|max)}' "$records")
+    for mode in pipeline combined; do
+        actual=$(BU_QUERY_EXECUTOR=$mode bu query-object --from "$records" group-by k agg sum:x,min:x,max:x)
+        assert_equal "$actual" "$expected"
+        actual=$(BU_QUERY_EXECUTOR=$mode bu query-object --from "$records" group-by k agg k=count,k=last:x)
+        assert_equal "$actual" "$(jq -sc 'group_by(.k) | .[] | {k: .[-1].x}' "$records")"
+    done
+}

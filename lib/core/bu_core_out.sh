@@ -1612,7 +1612,8 @@ bu_format_tsv()
 # ```
 # *Description*:
 # Group a JSONL stream by one or more key fields, emitting one flat record
-# per group (SQL GROUP BY with aggregates). Buffers all input (jq slurp).
+# per group (SQL GROUP BY with aggregates). Reads all input, retaining only
+# aggregate state per group; collect additionally retains its field values.
 #
 # *Params*:
 # - `--keys a[,b]`: Group key fields (comma-separated; composite key)
@@ -1672,13 +1673,15 @@ bu_out_group_by()
         shift "$shift_by"
     done
     __bu_out_group_filter "$keys" "${agg_specs[@]}" || return 1
-    "$BU_OUT_JQ" -sc "$BU_RET"
+    "$BU_OUT_JQ" -nc "$BU_RET __bu_group(inputs)"
 }
 
 # ```md
-# Build a jq filter from a buffered array to grouped records.
+# Build a jq definition that reduces a record generator to per-group state.
+# Hash buckets compare original keys to preserve equality despite numeric
+# representation differences or canonical-hash collisions. Results stay sorted.
 # Params: $1 comma-separated keys; remaining arguments are aggregate specs.
-# Returns: BU_RET contains the filter; nonzero for invalid keys/aggregates.
+# Returns: BU_RET defines __bu_group(stream); nonzero for invalid keys/aggregates.
 # ```
 __bu_out_group_filter()
 {
@@ -1686,7 +1689,7 @@ __bu_out_group_filter()
     local -a agg_specs=("${@:2}")
     local keys_json=
     local fragments= sep=
-    local spec name body func field fragment
+    local spec name body func field
     if [[ -z "$keys" ]]
     then
         bu_log_err "bu_out_group_by requires --keys"
@@ -1723,29 +1726,56 @@ __bu_out_group_filter()
             fi
             __bu_out_validate_key "$field" || return 1
         fi
-        # Note: \$g and \$v are jq variables, they must not be expanded by bash
-        case "$func" in
-        count)   fragment="(\$g | length)" ;;
-        sum)     fragment="(\$g | map(.[\"$field\"]) | map(select(type == \"number\")) | add // 0)" ;;
-        avg)     fragment="((\$g | map(.[\"$field\"]) | map(select(type == \"number\"))) as \$v | if (\$v | length) > 0 then (\$v | add) / (\$v | length) else null end)" ;;
-        min)     fragment="(\$g | map(.[\"$field\"]) | map(select(. != null)) | min)" ;;
-        max)     fragment="(\$g | map(.[\"$field\"]) | map(select(. != null)) | max)" ;;
-        first)   fragment="(\$g[0][\"$field\"])" ;;
-        last)    fragment="(\$g[-1][\"$field\"])" ;;
-        collect) fragment="(\$g | map(.[\"$field\"]))" ;;
-        esac
-        fragments+="$sep\"$name\": $fragment"
+        fragments+="$sep{\"name\":\"$name\",\"func\":\"$func\",\"field\":\"$field\"}"
         sep=,
     done
 
-    BU_RET="($keys_json) as \$keys |"'
-        group_by([.[$keys[]]])
-        | map( . as $g
-            | (reduce ($keys | to_entries[]) as $e ({}; .[$e.value] = $g[0][$e.value]))
-            + {'"$fragments"'}
+    BU_RET='def __bu_group(stream):
+        def canon:
+            if type == "object" then to_entries | sort_by(.key) | map(.value |= canon) | from_entries
+            elif type == "array" then map(canon)
+            elif type == "number" then . + 0 else . end;
+        ('"$keys_json"') as $keys
+        | ['"$fragments"'] as $specs
+        | reduce stream as $r ({};
+            [$keys[] as $k | $r[$k]] as $key
+            | ($key | canon | tojson) as $hash
+            | ((.[$hash] // []) | map(.key == $key) | index(true)) as $found
+            | ($found == null) as $new
+            | ($found // ((.[$hash] // []) | length)) as $i
+            | if $new then .[$hash][$i] = {key: $key, values: []} else . end
+            | .[$hash][$i].values |= (
+                reduce range(0; $specs | length) as $a (.;
+                    $specs[$a] as $spec | $r[$spec.field] as $v
+                    | .[$a] |= (
+                        if $spec.func == "count" then (. // 0) + 1
+                        elif $spec.func == "sum" then
+                            if ($v | type) == "number" then if . == null then $v else . + $v end else . end
+                        elif $spec.func == "avg" then
+                            (. // {sum: 0, count: 0})
+                            | if ($v | type) == "number" then .sum += $v | .count += 1 else . end
+                        elif $spec.func == "min" then
+                            if $v != null and (. == null or $v < .) then $v else . end
+                        elif $spec.func == "max" then
+                            if $v != null and (. == null or $v >= .) then $v else . end
+                        elif $spec.func == "first" then if $new then $v else . end
+                        elif $spec.func == "last" then $v
+                        else (. // []) + [$v] end
+                    )
+                )
+            )
         )
-        | .[]
-    '
+        | [.[][]] | sort_by(.key) | .[]
+        | . as $g
+        | reduce range(0; $keys | length) as $i ({}; .[$keys[$i]] = $g.key[$i])
+        | reduce range(0; $specs | length) as $i (.;
+            $specs[$i] as $spec | $g.values[$i] as $v
+            | .[$spec.name] = (if $spec.func == "avg" then
+                if $v.count > 0 then $v.sum / $v.count else null end
+                elif $spec.func == "sum" then $v // 0
+                else $v end)
+        );'
+
 }
 
 # MARK: Pipeline field completion
