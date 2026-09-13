@@ -1,0 +1,7 @@
+[
+    {"name": "api", "team": "platform", "status": "healthy", "latency_ms": 42},
+    {"name": "worker", "team": "platform", "status": "degraded", "latency_ms": 180},
+    {"name": "web", "team": "product", "status": "healthy", "latency_ms": 25},
+    {"name": "search", "team": "product", "status": "degraded", "latency_ms": 240},
+    {"name": "mail", "team": "platform", "status": "healthy", "latency_ms": 65}
+]

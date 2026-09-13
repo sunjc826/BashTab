@@ -1,37 +1,18 @@
 # BashTab demo: structured output pipeline — regenerates docs/demo-pipeline.gif
-# Render via docs/render_demos.sh (tapes Output .mp4; ffmpeg converts to .gif
-# because vhs's built-in GIF encoder produces 0-byte files in some containers).
-# Container note: if chromium fails with a namespace/sandbox error, run as
-#   PATH=/tmp/vhs-bin:$PATH vhs docs/demo-pipeline.tape
-
+# Render from the repository root with docs/render_demos.sh docs/demo-pipeline.tape
 Output docs/demo-pipeline.mp4
 
-Set Shell "bash"
-Set FontSize 16
-Set Width 1600
-Set Height 900
-Set Padding 16
-Set Theme "Catppuccin Mocha"
-Set TypingSpeed 50ms
-
-# ── Invisible pre-roll: activate BashTab and prepare a clean prompt ──
-Hide
-Type@0ms "export BU_MODULE_PATH=; source ./activate 2>/dev/null"
-Enter
-Sleep 2s
-Type@0ms "PROMPT_COMMAND=; PS1='$ '; clear"
-Enter
-Show
-Sleep 500ms
+Source docs/demos/style.tape
+Source docs/demos/setup.tape
 
 # ── Beat 1: records render as a table on a terminal ───────
-Type "bu get-command"
+Type "bu get-command | bu where verb -eq format select name,verb"
 Enter
 Sleep 3.5s
 
 # ── Beat 2: the same command piped emits JSONL (Out-Default) ─
-# (tail -3, not head -3: head causes a visible jq broken-pipe error)
-Type "bu get-command | tail -3"
+# Use the same small result set before displaying raw JSONL.
+Type "bu get-command | bu where verb -eq format select name,verb | cat"
 Enter
 Sleep 2.5s
 
@@ -43,13 +24,13 @@ Type "syn"
 Sleep 1s
 Enter
 Sleep 800ms
+Type " where verb -eq format"
 Enter
 Sleep 3s
 
 # ── Beat 4: SQL-style query — group-by, agg, having, order-by ─
-Type "clear"
-Enter
-Type "bu get-command | bu query-object group-by verb agg count having count -gt 5 order-by count desc"
+Ctrl+L
+Type "bu get-command | bu query-object group-by verb agg count having count -gt 10 order-by count desc"
 Enter
 Sleep 3.5s
 
@@ -58,5 +39,11 @@ Type "bu get-command | bu grep docker select name,synopsis"
 Enter
 Sleep 3.5s
 
-# ── Outro: hold the final frame ────────────────────────────
-Sleep 2s
+# ── Beat 6: shareable table styles ─────────────────────────
+Ctrl+L
+Type "bu import-tsv docs/demos/services.tsv | bu format-table --style double --columns name,status"
+Enter
+Sleep 3s
+Type "bu import-tsv docs/demos/services.tsv | bu format-table --style markdown --columns name,status"
+Enter
+Sleep 3s
