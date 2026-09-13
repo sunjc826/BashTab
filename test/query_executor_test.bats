@@ -133,35 +133,40 @@ function test_query_executor_empty_and_zero { #@test
 
 function test_query_executor_errors_and_cleanup { #@test
     local initial_depth=${#BU_SCOPE_STACK[@]}
-    local status=0
-    export BU_QUERY_EXECUTOR=combined
-    printf 'malformed\n' > "$query_data"
-    bu query-object --from "$query_data" select name >"$BATS_TEST_TMPDIR/out" 2>"$BATS_TEST_TMPDIR/err" || status=$?
-    [[ "$status" != 0 ]]
-    assert_equal "${#BU_SCOPE_STACK[@]}" "$initial_depth"
-    [[ -s "$BATS_TEST_TMPDIR/err" ]]
-    printf '{"name":"ok"}\n' > "$query_data"
-    run bu query-object --from "$query_data" where '.name | error("bad value")'
-    assert_failure
-    assert_output --partial 'bad value'
-    run bu query-object --from "$query_data" select bad-key
-    assert_failure
-    run bu query-object --from "$query_data" group-by name agg bogus:name
-    assert_failure
-    # A failing sink must survive the query's cleanup, even without pipefail.
-    query_with_failed_sink() {
-        bu_out() { cat >/dev/null; return 23; }
-        bu query-object --from "$query_data"
-    }
-    run query_with_failed_sink
-    assert_failure 23
-    query_with_failed_converter() {
-        jc() { return 29; }
-        bu query-object --from "$BATS_TEST_TMPDIR/failing.csv"
-    }
-    : > "$BATS_TEST_TMPDIR/failing.csv"
-    run query_with_failed_converter
-    assert_failure 29
+    local status=0 mode
+    for mode in pipeline combined; do
+        export BU_QUERY_EXECUTOR=$mode
+        status=0
+        printf 'malformed\n' > "$query_data"
+        bu query-object --from "$query_data" select name >"$BATS_TEST_TMPDIR/out" 2>"$BATS_TEST_TMPDIR/err" || status=$?
+        [[ "$status" != 0 ]]
+        assert_equal "${#BU_SCOPE_STACK[@]}" "$initial_depth"
+        [[ -s "$BATS_TEST_TMPDIR/err" ]]
+        printf '{"name":"ok"}\n' > "$query_data"
+        run bu query-object --from "$query_data" where '.name | error("bad value")'
+        assert_failure
+        assert_output --partial 'bad value'
+        assert_output --partial "query-object [$mode]:"
+        run bu query-object --from "$query_data" select bad-key
+        assert_failure
+        run bu query-object --from "$query_data" group-by name agg bogus:name
+        assert_failure
+        # A failing sink must survive the query's cleanup, even without pipefail.
+        query_with_failed_sink() {
+            bu_out() { cat >/dev/null; return 23; }
+            bu query-object --from "$query_data" where '.name | error("upstream failure")'
+        }
+        run query_with_failed_sink
+        assert_failure 23
+        assert_output --partial "format stage failed (status 23)"
+        query_with_failed_converter() {
+            jc() { return 29; }
+            bu query-object --from "$BATS_TEST_TMPDIR/failing.csv"
+        }
+        : > "$BATS_TEST_TMPDIR/failing.csv"
+        run query_with_failed_converter
+        assert_failure 29
+    done
 }
 
 function test_query_executor_catch_errors_under_errexit { #@test
@@ -169,14 +174,17 @@ function test_query_executor_catch_errors_under_errexit { #@test
     run env BU_USER_DEFINED_CLI_COMMAND_NAME=qx BU_QUERY_EXECUTOR=combined bash -c '
         source "$BU_DIR/activate" >/dev/null 2>&1
         set -e
-        for pipefail in off on; do
-            if [[ "$pipefail" == on ]]; then set -o pipefail; fi
-            for cli in bu qx; do
-                status=0
-                "$cli" query-object --from "$1" select name 2>/dev/null || status=$?
-                [[ "$status" != 0 && "$-" == *e* && ${#BU_SCOPE_STACK[@]} == 0 ]]
-                if "$cli" select name --from "$1" 2>/dev/null; then exit 1; fi
-                [[ ${#BU_SCOPE_STACK[@]} == 0 ]]
+        for pipefail_mode in off on; do
+            if [[ "$pipefail_mode" == on ]]; then set -o pipefail; fi
+            for executor in pipeline combined; do
+                export BU_QUERY_EXECUTOR=$executor
+                for cli in bu qx; do
+                    status=0
+                    "$cli" query-object --from "$1" select name 2>/dev/null || status=$?
+                    [[ "$status" != 0 && "$-" == *e* && ${#BU_SCOPE_STACK[@]} == 0 ]]
+                    if "$cli" select name --from "$1" 2>/dev/null; then exit 1; fi
+                    [[ ${#BU_SCOPE_STACK[@]} == 0 ]]
+                done
             done
         done
         [[ $(set -o) == *"pipefail"*"on"* ]]
@@ -219,4 +227,153 @@ function test_query_executor_first_native_large_file_is_quiet { #@test
     run bash -c 'source "$BU_DIR/activate" >/dev/null 2>&1; trap "" PIPE; set -o pipefail; BU_QUERY_EXECUTOR=combined bu query-object --from "$1" select n first 2' bash "$query_data"
     assert_success
     assert_output $'{"n":0}\n{"n":1}'
+}
+
+function test_query_executor_expected_cancellation_and_real_failure { #@test
+    local mode
+    query_with_closed_output() {
+        bu_out() { cat >/dev/null; return 141; }
+        bu query-object --from "$query_data" first 2
+    }
+    jq -nc 'range(20000) | {n: .}' > "$query_data"
+    for mode in pipeline combined; do
+        export BU_QUERY_EXECUTOR=$mode
+        run bu query-object --from "$query_data" select n first 2
+        assert_success
+        assert_output $'{"n":0}\n{"n":1}'
+        run bu query-object --from "$query_data" where '.n | error("real failure")' first 2
+        assert_failure 5
+        assert_output --partial 'real failure'
+        run query_with_closed_output
+        assert_failure 141
+        assert_output --partial 'format stage failed (status 141)'
+    done
+}
+
+function test_query_executor_native_input_and_outfile_failures { #@test
+    local mode
+    printf 'malformed\n' > "$BATS_TEST_TMPDIR/bad.json"
+    for mode in pipeline combined; do
+        export BU_QUERY_EXECUTOR=$mode
+        run bu query-object --from "$BATS_TEST_TMPDIR/bad.json" select name
+        assert_failure
+        assert_output --partial 'Invalid numeric literal'
+        assert_output --partial "query-object [$mode]:"
+        if [[ -c /dev/full ]]; then
+            run bu query-object --from "$query_data" outfile /dev/full
+            assert_failure
+            assert_output --partial 'format stage failed'
+        fi
+    done
+}
+
+function test_query_executor_help_and_parse_error_cleanup { #@test
+    local mode status initial_depth=${#BU_SCOPE_STACK[@]}
+    for mode in pipeline combined; do
+        export BU_QUERY_EXECUTOR=$mode
+        bu query-object --help >"$BATS_TEST_TMPDIR/help"
+        assert_equal "${#BU_SCOPE_STACK[@]}" "$initial_depth"
+        status=0
+        bu query-object --format invalid >"$BATS_TEST_TMPDIR/help" 2>&1 || status=$?
+        assert_equal "$status" 1
+        assert_equal "${#BU_SCOPE_STACK[@]}" "$initial_depth"
+    done
+}
+
+function test_query_plan_debug_compatibility { #@test
+    local mode
+    for mode in pipeline combined; do
+        export BU_QUERY_EXECUTOR=$mode
+        run bu query-object --debug where '.name | error("must not run")' first 5
+        assert_success
+        assert_output '{"clauses":["where"],"outputFields":null}'
+        run bu query-object --debug select label=name, x distinct order-by label desc first 05
+        assert_success
+        assert_output '{"clauses":["select","distinct","order-by"],"outputFields":["label","x"]}'
+        run bu query-object --debug --explain --format json group-by team agg count,mean=avg:x having count -gt 1
+        assert_success
+        assert_output '{"clauses":["group-by","agg","having"],"outputFields":["team","count","mean"]}'
+        run bu query-object --debug select nested expand
+        assert_success
+        assert_output '{"clauses":["select"],"outputFields":["nested"]}'
+    done
+}
+
+function test_query_plan_explain_execution { #@test
+    local mode plan
+    for mode in pipeline combined; do
+        export BU_QUERY_EXECUTOR=$mode
+        run bu query-object select name,x --explain order-by x desc first 5
+        assert_success
+        assert_output --partial "Executor: $mode"
+        assert_output --partial 'SELECT  name,x  [streaming]'
+        assert_output --partial 'ORDER-BY  x descending  [buffers-input]'
+        if [[ "$mode" == pipeline ]]; then
+            assert_output --partial 'head -n 5'
+        else
+            assert_output --partial 'jq (combined query)'
+        fi
+        plan=$(bu query-object --explain --format json where active -eq true group-by team \
+            agg count,avg:x having count -gt 1 select team,mean=avg_x distinct order-by mean desc first 05)
+        run jq -e --arg mode "$mode" '
+            .version == 1 and .executor == $mode and
+            .outputFields == ["team","mean"] and
+            [.stages[].clause] == ["where","group-by","having","select","distinct","order-by","first"] and
+            .stages[1].operation.aggregates == ["count","avg:x"] and
+            .stages[4].processing == "retains-seen-values" and
+            .stages[5].operation.direction == "descending" and
+            .stages[6].operation == 5 and .output.processing == "buffers-results"
+        ' <<< "$plan"
+        assert_success
+    done
+}
+
+function test_query_plan_no_input_or_outfile_mutation { #@test
+    local mode flag query_fd line plan initial_depth=${#BU_SCOPE_STACK[@]}
+    local outfile="$BATS_TEST_TMPDIR/untouched.jsonl"
+    local fifo="$BATS_TEST_TMPDIR/unopened.jsonl"
+    command -v timeout >/dev/null || skip "timeout is required for the FIFO planning check"
+    mkfifo "$fifo"
+    printf 'keep me\n' > "$outfile"
+    for mode in pipeline combined; do
+        export BU_QUERY_EXECUTOR=$mode
+        for flag in --debug --explain; do
+            exec {query_fd}< "$query_data"
+            bu query-object "$flag" --format json select name outfile "$outfile" <&"$query_fd" >/dev/null
+            IFS= read -r line <&"$query_fd"
+            exec {query_fd}<&-
+            assert_equal "$line" '{"name":"alpha","team":"a","x":10,"active":true,"nested":{"n":1}}'
+            assert_equal "${#BU_SCOPE_STACK[@]}" "$initial_depth"
+        done
+        # An unopened FIFO would block forever if planning tried to read it.
+        run timeout 15 bash -c '
+            source "$BU_DIR/activate" >/dev/null 2>&1
+            bu query-object --explain --format jsonl --from "$1" where ".name | error(\"must not run\")" outfile "$2"
+        ' bash "$fifo" "$outfile"
+        assert_success
+        plan=$output
+        run jq -e --arg path "$fifo" '.input.source == $path and .input.format == "jsonl"' <<< "$plan"
+        assert_success
+        assert_equal "$(cat "$outfile")" 'keep me'
+    done
+}
+
+function test_query_plan_input_and_output_buffering { #@test
+    local plan
+    export BU_QUERY_EXECUTOR=combined
+    printf 'not JSON\n' > "$BATS_TEST_TMPDIR/unread.json"
+    plan=$(bu query-object --explain --format jsonl --from "$BATS_TEST_TMPDIR/unread.json" first 2)
+    run jq -e '.input.processing == "buffers-json-value" and .output.processing == "streaming"' <<< "$plan"
+    assert_success
+    plan=$(bu query-object --explain --format jsonl --from "$BATS_TEST_TMPDIR/unread.json" order-by name first 0)
+    run jq -e '.input.processing == "not-read" and any(.notes[]; contains("bypasses input"))' <<< "$plan"
+    assert_success
+    plan=$(bu query-object --explain --format jsonl select nested expand distinct)
+    run jq -e '.outputFields == null and .stages[0].operation.expand == true and .stages[1].processing == "retains-seen-values"' <<< "$plan"
+    assert_success
+    export BU_OUTPUT_FORMAT=table
+    run bu query-object --explain outfile "$BATS_TEST_TMPDIR/new.jsonl" first 2
+    assert_success
+    assert_output --partial '(table; buffers-results)'
+    [[ ! -e "$BATS_TEST_TMPDIR/new.jsonl" ]]
 }
