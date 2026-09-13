@@ -125,10 +125,13 @@ local first=
 local format=auto
 local columns=
 local is_debug=false
+local is_explain=false
+local query_plan=
 local executor=${BU_QUERY_EXECUTOR:-pipeline}
 local execution_status=0
 local cleanup_status=0
 local combined_program=
+local query_runner=__bu_query_object_pipeline
 local is_help=false
 local error_msg=
 local autocompletion=()
@@ -786,6 +789,11 @@ do
         # Print help
         is_help=true
         ;;
+    --explain)# _FLAG
+        # Describe execution without reading input or running the query.
+        # --format json/jsonl emits a structured plan; otherwise show readable text.
+        is_explain=true
+        ;;
     --debug)# _FLAG
         # Output a JSON query plan describing what this query would do
         # (clauses and output field names) without reading stdin.
@@ -817,6 +825,8 @@ fi
 
 if "$is_help"
 then
+    # Parsing errors also request help; they must not be reported as success.
+    [[ -n "$error_msg" ]] && execution_status=1
     bu_autohelp \
         --description "
 Query a JSONL stream with SQL-style clauses in a single command.
@@ -860,6 +870,9 @@ Output ends at Out-Default: a table on a terminal, JSONL when piped.
 BU_QUERY_EXECUTOR selects pipeline (default, separate processes) or combined
 (one jq evaluator). Combined first stops reading once it has enough results;
 upstream commands can still receive SIGPIPE under shell pipefail.
+Use --explain for stages, buffering, and early-stop behavior without running
+this query. --format json/jsonl emits a structured explanation. --debug keeps
+its compact completion summary and takes precedence if both flags are used.
 " \
         --example "Full query (structured)" "where type -eq source select name,verb order-by verb" \
         --example "Full query (jq)" "where '.type == \"source\"' select name,verb order-by verb" \
@@ -884,7 +897,9 @@ upstream commands can still receive SIGPIPE under shell pipefail.
         --example "Query a CSV file" "from data.csv where type -eq source select name" \
         --example "Query a TSV file" "from data.tsv select name,verb order-by name" \
         --example "Save results to a file" "select name,verb order-by name outfile verbs.jsonl"
-    return 0
+    bu_scope_pop_function || cleanup_status=$?
+    if (( execution_status == 0 )); then execution_status=$cleanup_status; fi
+    return "$execution_status"
 fi
 
 # Normalize clauses once for either execution backend.
@@ -991,13 +1006,16 @@ pipeline|combined) ;;
     ;;
 esac
 
-if "$is_debug"
-then
-    # --debug: emit a JSON query plan describing clauses and output fields.
-    # Used by the pipeline completion system for static field analysis.
-    # Does not read stdin.
+__bu_query_object_build_plan()
+{
+    # Shared base for debug and explain. Keep the historical debug projection
+    # byte-compatible, including clause order and null for unknown fields.
     local -a clauses=()
     local -a output_fields=()
+    local sel_spec sel_new gk
+    local ifs=$IFS
+    local agg_spec agg_name agg_body agg_func agg_field
+    local clauses_json fields_json base_plan
 
     [[ -n "$where_expr" ]] && clauses+=(where)
     [[ -n "$grep_expr" ]] && clauses+=(grep)
@@ -1012,8 +1030,6 @@ then
     if [[ -n "$select_fields" ]]
     then
         # SELECT projects: output fields are the select spec names (after rename)
-        local sel_spec sel_new
-        local ifs=$IFS
         IFS=','
         for sel_spec in $select_fields
         do
@@ -1028,12 +1044,9 @@ then
     elif [[ -n "$group_keys" ]]
     then
         # GROUP BY without SELECT: output fields = group keys + aggregate names
-        local gk
-        local ifs=$IFS
         IFS=','
         for gk in $group_keys; do [[ -n "$gk" ]] && output_fields+=("$gk"); done
         IFS=$ifs
-        local agg_spec agg_name agg_body agg_func agg_field
         for agg_spec in "${agg_specs[@]}"
         do
             case "$agg_spec" in
@@ -1048,20 +1061,164 @@ then
         done
     fi
 
-    local clauses_json
-    clauses_json=$("$BU_OUT_JQ" -cn --args '$ARGS.positional' -- "${clauses[@]}")
-    local fields_json
+    clauses_json=$("$BU_OUT_JQ" -cn --args '$ARGS.positional' -- "${clauses[@]}") || return $?
     if ((${#output_fields[@]} > 0))
     then
-        fields_json=$("$BU_OUT_JQ" -cn --args '$ARGS.positional' -- "${output_fields[@]}")
+        fields_json=$("$BU_OUT_JQ" -cn --args '$ARGS.positional' -- "${output_fields[@]}") || return $?
     else
         fields_json=null
     fi
 
-    "$BU_OUT_JQ" -cn --argjson clauses "$clauses_json" --argjson fields "$fields_json" \
-        '{clauses: $clauses, outputFields: $fields}'
-    bu_scope_pop_function
-    return 0
+    base_plan=$("$BU_OUT_JQ" -cn --argjson clauses "$clauses_json" --argjson fields "$fields_json" \
+        '{clauses: $clauses, outputFields: $fields}') || return $?
+    if "$is_explain" && ! "$is_debug"; then
+        __bu_query_object_explain_plan "$base_plan"
+    else
+        printf '%s\n' "$base_plan"
+    fi
+}
+
+__bu_query_object_explain_plan()
+{
+    local -r base_plan=$1
+    local input_format=jsonl
+    local resolved_format=$format
+    local input_ext=${from_file##*.}
+
+    if [[ -n "$from_file" && "$from_file" != /dev/stdin && "$from_file" != - ]]; then
+        case "${input_ext,,}" in
+        json|csv) input_format=${input_ext,,} ;;
+        tsv|tab) input_format=tsv ;;
+        esac
+    fi
+    # Resolve the query's eventual sink, without opening its output file.
+    if [[ "$resolved_format" == auto ]]; then
+        if [[ -n "$BU_OUTPUT_FORMAT" ]]; then
+            resolved_format=$BU_OUTPUT_FORMAT
+        elif [[ -z "$out_file" && -t 1 ]]; then
+            resolved_format=table
+        else
+            resolved_format=jsonl
+        fi
+    fi
+
+    "$BU_OUT_JQ" -cn --argjson base "$base_plan" \
+        --arg executor "$executor" --arg source "${from_file:-stdin}" \
+        --arg inputFormat "$input_format" --arg destination "${out_file:-stdout}" \
+        --arg outputFormat "$resolved_format" --arg columns "$columns" \
+        --arg where "$where_expr" --arg grep "$grep_expr" --arg group "$group_keys" \
+        --arg having "$having_expr" --arg projection "$select_fields" \
+        --arg order "$order_by" --arg first "$first" \
+        --argjson expand "$is_select_expand" --argjson distinct "$is_distinct" \
+        --argjson desc "$is_desc" --args '
+        def stage($clause; $operation; $processing):
+            {clause: $clause, operation: $operation, processing: $processing};
+        ($first != "" and ($first | test("^0+$"))) as $zero
+        | ($executor == "combined" and $zero) as $bypass
+        | ($group != "" or $order != "" or $inputFormat == "csv") as $blocking
+        | $base + {
+            version: 1,
+            executor: $executor,
+            input: {source: $source, format: $inputFormat,
+                processing: (if $bypass then "not-read"
+                    elif $inputFormat == "csv" then "buffers-input"
+                    elif $inputFormat == "json" then "buffers-json-value"
+                    else "streaming" end)},
+            output: {destination: $destination, format: $outputFormat, columns: $columns,
+                processing: (if $outputFormat == "table" or $outputFormat == "json"
+                    then "buffers-results" else "streaming" end)},
+            stages: [
+                if $where != "" then stage("where"; $where; "streaming") else empty end,
+                if $grep != "" then stage("grep"; $grep; "streaming") else empty end,
+                if $group != "" then
+                    stage("group-by"; {keys: $group, aggregates: $ARGS.positional}; "buffers-input")
+                else empty end,
+                if $having != "" then stage("having"; $having; "streaming") else empty end,
+                if $projection != "" then
+                    stage("select"; {fields: $projection, expand: $expand}; "streaming")
+                else empty end,
+                if $distinct then stage("distinct"; "First occurrence of each projected value"; "retains-seen-values") else empty end,
+                if $order != "" then
+                    stage("order-by"; {field: $order, direction: (if $desc then "descending" else "ascending" end)}; "buffers-input")
+                else empty end,
+                if $first != "" then
+                    stage("first"; ($first | tonumber); (if $executor == "combined" then "stops-requesting-records" else "closes-upstream-pipe" end))
+                else empty end
+            ],
+            execution: (if $executor == "combined" then
+                [if $inputFormat == "csv" and ($bypass | not) then "jc --csv" else empty end,
+                 "jq (combined query)", "format " + $outputFormat]
+            else
+                ["input reader",
+                 (if $where != "" or $grep != "" then "where/grep: jq" else "where: cat" end),
+                 (if $group != "" then "group-by: jq" else "group-by: cat" end),
+                 (if $having != "" then "having: jq" else "having: cat" end),
+                 (if $projection != "" then "select: jq" else "select: cat" end),
+                 (if $distinct then "distinct: jq" else "distinct: cat" end),
+                 (if $order != "" then "order-by: jq" else "order-by: cat" end),
+                 (if $first != "" then "head -n " + $first else "first: cat" end),
+                 "format " + $outputFormat]
+            end),
+            notes: [
+                if $bypass then "first 0 bypasses input and the other query stages."
+                elif $first != "" and $blocking then "Grouping, sorting, or CSV conversion requires all input before results reach first."
+                elif $first != "" then "The query can stop reading once enough matching results reach first."
+                else "No first limit is set; normal processing continues to end of input." end,
+                if $inputFormat == "json" and ($bypass | not) then "Each JSON value is parsed in full before array elements can be queried." else empty end,
+                if $distinct then "Distinct retains seen values; memory grows with the number of unique results." else empty end,
+                if $outputFormat == "table" or $outputFormat == "json" then "The formatter buffers query results, which may already be limited by first." else empty end,
+                if $first != "" then "External upstream producers can receive SIGPIPE when reading stops." else empty end,
+                if $executor == "pipeline" and $first != "" then "head closes internal pipes early; expected SIGPIPE is handled separately from real failures." else empty end,
+                if $expand then "Expanded output field names cannot be inferred from the projection alone." else empty end,
+                if $where != "" or $having != "" then "Raw jq expressions are not executed or analyzed for input consumption; input/inputs can change the behavior shown here." else empty end
+            ]
+        }
+        | if $expand then .outputFields = null else . end
+        ' -- "${agg_specs[@]}"
+}
+
+__bu_query_object_render_plan()
+{
+    # Render only the already-built plan. Never attach this to query input or
+    # send it to outfile; outfile describes the eventual query destination.
+    case "$format" in
+    json) "$BU_OUT_JQ" . <<< "$query_plan" ;;
+    jsonl) printf '%s\n' "$query_plan" ;;
+    *)
+        "$BU_OUT_JQ" -r '
+            def operation:
+                if .clause == "select" then .operation.fields + (if .operation.expand then " (expand)" else "" end)
+                elif .clause == "group-by" then .operation.keys + (if (.operation.aggregates | length) > 0 then " agg " + (.operation.aggregates | join(",")) else " (distinct keys)" end)
+                elif .clause == "order-by" then .operation.field + " " + .operation.direction
+                else .operation | tostring end;
+            "Executor: " + .executor,
+            "Input:    " + .input.source + " (" + .input.format + "; " + .input.processing + ")",
+            "Output:   " + .output.destination + " (" + .output.format + "; " + .output.processing + ")",
+            "", "Stages (logical order):",
+            (if (.stages | length) == 0 then "  Identity (no query clauses)"
+             else .stages[] | "  " + (.clause | ascii_upcase) + "  "
+                  + operation
+                  + "  [" + .processing + "]" end),
+            "", "Execution: " + (.execution | join(" → ")),
+            "", (.notes[] | "- " + .)
+        ' <<< "$query_plan"
+        ;;
+    esac
+}
+
+if "$is_debug" || "$is_explain"; then
+    if query_plan=$(__bu_query_object_build_plan); then
+        if "$is_debug"; then
+            printf '%s\n' "$query_plan" || execution_status=$?
+        else
+            __bu_query_object_render_plan || execution_status=$?
+        fi
+    else
+        execution_status=$?
+    fi
+    bu_scope_pop_function || cleanup_status=$?
+    if (( execution_status == 0 )); then execution_status=$cleanup_status; fi
+    return "$execution_status"
 fi
 
 # ```md
@@ -1130,15 +1287,13 @@ __bu_query_object_compile()
 }
 
 # ```md
-# Run the compiled query, reading stdin or a native file directly. CSV still
-# needs jc; preserve its failures as well as jq's without changing pipefail.
+# Run the compiled query, reading stdin or a native file directly. CSV is
+# handled by combined_pipeline so it can capture the converter status.
 # Uses the enclosing combined_program and from_file locals.
 # ```
 __bu_query_object_combined_input()
 {
     local input_ext=${from_file##*.}
-    local -a statuses=()
-    local status=0 stage_status
 
     if [[ "$first" =~ ^0+$ ]]; then
         "$BU_OUT_JQ" -nc "$combined_program" </dev/null
@@ -1146,38 +1301,60 @@ __bu_query_object_combined_input()
         "$BU_OUT_JQ" -nc "$combined_program"
     else
         case "${input_ext,,}" in
-        csv)
-            if jc --csv < "$from_file" | "$BU_OUT_JQ" -nc "$combined_program"; then
-                statuses=("${PIPESTATUS[@]}")
-            else
-                statuses=("${PIPESTATUS[@]}")
-            fi
-            for stage_status in "${statuses[@]}"; do
-                if (( stage_status != 0 )); then status=$stage_status; fi
-            done
-            return "$status"
-            ;;
         tsv|tab) "$BU_OUT_JQ" -Rnc "$combined_program" < "$from_file" ;;
         *) "$BU_OUT_JQ" -nc "$combined_program" < "$from_file" ;;
         esac
     fi
 }
 
+# Report stage failures and return the rightmost genuine failure. SIGPIPE from
+# a writer before a successful FIRST stage is expected cancellation. SIGPIPE
+# following a downstream failure is secondary; never hide other exit codes.
+__bu_query_object_status()
+{
+    local -n stage_names=$1
+    local -n stage_statuses=$2
+    local -r first_index=${3:--1}
+    local status=0
+    local i code
+
+    for (( i=${#stage_statuses[@]}-1; i>=0; i-- )); do
+        code=${stage_statuses[i]}
+        (( code == 0 )) && continue
+        if (( code == 141 )); then
+            if (( status != 0 )); then continue; fi
+            if (( first_index >= 0 && i < first_index && stage_statuses[first_index] == 0 )); then
+                continue
+            fi
+        fi
+        bu_log_err "query-object [$executor]: ${stage_names[i]} stage failed (status $code)"
+        if (( status == 0 || status == 141 )); then status=$code; fi
+    done
+    return "$status"
+}
+
 __bu_query_object_combined_pipeline()
 {
     local -a statuses=()
-    local status=0 stage_status
+    local -a stages=(query format)
+    local input_ext=${from_file##*.}
 
     # Guard execution so errexit cannot bypass status capture and cleanup.
-    if __bu_query_object_combined_input | bu_out "${out_args[@]}"; then
-        statuses=("${PIPESTATUS[@]}")
+    if [[ "${input_ext,,}" == csv && ! "$first" =~ ^0+$ ]]; then
+        stages=(csv-input query format)
+        if jc --csv < "$from_file" | "$BU_OUT_JQ" -nc "$combined_program" | bu_out "${out_args[@]}"; then
+            statuses=("${PIPESTATUS[@]}")
+        else
+            statuses=("${PIPESTATUS[@]}")
+        fi
     else
-        statuses=("${PIPESTATUS[@]}")
+        if __bu_query_object_combined_input | bu_out "${out_args[@]}"; then
+            statuses=("${PIPESTATUS[@]}")
+        else
+            statuses=("${PIPESTATUS[@]}")
+        fi
     fi
-    for stage_status in "${statuses[@]}"; do
-        if (( stage_status != 0 )); then status=$stage_status; fi
-    done
-    return "$status"
+    __bu_query_object_status stages statuses
 }
 
 __bu_query_object_where()
@@ -1267,31 +1444,19 @@ __bu_query_object_first()
     fi
 }
 
-local -a out_args=(--format "$format")
-[[ -n "$columns" ]] && out_args+=(--columns "$columns")
-
-if [[ "$executor" == combined ]]; then
-    if __bu_query_object_compile; then
-        combined_program=$BU_RET
-    else
-        execution_status=$?
-        bu_scope_pop_function
-        return "$execution_status"
-    fi
-    if [[ -n "$out_file" ]]; then
-        __bu_query_object_combined_pipeline > "$out_file" || execution_status=$?
-    else
-        __bu_query_object_combined_pipeline || execution_status=$?
-    fi
-    bu_scope_pop_function || cleanup_status=$?
-    if (( execution_status == 0 )); then execution_status=$cleanup_status; fi
-    return "$execution_status"
-fi
-
 __bu_query_object_pipeline()
 {
+    local -a statuses=()
+    local -a stages=(input where group-by having select distinct order-by first format)
+    local first_index=-1
+    [[ -n "$first" ]] && first_index=7
     # Cmdlets implicitly end at Out-Default: a table on a terminal, JSONL when piped
-    __bu_query_object_where | __bu_query_object_group | __bu_query_object_having | __bu_query_object_select | __bu_query_object_distinct | __bu_query_object_sort | __bu_query_object_first | bu_out "${out_args[@]}"
+    if __bu_query_object_input | __bu_query_object_where | __bu_query_object_group | __bu_query_object_having | __bu_query_object_select | __bu_query_object_distinct | __bu_query_object_sort | __bu_query_object_first | bu_out "${out_args[@]}"; then
+        statuses=("${PIPESTATUS[@]}")
+    else
+        statuses=("${PIPESTATUS[@]}")
+    fi
+    __bu_query_object_status stages statuses "$first_index"
 }
 
 __bu_query_object_input()
@@ -1300,19 +1465,38 @@ __bu_query_object_input()
     then
         cat
     else
-        __bu_out_read_file_jsonl "$from_file"
+        __bu_out_read_file_jsonl "$from_file" "" true
     fi
 }
 
-if [[ -n "$out_file" ]]
-then
-    # A file is never a terminal, so --format auto resolves to JSONL there
-    __bu_query_object_input | __bu_query_object_pipeline > "$out_file"
-else
-    __bu_query_object_input | __bu_query_object_pipeline
+local -a out_args=(--format "$format")
+[[ -n "$columns" ]] && out_args+=(--columns "$columns")
+
+if [[ "$executor" == combined ]]; then
+    if __bu_query_object_compile; then
+        combined_program=$BU_RET
+        query_runner=__bu_query_object_combined_pipeline
+    else
+        execution_status=$?
+        bu_log_err "query-object [$executor]: compile stage failed (status $execution_status)"
+    fi
 fi
 
-bu_scope_pop_function
+if (( execution_status == 0 )); then
+    if [[ -n "$out_file" ]]; then
+        # A file is never a terminal, so auto resolves to JSONL there.
+        "$query_runner" > "$out_file" || execution_status=$?
+    else
+        "$query_runner" || execution_status=$?
+    fi
+fi
+
+bu_scope_pop_function || cleanup_status=$?
+if (( cleanup_status != 0 )); then
+    bu_log_err "query-object [$executor]: cleanup failed (status $cleanup_status)"
+fi
+if (( execution_status == 0 )); then execution_status=$cleanup_status; fi
+return "$execution_status"
 }
 
 __bu_bu_query_object_main "$@"

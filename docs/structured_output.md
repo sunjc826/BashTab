@@ -211,14 +211,103 @@ combined evaluator's input rather than a separate clause process's input.
 
 JSONL, JSON, and TSV files are read directly by the combined evaluator; CSV
 still requires `jc`. A JSON array must be parsed before its elements can be
-queried. The combined executor preserves evaluator, converter, and formatter
-failures through cleanup, even without shell `pipefail`.
+queried. Both executors preserve query, input-converter, and formatter failures
+through cleanup, even without shell `pipefail`.
 
 An external producer in `producer | bu query-object first N` can still
 receive SIGPIPE when the query stops reading, and the outer pipeline can
 therefore fail under `set -o pipefail`. Combined mode eliminates the query's
 internal `head`/forwarder cancellation; it does not drain the remaining
 producer output or hide upstream failures.
+
+### Query errors
+
+Both executors return a nonzero status for a failed stage and add its name and
+status to stderr, alongside the tool's original diagnostic. For example:
+
+```text
+query-object [pipeline]: where stage failed (status 5)
+query-object [combined]: query stage failed (status 5)
+```
+
+Pipeline mode can identify individual transform stages. Combined mode reports
+the shared jq evaluator as `query`, since its clauses execute together. Invalid
+field specifications caught while building that evaluator report `compile`.
+
+When multiple stages fail, the rightmost non-SIGPIPE failure determines the
+query status. Cleanup failures are reported but do not replace an existing
+query failure. Results already emitted before an error remain partial output;
+check the exit status before treating an output file as complete.
+
+In pipeline mode, SIGPIPE (141) from a writer before a successful `first` stage
+is treated as expected cancellation. Other failures are retained, including
+broken-write errors when SIGPIPE is ignored. SIGPIPE caused by downstream
+failure is secondary to that failure. This handling is internal to the query;
+it does not change shell options or the status of external upstream producers.
+
+### Explain a query without running it
+
+`--explain` describes the parsed query and its execution stages without consuming
+stdin, reading the data file, executing predicates, or writing `outfile`:
+
+```bash
+BU_QUERY_EXECUTOR=combined bu query-object --explain \
+  where active -eq true select name,score order-by score desc first 5
+```
+
+The readable plan shows:
+
+- Input source and format, and the eventual output destination and format.
+- Logical clause order, expressions, projections, aggregates, sort direction,
+  and the result limit.
+- Streaming operations, sorting/grouping that buffer input, and distinct's
+  retained set of seen values.
+- Execution stages: the combined jq evaluator, or the original pipeline with
+  forwarding `cat` stages and `head`.
+- How `first` interacts with buffering and upstream cancellation.
+
+Sorting and grouping need all input before they yield results. A table or JSON
+formatter instead buffers the **query results**, which may already be limited
+by `first`. JSON file input parses each complete JSON value before unrolling
+arrays; CSV conversion buffers input. Combined `first 0` bypasses input and
+the other query stages.
+
+Use `--format json` for a pretty-printed JSON plan, or `--format jsonl` for one
+compact JSON object:
+
+```bash
+bu query-object --explain --format json group-by team agg count,avg:score
+```
+
+The structured plan has `version: 1`, `executor`, `input`, `output`, `stages`,
+`execution`, and `notes`, alongside the clause and field summary. An expanded
+projection has unknown `outputFields` (`null`). Other format choices produce
+readable explanations. `--format` still describes the query's eventual output
+format; with `auto`, the plan resolves `BU_OUTPUT_FORMAT`, the output file,
+and terminal detection as normal. The explanation itself always goes to stdout.
+
+This is a static description, without timings or actual row counts. Raw jq
+expressions are passed through as text; constructs such as `input`/`inputs`
+can alter the ordinary per-record behavior described by the plan. Argument,
+file-path, and dependency checks still apply.
+
+### The existing `--debug` summary
+
+`--debug` parses the query without reading stdin or executing its transforms:
+
+```bash
+bu query-object --debug select label=name,score order-by score first 5
+# {"clauses":["select","order-by"],"outputFields":["label","score"]}
+```
+
+`clauses` lists the kinds of clauses relevant to field analysis. `outputFields`
+contains projected names (after renaming), or group keys and aggregate names
+when there is no projection. Otherwise it is `null`; completion can inherit
+the upstream fields. The summary is a completion aid, not a runtime trace:
+it omits `first`, sort direction, clause expressions, and executor details.
+Argument and file-path checks still apply. Both executors emit the same format.
+`--debug` and `--explain` share a plan builder; `--debug` preserves its original
+JSON projection for completion and takes precedence when both flags are present.
 
 ## Tables
 

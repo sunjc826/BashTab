@@ -2476,56 +2476,77 @@ __bu_out_infer_file_fields()
 # - `$2` (optional): Cap on the number of data records emitted (bounds cost
 #   for value-completion sampling). Applied to data rows/records, not the
 #   header.
+# - `$3` (optional): true to report runtime diagnostics and preserve converter
+#   failures with pipefail; false (default) for quiet completion sampling.
 # ```
 __bu_out_read_file_jsonl()
-{
+(
     local -r path=$1
     local -r max=${2:-}
+    local -a statuses=()
+    local status=0 stage_status
+    # Runtime queries need converter statuses and diagnostics. Sampling stays
+    # quiet; the subshell confines redirection and pipefail to this reader.
+    if [[ "${3:-false}" == true ]]; then
+        set -o pipefail
+    else
+        exec 2>/dev/null
+    fi
     [[ -r "$path" ]] || return 1
 
     local ext=${path##*.}
     ext=${ext,,}
     case "$ext" in
     csv)
-        command -v jc &>/dev/null || return 1
+        command -v jc >/dev/null || return 1
         if [[ -n "$max" ]]
         then
-            head -n "$((max + 1))" "$path" 2>/dev/null | jc --csv 2>/dev/null | "$BU_OUT_JQ" -c 'if type == "array" then .[] else . end' 2>/dev/null
+            head -n "$((max + 1))" "$path" | jc --csv | "$BU_OUT_JQ" -c 'if type == "array" then .[] else . end'
         else
-            jc --csv < "$path" 2>/dev/null | "$BU_OUT_JQ" -c 'if type == "array" then .[] else . end' 2>/dev/null
+            jc --csv < "$path" | "$BU_OUT_JQ" -c 'if type == "array" then .[] else . end'
         fi
         ;;
     tsv|tab)
         local hdr_line hdr_json
-        IFS= read -r hdr_line < "$path" || return 1
-        [[ -n "$hdr_line" ]] || return 1
-        hdr_json=$("$BU_OUT_JQ" -R 'split("\t")' <<<"$hdr_line" 2>/dev/null)
+        IFS= read -r hdr_line < "$path" || return 0
+        [[ -n "$hdr_line" ]] || return 0
+        hdr_json=$("$BU_OUT_JQ" -R 'split("\t")' <<<"$hdr_line") || return $?
         local -r tsv_jq='select(. != "") | split("\t") | reduce to_entries[] as $e ({}; if $cols[$e.key] != null and $cols[$e.key] != "" then .[$cols[$e.key]] = $e.value else . end)'
         if [[ -n "$max" ]]
         then
-            tail -n +2 "$path" 2>/dev/null | head -n "$max" | "$BU_OUT_JQ" -R -c --argjson cols "$hdr_json" "$tsv_jq" 2>/dev/null
+            tail -n +2 "$path" | head -n "$max" | "$BU_OUT_JQ" -R -c --argjson cols "$hdr_json" "$tsv_jq"
         else
-            tail -n +2 "$path" 2>/dev/null | "$BU_OUT_JQ" -R -c --argjson cols "$hdr_json" "$tsv_jq" 2>/dev/null
+            tail -n +2 "$path" | "$BU_OUT_JQ" -R -c --argjson cols "$hdr_json" "$tsv_jq"
         fi
         ;;
     json)
         if [[ -n "$max" ]]
         then
-            "$BU_OUT_JQ" -c --argjson n "$max" 'if type == "array" then .[0:$n][] else . end' "$path" 2>/dev/null
+            "$BU_OUT_JQ" -c --argjson n "$max" 'if type == "array" then .[0:$n][] else . end' "$path"
         else
-            "$BU_OUT_JQ" -c 'if type == "array" then .[] else . end' "$path" 2>/dev/null
+            "$BU_OUT_JQ" -c 'if type == "array" then .[] else . end' "$path"
         fi
         ;;
     *)
         if [[ -n "$max" ]]
         then
-            head -n "$max" "$path" 2>/dev/null
+            head -n "$max" "$path"
         else
             cat "$path"
         fi
         ;;
     esac
-}
+    statuses=("$?" "${PIPESTATUS[@]}")
+    [[ "${3:-false}" == true ]] || return "${statuses[0]}"
+    # An inner writer's SIGPIPE must not replace a real converter failure;
+    # query-object may treat that SIGPIPE as expected FIRST cancellation.
+    for stage_status in "${statuses[@]:1}"; do
+        if (( stage_status != 0 && (stage_status != 141 || status == 0) )); then
+            status=$stage_status
+        fi
+    done
+    return "$status"
+)
 
 __bu_out_complete_pipeline_fields()
 {
@@ -3819,7 +3840,7 @@ __bu_out_parse_field_spec()
 # query-object stage. This is the single source of truth: both the static
 # analyzer here and the runtime parser in commands/pipeline/bu-query-object.sh
 # reference this list.
-__bu_out_query_object_clause_keywords=(select expand from where grep group-by agg having order-by outfile desc distinct first format columns help debug)
+__bu_out_query_object_clause_keywords=(select expand from where grep group-by agg having order-by outfile desc distinct first format columns help debug explain)
 
 # ```
 # *Description*:
