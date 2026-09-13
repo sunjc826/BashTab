@@ -170,7 +170,55 @@ Design notes:
 - `select x distinct` ≡ `group-by x` once sorted; `distinct` preserves
   original order, `group-by` sorts.
 - Composition is eval-free: each clause is a function stage, absent clauses
-  are `cat`.
+  are `cat` in the default pipeline executor. The combined executor builds
+  a jq program from the same parsed clauses, without shell `eval`.
+
+### Query execution modes
+
+`BU_QUERY_EXECUTOR` selects the implementation for `query-object` and its
+query aliases (`where`, `select`, `sort`, `grep`, etc.):
+
+| Mode | Behavior |
+|---|---|
+| `pipeline` (default) | Original executor: separate processes for clauses, forwarding `cat` stages for unused clauses, and `head` for `first`. |
+| `combined` | One jq evaluator for the query clauses, followed by the existing Out-Default formatter. Projection, aggregates, and distinct use shared definitions with the pipeline executor. |
+
+```bash
+# Try it for a single query, or select it for the current shell:
+BU_QUERY_EXECUTOR=combined bu query-object --from services.jsonl select name first 5
+export BU_QUERY_EXECUTOR=combined
+
+# Persist the preference using the normal config command:
+bu set-config BU_QUERY_EXECUTOR combined
+
+# Return to the original executor:
+bu set-config BU_QUERY_EXECUTOR pipeline
+```
+
+Both modes retain clause order, renaming, numeric comparison behavior,
+grouping/aggregates, expansion, distinct, output formats, file input/output,
+and the existing `--debug` plan used by completion. The setting changes the
+query executor only; standalone `bu_out_*` functions retain their pipelines.
+
+Combined queries stream filtering and projection, and remember seen records
+for order-preserving distinct. Grouping and sorting still buffer the input
+to those operations. `first N` counts results after all preceding clauses
+and stops requesting records through jq's `limit`, rather than closing an
+internal pipe. `first 0` produces no records without reading input. Input
+errors beyond the limit are not examined. As with raw jq generally,
+expressions using `input`, `inputs`, or input-position builtins see the
+combined evaluator's input rather than a separate clause process's input.
+
+JSONL, JSON, and TSV files are read directly by the combined evaluator; CSV
+still requires `jc`. A JSON array must be parsed before its elements can be
+queried. The combined executor preserves evaluator, converter, and formatter
+failures through cleanup, even without shell `pipefail`.
+
+An external producer in `producer | bu query-object first N` can still
+receive SIGPIPE when the query stops reading, and the outer pipeline can
+therefore fail under `set -o pipefail`. Combined mode eliminates the query's
+internal `head`/forwarder cancellation; it does not drain the remaining
+producer output or hide upstream failures.
 
 ## Tables
 
@@ -354,6 +402,7 @@ verb=`convert-to`, noun=`jsonl`. Extend the array for custom multi-word verbs.
 | Variable | Default | Purpose |
 |---|---|---|
 | `BU_OUTPUT_FORMAT` | *(empty)* | Force output format when `--format auto` |
+| `BU_QUERY_EXECUTOR` | `pipeline` | Query execution mode: `pipeline` (original separate stages) or `combined` (one jq evaluator before formatting). |
 | `BU_TABLE_STYLE` | `unicode` | Default table style. `plain`, `ascii`, `unicode`, `double`, `clickhouse`, `markdown`, `mysql`, or `psql` (see [Table styles](#table-styles)). Overridden per-call by `--style`. |
 | `BU_TABLE_PAGER` | `preset:less` | Pager for tables. `preset:less` → `less -R`, `preset:bat` → `bat --paging=always`, `preset:never` → cat, or a raw command like `less -R`. Empty disables. |
 | `BU_OUT_PRODUCER_FIELDS` | builtins | Assoc: producer prefix → field list |

@@ -65,6 +65,13 @@ bu_config_register BU_OUTPUT_FORMAT \
     --hint "Default output format when stdout is not a terminal (empty: table on tty, jsonl when piped)"
 BU_OUTPUT_FORMAT=${BU_OUTPUT_FORMAT:-}
 
+# query-object execution backend. Keep the original shell pipeline available;
+# combined evaluates all query clauses in one jq process before Out-Default.
+bu_config_register BU_QUERY_EXECUTOR --default pipeline \
+    --enum pipeline combined enum-- \
+    --hint "Query executor: pipeline (separate stages) or combined (one jq evaluator)"
+BU_QUERY_EXECUTOR=${BU_QUERY_EXECUTOR:-${BU_CONFIG_PROPERTIES[BU_QUERY_EXECUTOR,default]}}
+
 # Pager for tabular output. When set and stdout is a terminal,
 # bu_format_table pipes output through this command.
 #   "preset:less"   → less -R      "preset:bat" → bat --paging=always

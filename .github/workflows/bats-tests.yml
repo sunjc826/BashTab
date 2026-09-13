@@ -37,6 +37,7 @@ jobs:
           - test/new_commands_test.bats
           - test/npm_test.bats
           - test/out_test.bats
+          - test/query_executor_test.bats
           - test/parse_bash_test.bats
           - test/smoke_test.bats
           - test/synopsis_test.bats

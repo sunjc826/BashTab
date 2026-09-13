@@ -1024,6 +1024,7 @@ bu_out_select()
     local is_unique=false
     local is_expand=false
     local field_spec=
+    local prog=
     while (($#))
     do
         case "$1" in
@@ -1044,40 +1045,45 @@ bu_out_select()
         esac
         shift
     done
-    if [[ -z "$field_spec" ]]
-    then
+    __bu_out_select_filter "$field_spec" "$is_expand" || return 1
+    prog=$BU_RET
+    if "$is_unique"; then
+        "$BU_OUT_JQ" -c "$prog" | bu_out_distinct
+    else
+        "$BU_OUT_JQ" -c "$prog"
+    fi
+}
+
+# ```md
+# Build a jq projection filter shared by select and the combined query executor.
+# Params: $1 field spec; $2 whether to expand a nested field (true/false).
+# Returns: BU_RET contains the filter; nonzero for an invalid projection.
+# ```
+__bu_out_select_filter()
+{
+    local -r field_spec=$1
+    local -r is_expand=${2:-false}
+    local -a specs=()
+    local ifs=$IFS
+    local prog= sep=
+    local spec new old
+    if [[ -z "$field_spec" ]]; then
         bu_log_err "bu_out_select expects a comma-separated field spec (e.g. 'name,ver=version')"
         return 1
     fi
-
-    if "$is_expand"
-    then
-        # ExpandProperty: lift a single nested object to top level.
-        # "select server --expand" on {"server":{"host":"x"}} → {"host":"x"}
-        # No renaming or multiple fields allowed in expand mode.
-        if [[ "$field_spec" == *,* || "$field_spec" == *\=* ]]
-        then
+    if "$is_expand"; then
+        if [[ "$field_spec" == *,* || "$field_spec" == *\=* ]]; then
             bu_log_err "bu_out_select --expand only accepts a single field (e.g. 'server'), got[$field_spec]"
             return 1
         fi
-        if "$is_unique"
-        then
-            "$BU_OUT_JQ" -c ".$field_spec // empty" | bu_out_distinct
-        else
-            "$BU_OUT_JQ" -c ".$field_spec // empty"
-        fi
-        return $?
+        BU_RET=".$field_spec // empty"
+        return 0
     fi
-
-    local -a specs=()
-    local ifs=$IFS
     IFS=','
     # shellcheck disable=SC2206 # Intentional word splitting on commas
     specs=($field_spec)
     IFS=$ifs
 
-    local prog= sep=
-    local spec new old
     for spec in "${specs[@]}"
     do
         [[ -z "$spec" ]] && continue
@@ -1103,12 +1109,7 @@ bu_out_select()
         return 1
     fi
 
-    if "$is_unique"
-    then
-        "$BU_OUT_JQ" -c "{$prog}" | bu_out_distinct
-    else
-        "$BU_OUT_JQ" -c "{$prog}"
-    fi
+    BU_RET="{$prog}"
 }
 
 # ```
@@ -1167,6 +1168,19 @@ bu_out_sort_by()
     fi
 }
 
+# A filter argument is a generator, so seen-state spans its entire stream.
+# Plain assignment remains global through the custom source wrapper and also
+# permits forced reactivation, like __BU_OUT_JQ_PRELUDE below.
+__BU_OUT_JQ_DISTINCT='
+    def __bu_distinct(stream):
+        def canon: if type == "object" then to_entries | sort_by(.key) | map({key: .key, value: (.value | canon)}) | from_entries
+                   elif type == "array" then map(canon) else . end;
+        foreach stream as $r ({seen: {}};
+            ($r | canon | tostring) as $k
+            | if .seen[$k] then . + {emit: false} else (.seen[$k] = 1) + {emit: true} end;
+            select(.emit) | $r);
+'
+
 # ```
 # *Description*:
 # Remove duplicate records from a JSONL stream (SELECT DISTINCT /
@@ -1189,14 +1203,7 @@ bu_out_sort_by()
 bu_out_distinct()
 {
     __bu_out_assert_jq || return 1
-    "$BU_OUT_JQ" -cn '
-        def canon: if type == "object" then to_entries | sort_by(.key) | map({key: .key, value: (.value | canon)}) | from_entries
-                   elif type == "array" then map(canon) else . end;
-        foreach inputs as $r ({seen: {}};
-            ($r | canon | tostring) as $k
-            | if .seen[$k] then . + {emit: false} else (.seen[$k] = 1) + {emit: true} end;
-            select(.emit) | $r)
-    '
+    "$BU_OUT_JQ" -cn "$__BU_OUT_JQ_DISTINCT __bu_distinct(inputs)"
 }
 
 # MARK: Sinks (JSONL -> display)
@@ -1664,17 +1671,31 @@ bu_out_group_by()
         fi
         shift "$shift_by"
     done
+    __bu_out_group_filter "$keys" "${agg_specs[@]}" || return 1
+    "$BU_OUT_JQ" -sc "$BU_RET"
+}
+
+# ```md
+# Build a jq filter from a buffered array to grouped records.
+# Params: $1 comma-separated keys; remaining arguments are aggregate specs.
+# Returns: BU_RET contains the filter; nonzero for invalid keys/aggregates.
+# ```
+__bu_out_group_filter()
+{
+    local -r keys=$1
+    local -a agg_specs=("${@:2}")
+    local keys_json=
+    local fragments= sep=
+    local spec name body func field fragment
     if [[ -z "$keys" ]]
     then
         bu_log_err "bu_out_group_by requires --keys"
         return 1
     fi
     __bu_out_cols_to_json "$keys" || return 1
-    local keys_json=$BU_RET
+    keys_json=$BU_RET
 
     # Generate one jq fragment per aggregate spec
-    local fragments= sep=
-    local name body func field fragment
     for spec in "${agg_specs[@]}"
     do
         case "$spec" in
@@ -1717,7 +1738,7 @@ bu_out_group_by()
         sep=,
     done
 
-    "$BU_OUT_JQ" -sc --argjson keys "$keys_json" '
+    BU_RET="($keys_json) as \$keys |"'
         group_by([.[$keys[]]])
         | map( . as $g
             | (reduce ($keys | to_entries[]) as $e ({}; .[$e.value] = $g[0][$e.value]))

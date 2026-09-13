@@ -125,6 +125,10 @@ local first=
 local format=auto
 local columns=
 local is_debug=false
+local executor=${BU_QUERY_EXECUTOR:-pipeline}
+local execution_status=0
+local cleanup_status=0
+local combined_program=
 local is_help=false
 local error_msg=
 local autocompletion=()
@@ -853,6 +857,9 @@ order: WHERE -> GROUP BY -> HAVING -> SELECT -> ORDER BY -> FIRST.
 
 Each clause keyword works with or without dashes (select / --select).
 Output ends at Out-Default: a table on a terminal, JSONL when piped.
+BU_QUERY_EXECUTOR selects pipeline (default, separate processes) or combined
+(one jq evaluator). Combined first stops reading once it has enough results;
+upstream commands can still receive SIGPIPE under shell pipefail.
 " \
         --example "Full query (structured)" "where type -eq source select name,verb order-by verb" \
         --example "Full query (jq)" "where '.type == \"source\"' select name,verb order-by verb" \
@@ -880,8 +887,7 @@ Output ends at Out-Default: a table on a terminal, JSONL when piped.
     return 0
 fi
 
-# Compose the clauses into a pipeline in SQL logical order, using identity
-# stages (cat) for absent clauses so no eval or string assembly is needed.
+# Normalize clauses once for either execution backend.
 local where_expr=
 if ((${#where_exprs[@]} > 0))
 then
@@ -976,6 +982,15 @@ then
     return 1
 fi
 
+case "$executor" in
+pipeline|combined) ;;
+*)
+    bu_log_err "Invalid BU_QUERY_EXECUTOR[$executor]. Expected pipeline or combined"
+    bu_scope_pop_function
+    return 1
+    ;;
+esac
+
 if "$is_debug"
 then
     # --debug: emit a JSON query plan describing clauses and output fields.
@@ -1048,6 +1063,122 @@ then
     bu_scope_pop_function
     return 0
 fi
+
+# ```md
+# Compile the enclosing query's parsed clauses into a jq stream expression.
+# SQL order and shared core filters preserve the pipeline executor's semantics.
+# Returns: BU_RET contains the program; nonzero for invalid field specifications.
+# ```
+__bu_query_object_compile()
+{
+    local program=inputs
+    local prelude=
+    local filter=
+    local input_ext=${from_file##*.}
+
+    # Read native files in the evaluator itself, without a forwarding process
+    # that could receive SIGPIPE when limit() stops requesting records.
+    if [[ -n "$from_file" && "$from_file" != /dev/stdin && "$from_file" != - ]]; then
+        case "${input_ext,,}" in
+        json|csv)
+            program='inputs | if type == "array" then .[] else . end'
+            ;;
+        tsv|tab)
+            program='(first(inputs) | select(. != "") | split("\t")) as $__bu_columns
+                | inputs | select(. != "") | split("\t")
+                | reduce to_entries[] as $e ({};
+                    if $__bu_columns[$e.key] != null and $__bu_columns[$e.key] != ""
+                    then .[$__bu_columns[$e.key]] = $e.value else . end)'
+            ;;
+        esac
+    fi
+    if [[ -n "$where_expr" && -n "$grep_expr" ]]; then
+        program="($program) | select(($where_expr) and ($grep_expr))"
+    elif [[ -n "$where_expr" ]]; then
+        program="($program) | select($where_expr)"
+    elif [[ -n "$grep_expr" ]]; then
+        program="($program) | select($grep_expr)"
+    fi
+    if [[ -n "$group_keys" ]]; then
+        __bu_out_group_filter "$group_keys" "${agg_specs[@]}" || return 1
+        filter=$BU_RET
+        program="[$program] | ($filter)"
+    fi
+    if [[ -n "$having_expr" ]]; then
+        program="($program) | select($having_expr)"
+    fi
+    if [[ -n "$select_fields" ]]; then
+        __bu_out_select_filter "$select_fields" "$is_select_expand" || return 1
+        filter=$BU_RET
+        program="($program) | ($filter)"
+    fi
+    if "$is_distinct"; then
+        prelude=$__BU_OUT_JQ_DISTINCT
+        program="__bu_distinct($program)"
+    fi
+    if [[ -n "$order_by" ]]; then
+        __bu_out_validate_key "$order_by" || return 1
+        program="[$program] | sort_by(.$order_by)"
+        "$is_desc" && program+=' | reverse'
+        program+=' | .[]'
+    fi
+    if [[ -n "$first" ]]; then
+        # tonumber accepts leading zeros without treating the limit as octal.
+        program="limit((\"$first\" | tonumber); $program)"
+    fi
+    BU_RET="$prelude $program"
+}
+
+# ```md
+# Run the compiled query, reading stdin or a native file directly. CSV still
+# needs jc; preserve its failures as well as jq's without changing pipefail.
+# Uses the enclosing combined_program and from_file locals.
+# ```
+__bu_query_object_combined_input()
+{
+    local input_ext=${from_file##*.}
+    local -a statuses=()
+    local status=0 stage_status
+
+    if [[ "$first" =~ ^0+$ ]]; then
+        "$BU_OUT_JQ" -nc "$combined_program" </dev/null
+    elif [[ -z "$from_file" || "$from_file" == /dev/stdin || "$from_file" == - ]]; then
+        "$BU_OUT_JQ" -nc "$combined_program"
+    else
+        case "${input_ext,,}" in
+        csv)
+            if jc --csv < "$from_file" | "$BU_OUT_JQ" -nc "$combined_program"; then
+                statuses=("${PIPESTATUS[@]}")
+            else
+                statuses=("${PIPESTATUS[@]}")
+            fi
+            for stage_status in "${statuses[@]}"; do
+                if (( stage_status != 0 )); then status=$stage_status; fi
+            done
+            return "$status"
+            ;;
+        tsv|tab) "$BU_OUT_JQ" -Rnc "$combined_program" < "$from_file" ;;
+        *) "$BU_OUT_JQ" -nc "$combined_program" < "$from_file" ;;
+        esac
+    fi
+}
+
+__bu_query_object_combined_pipeline()
+{
+    local -a statuses=()
+    local status=0 stage_status
+
+    # Guard execution so errexit cannot bypass status capture and cleanup.
+    if __bu_query_object_combined_input | bu_out "${out_args[@]}"; then
+        statuses=("${PIPESTATUS[@]}")
+    else
+        statuses=("${PIPESTATUS[@]}")
+    fi
+    for stage_status in "${statuses[@]}"; do
+        if (( stage_status != 0 )); then status=$stage_status; fi
+    done
+    return "$status"
+}
 
 __bu_query_object_where()
 {
@@ -1138,6 +1269,24 @@ __bu_query_object_first()
 
 local -a out_args=(--format "$format")
 [[ -n "$columns" ]] && out_args+=(--columns "$columns")
+
+if [[ "$executor" == combined ]]; then
+    if __bu_query_object_compile; then
+        combined_program=$BU_RET
+    else
+        execution_status=$?
+        bu_scope_pop_function
+        return "$execution_status"
+    fi
+    if [[ -n "$out_file" ]]; then
+        __bu_query_object_combined_pipeline > "$out_file" || execution_status=$?
+    else
+        __bu_query_object_combined_pipeline || execution_status=$?
+    fi
+    bu_scope_pop_function || cleanup_status=$?
+    if (( execution_status == 0 )); then execution_status=$cleanup_status; fi
+    return "$execution_status"
+fi
 
 __bu_query_object_pipeline()
 {

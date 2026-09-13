@@ -646,12 +646,15 @@ bu_autohelp()
 # *Returns*:
 # - Exit code of the sub-command
 # ```
-eval "$BU_CLI_COMMAND_NAME"'() { builtin source bu_impl.sh "$@"; }'
+# `command source` bypasses our source wrapper while preserving the caller's
+# errexit exemption (e.g. `bu ... || ...`). Nested `builtin source` calls can
+# lose that exemption on Bash 5.2 and abort even when the failure is caught.
+eval "$BU_CLI_COMMAND_NAME"'() { command source bu_impl.sh "$@"; }'
 
 # Always define bu
 if [[ "$BU_CLI_COMMAND_NAME" != bu ]]
 then
-    bu() { builtin source bu_impl.sh "$@"; }
+    bu() { command source bu_impl.sh "$@"; }
 fi
 
 
