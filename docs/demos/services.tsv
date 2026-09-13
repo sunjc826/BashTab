@@ -1,0 +1,6 @@
+name	team	status	latency_ms
+api	platform	healthy	42
+worker	platform	degraded	180
+web	product	healthy	25
+search	product	degraded	240
+mail	platform	healthy	65
