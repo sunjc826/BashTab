@@ -173,6 +173,26 @@ Design notes:
   are `cat` in the default pipeline executor. The combined executor builds
   a jq program from the same parsed clauses, without shell `eval`.
 
+### Incremental aggregation
+
+`group-by` reduces incoming records to state for each group. `count`, `sum`,
+`avg`, `min`, `max`, `first`, and `last` retain only their aggregate state;
+`avg` tracks a numeric sum and count. `collect` additionally retains its field
+values, including missing/null values. Unused fields and full input records
+are not retained.
+
+This applies to both query executors and `bu_out_group_by`. Output remains
+sorted by the original grouping keys, with the same aggregate aliases and
+numeric/null handling. Memory is proportional to the number of groups and the
+size of their retained values, rather than all input records. If nearly every
+record creates a new group, or `collect` retains large values, memory can still
+be substantial.
+
+Incremental does not mean final groups can be emitted early: later records can
+change an existing group. Grouping still requires EOF, so a following `first N`
+does not generally avoid reading the full input. `--explain` labels grouping
+as `retains-group-state` and describes this EOF requirement.
+
 ### Query execution modes
 
 `BU_QUERY_EXECUTOR` selects the implementation for `query-object` and its
@@ -201,8 +221,9 @@ and the existing `--debug` plan used by completion. The setting changes the
 query executor only; standalone `bu_out_*` functions retain their pipelines.
 
 Combined queries stream filtering and projection, and remember seen records
-for order-preserving distinct. Grouping and sorting still buffer the input
-to those operations. `first N` counts results after all preceding clauses
+for order-preserving distinct. Grouping retains aggregate state per group;
+sorting still buffers its input. Both operations need EOF before yielding
+final results. `first N` counts results after all preceding clauses
 and stops requesting records through jq's `limit`, rather than closing an
 internal pipe. `first 0` produces no records without reading input. Input
 errors beyond the limit are not examined. As with raw jq generally,
@@ -260,8 +281,8 @@ The readable plan shows:
 - Input source and format, and the eventual output destination and format.
 - Logical clause order, expressions, projections, aggregates, sort direction,
   and the result limit.
-- Streaming operations, sorting/grouping that buffer input, and distinct's
-  retained set of seen values.
+- Streaming operations, sorting that buffers input, grouping that retains
+  per-group state, and distinct's retained set of seen values.
 - Execution stages: the combined jq evaluator, or the original pipeline with
   forwarding `cat` stages and `head`.
 - How `first` interacts with buffering and upstream cancellation.
