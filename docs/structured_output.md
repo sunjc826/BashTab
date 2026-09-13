@@ -455,21 +455,68 @@ record (JSONL/JSON), and is memoized per `path:mtime:size` for the session.
 Distinct field *values* are also completed at the `where -eq` / `-in` value
 position from the same bounded file sample.
 
-### Runtime strict mode
+### Runtime record validation
 
-`BU_OUT_STRICT=true` makes pipeline consumers (`# Pipeline: consume`)
-validate the first incoming record against their `# Requires-All:` /
-`# Requires-Any:` contract and warn to stderr when it is unsatisfied, instead
-of silently producing empty output:
+Commands with `# Requires-All:` / `# Requires-Any:` contracts validate incoming
+JSONL records before passing them to their input-processing loop. This includes
+both consumers and transforms that act on records, such as `remove-git-tag`.
+The defaults preserve the original behavior: warn about missing fields in the
+first record and pass the stream through.
 
 ```bash
-printf '{"index":1}\n' | BU_OUT_STRICT=true bu remove-git-tag
-# WARN  ... [remove-git-tag] needs field(s) [name] not present in upstream record
+# Check every record and reject the first invalid one:
+bu set-config BU_OUT_VALIDATE_RECORDS all
+bu set-config BU_OUT_VALIDATION error
+
+# Restore the original behavior:
+bu set-config BU_OUT_VALIDATE_RECORDS first
+bu set-config BU_OUT_VALIDATION warn
 ```
 
-Records are always passed through unchanged, so strict mode only adds
-diagnostics; it never alters the stream. On by default (falls back to a plain
-`cat` when disabled).
+`BU_OUT_VALIDATION` accepts `off`, `warn`, or `error`.
+`BU_OUT_VALIDATE_RECORDS` accepts `first` or `all`.
+The legacy `BU_OUT_STRICT=false` switch also disables validation, regardless of
+these settings. A command without a field contract passes input through.
+
+In warning mode, records pass through without reformatting and diagnostics go
+to stderr. Error mode stops at the first invalid record, does not forward it or
+subsequent records, and returns status **2**. Diagnostics include the command,
+input line number, and missing fields; malformed JSON and non-object records
+are also invalid. Blank lines count as invalid JSON records. Field presence is
+the contract: a present field whose value is `null` still counts as present.
+Type checks are not inferred from the first record.
+
+For example, under `all`/`error`, this stream fails on record 2:
+
+```jsonl
+{"name":"alpha"}
+{"unexpected":"beta"}
+```
+
+Validation uses one streaming jq process, rather than spawning jq per field
+per record. Built-in commands propagate its status even when their input loop
+uses process substitution. Commands that gather names before acting abort
+before applying those actions; streaming consumers may already have acted on
+valid preceding records. This is not transactional rollback or whole-stream
+preflight validation.
+
+When adding a consumer, use the managed reader and check its status instead of
+an unchecked `done < <(__bu_out_strict_guard ...)`:
+
+```bash
+local validation_fd validation_pid validation_status=0 record
+__bu_out_strict_open validation_fd validation_pid my-command || return 1
+while IFS= read -r record; do
+    # Process the validated record (or accumulate records before acting).
+    :
+done <&"$validation_fd"
+__bu_out_strict_close "$validation_fd" "$validation_pid" || validation_status=$?
+# Perform the command's scope cleanup, then return validation_status if nonzero.
+```
+
+An optional fourth argument to `__bu_out_strict_open` is a jq expression for
+extracting consumer values, such as `.name // empty`. Read the stream to EOF
+and always close/wait; the helper preserves validator and extractor failures.
 
 ### Alias merging in option completion
 
@@ -497,7 +544,9 @@ verb=`convert-to`, noun=`jsonl`. Extend the array for custom multi-word verbs.
 | `BU_OUT_PRODUCER_FIELDS` | builtins | Assoc: producer prefix → field list |
 | `BU_OUT_PROBE_PIPELINE` | `false` | Master switch for live probing during completion |
 | `BU_OUT_PROBE_COMMANDS` | *(empty)* | Assoc allowlist of probe-safe producer heads |
-| `BU_OUT_STRICT` | `true` | Warn when a pipeline consumer's `# Requires-All:`/`# Requires-Any:` contract is unmet by upstream records |
+| `BU_OUT_STRICT` | `true` | Legacy master switch; `false` disables record validation. |
+| `BU_OUT_VALIDATION` | `warn` | Contract validation action: `off`, `warn`, or `error`. |
+| `BU_OUT_VALIDATE_RECORDS` | `first` | Validate the `first` record or `all` records. |
 | `BU_PIPELINE_CONTRACT_WARN` | `true` | Scan-time warnings for commands missing a `# Pipeline:` header or field contract (`false` silences) |
 | `BU_MULTI_WORD_VERBS` | `convert-to convert-from` | Multi-word verb list for name parsing |
 

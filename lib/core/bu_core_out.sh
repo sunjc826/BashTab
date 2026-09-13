@@ -3232,89 +3232,111 @@ __bu_out_field_present()
     return 1
 }
 
-# ```
-# *Description*:
-# Optional strict-mode stdin guard for pipeline consumers.  When
-# BU_OUT_STRICT=true, reads the first JSONL record and warns to stderr if the
-# command's `# Requires-All:` (all) / `# Requires-Any:` (at least one)
-# contract is unsatisfied, then passes every record through unchanged.  When
-# BU_OUT_STRICT is unset/false this is a plain `cat` (zero overhead).
-#
-# Meant to be wired into a consumer's stdin loop as
-# `done < <(__bu_out_strict_guard "<command>")`, so the guard runs in a
-# process substitution and the loop keeps reading the current shell.
-#
-# *Params*:
-# - `$1`: Command name without the `bu ` prefix
+# ```md
+# Validate a JSONL consumer contract with one streaming jq process.
+# BU_OUT_STRICT=false or BU_OUT_VALIDATION=off disables validation.
+# warn (default) passes records unchanged; error rejects the first bad record
+# with status 2. BU_OUT_VALIDATE_RECORDS chooses first (default) or all.
+# Params: $1 registered command name whose headers declare required fields.
+# Use strict_open/strict_close around consumer loops to retain the exit status.
 # ```
 __bu_out_strict_guard()
 {
     local -r command_name=$1
+    local action=${BU_OUT_VALIDATION:-warn}
+    local coverage=${BU_OUT_VALIDATE_RECORDS:-first}
+    local required_all= required_any=
+    local command_file=${BU_COMMANDS[$command_name]:-}
 
-    if [[ "${BU_OUT_STRICT:-false}" != true ]]
-    then
+    if [[ "${BU_OUT_STRICT:-false}" != true || "$action" == off ]]; then
         cat
-        return 0
+        return $?
     fi
-
-    # Peek the first record (preserving it verbatim), then pass everything through.
-    local _sg_first
-    IFS= read -r _sg_first || return 0
-
-    local _sg_all= _sg_any=
-    local _sg_file=${BU_COMMANDS[$command_name]:-}
-    if [[ -f "$_sg_file" ]]
-    then
-        __bu_command_header_get "$_sg_file" "Requires-All" _sg_all
-        __bu_command_header_get "$_sg_file" "Requires-Any" _sg_any
+    case "$action" in
+    warn|error) ;;
+    *) bu_log_err "Invalid BU_OUT_VALIDATION[$action]"; return 1 ;;
+    esac
+    case "$coverage" in
+    first|all) ;;
+    *) bu_log_err "Invalid BU_OUT_VALIDATE_RECORDS[$coverage]"; return 1 ;;
+    esac
+    if [[ -f "$command_file" ]]; then
+        __bu_command_header_get "$command_file" Requires-All required_all
+        __bu_command_header_get "$command_file" Requires-Any required_any
     fi
+    if [[ -z "$required_all" && -z "$required_any" ]]; then
+        cat
+        return $?
+    fi
+    __bu_out_assert_jq || return 1
+    "$BU_OUT_JQ" -Rnr --unbuffered --arg command "$command_name" \
+        --arg requiredAll "$required_all" --arg requiredAny "$required_any" \
+        --arg action "$action" --arg coverage "$coverage" '
+        ($requiredAll | [scan("\\S+")]) as $all
+        | ($requiredAny | [scan("\\S+")]) as $any
+        | foreach inputs as $line (0; . + 1;
+            . as $n
+            | if $coverage == "first" and $n > 1 then $line
+              else
+                (try {record: ($line | fromjson)} catch {invalid: true}) as $parsed
+                | (if $parsed.invalid then "invalid JSON"
+                   elif ($parsed.record | type) != "object" then "expected a JSON object"
+                   else $parsed.record as $r
+                     | ([$all[] as $k | select($r | has($k) | not) | $k]
+                        + (if ($any | length) > 0 and (any($any[]; . as $k | $r | has($k)) | not)
+                           then [($any | join("|"))] else [] end)) as $missing
+                     | if ($missing | length) > 0 then "needs field(s) [" + ($missing | join(" ")) + "] not present in upstream record"
+                       else "" end
+                   end) as $problem
+                | if $problem == "" then $line
+                  else ("BU_OUT_STRICT: [" + $command + "] record " + ($n | tostring) + ": " + $problem + "\n" | stderr | empty),
+                    (if $action == "error" then null | halt_error(2) else $line end)
+                  end
+              end
+        )'
+}
 
-    if [[ -n "$BU_OUT_JQ" && ( -n "$_sg_all" || -n "$_sg_any" ) ]]
-    then
-        local -a _sg_missing=()
-        if [[ -n "$_sg_all" ]]
-        then
-            local -a _sg_all_fields=()
-            read -r -a _sg_all_fields <<< "$_sg_all"
-            local _sg_r
-            for _sg_r in "${_sg_all_fields[@]}"
-            do
-                if ! "$BU_OUT_JQ" -e --arg f "$_sg_r" 'has($f)' <<<"$_sg_first" >/dev/null 2>&1
-                then
-                    _sg_missing+=("$_sg_r")
-                fi
-            done
-        fi
-        if [[ -n "$_sg_any" ]]
-        then
-            local -a _sg_any_fields=()
-            read -r -a _sg_any_fields <<< "$_sg_any"
-            local _sg_r2 _sg_any_ok=false
-            for _sg_r2 in "${_sg_any_fields[@]}"
-            do
-                if "$BU_OUT_JQ" -e --arg f "$_sg_r2" 'has($f)' <<<"$_sg_first" >/dev/null 2>&1
-                then
-                    _sg_any_ok=true
-                    break
-                fi
-            done
-            if ! "$_sg_any_ok"
-            then
-                local _sg_ifs=$IFS
-                IFS='|'
-                _sg_missing+=("${_sg_any_fields[*]}")
-                IFS=$_sg_ifs
+# ```md
+# Open a validated stream without moving the consumer into a subshell.
+# Params: $1 output fd variable; $2 output pid variable; $3 command name;
+#         $4 optional jq expression to extract consumer values.
+# Read the fd to EOF, then call strict_close and handle its nonzero status.
+# ```
+__bu_out_strict_open()
+{
+    local -n _so_fd=$1 _so_pid=$2
+    local -r _so_command=$3 _so_filter=${4:-}
+    local -a _so_statuses=()
+    exec {_so_fd}< <(
+        if [[ -n "$_so_filter" ]]; then
+            # Preserve the guard failure through the optional extraction stage.
+            if __bu_out_strict_guard "$_so_command" | "$BU_OUT_JQ" -r "$_so_filter"; then
+                _so_statuses=("${PIPESTATUS[@]}")
+            else
+                _so_statuses=("${PIPESTATUS[@]}")
             fi
+            if (( _so_statuses[0] != 0 && _so_statuses[0] != 141 )); then exit "${_so_statuses[0]}"; fi
+            if (( _so_statuses[1] != 0 )); then exit "${_so_statuses[1]}"; fi
+            exit "${_so_statuses[0]}"
+        else
+            __bu_out_strict_guard "$_so_command"
         fi
-        if ((${#_sg_missing[@]} > 0))
-        then
-            bu_log_warn "BU_OUT_STRICT: [$command_name] needs field(s) [${_sg_missing[*]}] not present in upstream record"
-        fi
-    fi
+    ) || return $?
+    _so_pid=$!
+}
 
-    printf '%s\n' "$_sg_first"
-    cat
-    return 0
+# ```md
+# Close a consumed validation fd and wait for its actual exit status.
+# Params: $1 fd; $2 pid returned by strict_open.
+# ```
+__bu_out_strict_close()
+{
+    local _sc_fd=$1
+    local -r _sc_pid=$2
+    local status=0
+    exec {_sc_fd}<&-
+    wait "$_sc_pid" || status=$?
+    return "$status"
 }
 
 # ```

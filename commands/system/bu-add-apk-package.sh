@@ -11,6 +11,7 @@ if [[ "$1" == "--is-compatible" ]]; then
     exit 0
 fi
 local -r invocation_dir=$PWD
+local validation_fd validation_pid validation_status=0
 source "$BU_NULL"
 bu_scope_push_function
 bu_run_log_command "$@"
@@ -54,10 +55,18 @@ if "$is_help"; then
 fi
 
 if ((${#names[@]} == 0)) && read -t 0 2>/dev/null; then
+    __bu_out_strict_open validation_fd validation_pid "add-apk-package" || { bu_scope_pop_function || true; return 1; }
     local line; while IFS= read -r line; do
         local n; n=$(jq -r '.name // empty' <<<"$line" 2>/dev/null) || true
         [[ -n "$n" ]] && names+=("$n")
-    done < <(__bu_out_strict_guard "add-apk-package")
+    done <&"$validation_fd"
+    if __bu_out_strict_close "$validation_fd" "$validation_pid"; then
+        :
+    else
+        validation_status=$?
+        bu_scope_pop_function || true
+        return "$validation_status"
+    fi
 fi
 if ((${#names[@]} == 0)); then
     error_msg="No packages specified."

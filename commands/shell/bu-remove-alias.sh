@@ -20,6 +20,7 @@ function __bu_bu_remove_alias_main()
 {
 set -e
 local -r invocation_dir=$PWD
+local validation_fd validation_pid validation_status=0
 local script_name
 local script_dir
 case "$BASH_SOURCE" in
@@ -121,10 +122,18 @@ fi
 if ((${#names[@]} == 0)) && [[ ! -t 0 ]]
 then
     local _n
+    __bu_out_strict_open validation_fd validation_pid "remove-alias" '.name // empty' || { bu_scope_pop_function || true; return 1; }
     while IFS= read -r _n
     do
         [[ -n "$_n" ]] && names+=("$_n")
-    done < <(__bu_out_strict_guard "remove-alias" | jq -r '.name // empty' 2>/dev/null)
+    done <&"$validation_fd"
+    if __bu_out_strict_close "$validation_fd" "$validation_pid"; then
+        :
+    else
+        validation_status=$?
+        bu_scope_pop_function || true
+        return "$validation_status"
+    fi
 fi
 
 if ((${#names[@]} == 0))

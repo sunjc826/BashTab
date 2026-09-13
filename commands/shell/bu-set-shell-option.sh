@@ -7,6 +7,7 @@
 function __bu_bu_set_shell_option_main()
 {
 local -r invocation_dir=$PWD
+local validation_fd validation_pid validation_status=0
 
 # shellcheck source=./__bu_entrypoint_decl.sh
 source "$BU_NULL"
@@ -111,6 +112,7 @@ then
     bu_scope_add_cleanup rm -f "$records_file"
     local rc=0
     {
+        __bu_out_strict_open validation_fd validation_pid "set-shell-option" '.name as $n | (if has("value") then (.value | tostring) else "" end) as $v | if $n then "\($n)\t\($v)" else empty end' || { bu_scope_pop_function || true; return 1; }
         while IFS=$'\t' read -r _n _v
         do
             [[ -z "$_n" ]] && continue
@@ -125,7 +127,14 @@ then
                     && bu_out_record name="$_n" value:=false \
                     || { bu_out_record name="$_n" value:=true error="set +o failed"; rc=1; }
             fi
-        done < <(__bu_out_strict_guard "set-shell-option" | jq -r '.name as $n | (if has("value") then (.value | tostring) else "" end) as $v | if $n then "\($n)\t\($v)" else empty end' 2>/dev/null)
+        done <&"$validation_fd"
+        if __bu_out_strict_close "$validation_fd" "$validation_pid"; then
+            :
+        else
+            validation_status=$?
+            bu_scope_pop_function || true
+            return "$validation_status"
+        fi
     } > "$records_file"
     bu_out --format "$format" < "$records_file"
     bu_scope_pop_function

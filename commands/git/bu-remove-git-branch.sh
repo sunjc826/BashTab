@@ -13,6 +13,7 @@ if [[ "$1" == "--is-compatible" ]]; then
     exit 0
 fi
 local -r invocation_dir=$PWD
+local validation_fd validation_pid validation_status=0
 
 # shellcheck source=./__bu_entrypoint_decl.sh
 source "$BU_NULL"
@@ -89,11 +90,19 @@ fi
 # Read branches from stdin pipeline if no positional args and stdin has data
 if ((${#branches[@]} == 0)) && read -t 0 2>/dev/null; then
     local line
+    __bu_out_strict_open validation_fd validation_pid "remove-git-branch" || { bu_scope_pop_function || true; return 1; }
     while IFS= read -r line; do
         local b
         b=$(jq -r '.name // empty' <<<"$line" 2>/dev/null) || true
         [[ -n "$b" ]] && branches+=("$b")
-    done < <(__bu_out_strict_guard "remove-git-branch")
+    done <&"$validation_fd"
+    if __bu_out_strict_close "$validation_fd" "$validation_pid"; then
+        :
+    else
+        validation_status=$?
+        bu_scope_pop_function || true
+        return "$validation_status"
+    fi
 fi
 
 if ((${#branches[@]} == 0)); then
