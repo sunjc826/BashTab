@@ -23,7 +23,7 @@
   "license": "ISC",
   "dependencies": {
     "node-gyp": "13.0.2",
-    "tree-sitter": "^0.25.0",
+    "tree-sitter": "0.25.0",
     "tree-sitter-bash": "0.25.1",
     "tree-sitter-cli": "0.26.11"
   }
