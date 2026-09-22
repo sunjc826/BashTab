@@ -103,6 +103,15 @@ jobs:
       - name: Install Node.js dependencies (tree-sitter)
         run: pnpm install
 
+      - name: Build the tree-sitter-bash fork
+        # Optional at runtime, but CI builds it so the patch set is checked
+        # against upstream on every push: a patch whose anchor no longer
+        # applies fails the build instead of silently doing nothing.
+        run: node lib/grammar/build.js
+
+      - name: Verify the fork (regression sweep + cause expectations)
+        run: node lib/grammar/test.js
+
       - name: Lint BashTab against its own invariants
         # New error-severity findings fail the build; everything already
         # present is recorded in .bulintbaseline. Regenerate that file with

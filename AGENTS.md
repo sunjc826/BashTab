@@ -450,6 +450,35 @@ preinit callback to be sourced during init.
 - `lib/core/bu_core_ts.sh` — bash wrapper using `coproc`, exposes `bu_ts_parse()`
 - Toggle: `BU_AUTOCOMPLETE_USE_TREE_SITTER=true` (default `false`)
 - Handles pipes, command substitutions, variable expansions, returns range-based replacements
+- Grammar resolution goes through `lib/grammar/load.js`, never `require("tree-sitter-bash")` directly
+
+### Grammar fork (`lib/grammar/`)
+
+`tree-sitter-bash` rejects constructs that are valid bash. That hurts completion
+most, because it parses command lines the user types — which cannot be rewritten
+to suit the grammar. `lib/grammar/patches.js` carries a small patch set against
+the installed upstream grammar; only that file is committed, everything else is
+generated into the gitignored `lib/grammar/build/`.
+
+```sh
+node lib/grammar/build.js    # optional, needs a C toolchain
+node lib/grammar/test.js     # regression sweep + cause expectations
+```
+
+The fork is optional: `load.js` falls back to the stock parser, and the linter
+then reports the gaps as `BU000` instead. Before adding a patch, read
+`lib/grammar/README.md` — in particular, **always run the regression sweep**: a
+one-line patch that fixed its own repro silently broke `for ((i=0; i<3; i++))`,
+and only the sweep caught it.
+
+### Linting (`bu validate-script`)
+
+`bu validate-script --all` checks the invariants bash cannot express and
+shellcheck does not know about (errexit-aborting arithmetic, file-scope
+`declare` without `-g`, case-annotation/parser mismatches, header windows).
+Rules live in `lib/lint/bu_lint.js` and match on the CST, not on text.
+`.bulintbaseline` records pre-existing findings so CI fails only on new ones;
+regenerate it with `bu validate-script --all --write-baseline .bulintbaseline`.
 
 ### fzf Autocomplete Display
 
