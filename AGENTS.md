@@ -480,9 +480,21 @@ and only the sweep caught it.
 ### Linting (`bu validate-script`)
 
 `bu validate-script --all` checks the invariants bash cannot express and
-shellcheck does not know about (errexit-aborting arithmetic, file-scope
-`declare` without `-g`, case-annotation/parser mismatches, header windows).
-Rules live in `lib/lint/bu_lint.js` and match on the CST, not on text.
+shellcheck does not know about: errexit safety (BU001–BU005), the custom
+`source` wrapper's scoping (BU010–BU013), the case-block parser DSL
+(BU020–BU028), command template invariants (BU030–BU034), header windows
+(BU040–BU045), and pipeline cost (BU050). `bu validate-script --explain BU001`
+gives the rationale for any of them.
+
+Rules live in `lib/lint/rules.js` (the engine is `lib/lint/bu_lint.js`) and
+match on the CST, not on text. Suppress one where it is genuinely wrong with
+`# bu-lint: disable=BU001 -- reason`; a suppression with no reason is itself a
+finding (BU005).
+
+**Before adding a rule, run it over the whole repo and read every hit.** Rules
+that fire widely on healthy code get cut, not weakened: one candidate fired 210
+times and another 137, and both were describing conventions this codebase does
+not hold.
 `.bulintbaseline` records pre-existing findings so CI fails only on new ones;
 regenerate it with `bu validate-script --all --write-baseline .bulintbaseline`.
 

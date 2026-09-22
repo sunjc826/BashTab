@@ -82,7 +82,7 @@ function test_bu011_ignores_function_scope_and_g_and_f_flags { #@test
 function test_bu021_reports_flag_annotation_that_parses_an_argument { #@test
     run lint_fixture "$FIXTURES"/bu021_flag.sh
     assert_success
-    assert_output "6 BU021"
+    assert_line "6 BU021"
 }
 
 function test_bu024_reports_unterminated_enum_list { #@test
@@ -98,15 +98,16 @@ function test_bu024_reports_unterminated_enum_list { #@test
 function test_bu040_reports_missing_synopsis_and_dispatch { #@test
     run lint_fixture "$FIXTURES"/commands/demo/bu-no-headers.sh
     assert_success
-    assert_equal "${#lines[@]}" 2
     assert_line "1 BU040"
+    # Both headers are missing, so BU040 fires twice.
+    assert_equal "$(printf '%s\n' "${lines[@]}" | grep -c BU040)" 2
 }
 
 function test_bu041_reports_directive_header_past_its_window { #@test
     # Dispatch / Tab-Execute are only honored in the first 8 lines.
     run lint_fixture "$FIXTURES"/commands/demo/bu-late-header.sh
     assert_success
-    assert_output "9 BU041"
+    assert_line "9 BU041"
 }
 
 # ===========================================================================
@@ -189,4 +190,126 @@ function test_repository_has_no_error_severity_findings_outside_the_baseline { #
         $(find "$BU_ROOT"/lib/core "$BU_ROOT"/commands "$BU_ROOT"/config -name '*.sh' -type f)
     assert_success
     assert_output ""
+}
+
+# ===========================================================================
+# Group A — `set -e` safety
+# ===========================================================================
+
+function test_bu002_reports_file_scope_nonzero_return_on_the_init_path { #@test
+    run lint_fixture "$FIXTURES"/config/init_path.sh
+    assert_success
+    assert_line "4 BU002"
+}
+
+function test_bu002_ignores_nonzero_return_inside_a_function { #@test
+    # Inside a function the return is that function's contract, not an abort.
+    run lint_fixture "$FIXTURES"/config/init_path.sh
+    refute_line "6 BU002"
+}
+
+function test_bu003_reports_unguarded_init_call_but_not_a_guarded_one { #@test
+    run lint_fixture "$FIXTURES"/config/init_path.sh
+    assert_line "2 BU003"
+    refute_line "3 BU003"
+}
+
+function test_bu004_reports_local_masking_the_command_status { #@test
+    run lint_fixture "$FIXTURES"/bu004_local_mask.sh
+    assert_success
+    assert_output "2 BU004"
+}
+
+function test_bu004_ignores_an_intervening_command { #@test
+    # `local y=$(…); eval "$y"; code=$?` reads eval's status, not local's.
+    run lint_fixture "$FIXTURES"/bu004_local_mask.sh
+    refute_line "5 BU004"
+}
+
+# ===========================================================================
+# Suppression
+# ===========================================================================
+
+function test_suppression_silences_the_named_rule { #@test
+    # Both increments are suppressed, so BU001 must not appear at all.
+    run lint_fixture "$FIXTURES"/bu005_suppression.sh
+    refute_output --partial "BU001"
+}
+
+function test_bu005_reports_a_suppression_with_no_reason { #@test
+    run lint_fixture "$FIXTURES"/bu005_suppression.sh
+    assert_output "2 BU005"
+}
+
+function test_bu013_reports_an_unexplained_source_bypass { #@test
+    run lint_fixture "$FIXTURES"/bu013_source_bypass.sh
+    assert_success
+    assert_output "3 BU013"
+}
+
+# ===========================================================================
+# Group C — parser DSL
+# ===========================================================================
+
+function test_parser_dsl_rules_each_fire_on_their_own_defect { #@test
+    run lint_fixture "$FIXTURES"/bu02x_parser_dsl.sh
+    assert_success
+    assert_line "2 BU028"   # no `(( $# < shift_by ))` guard
+    assert_line "4 BU027"   # no `*)` fallback
+    assert_line "5 BU022"   # positional parsed but never read
+    assert_line "8 BU026"   # duplicate alternative
+    assert_line "12 BU025"  # --as-if names an unknown command
+}
+
+# ===========================================================================
+# Group D — template invariants
+# ===========================================================================
+
+function test_bu030_reports_a_scope_pushed_but_never_popped { #@test
+    run lint_fixture "$FIXTURES"/bu030_scope_leak.sh
+    assert_success
+    assert_output "1 BU030"
+}
+
+function test_bu031_and_bu033_and_bu034_report_missing_guards { #@test
+    run lint_fixture "$FIXTURES"/commands/demo/bu-no-guards.sh
+    assert_success
+    assert_line "1 BU031"   # no bu_exit_handler_setup
+    assert_line "1 BU033"   # no autocomplete guard
+    assert_line "1 BU034"   # is_help set, bu_autohelp never called
+}
+
+# ===========================================================================
+# Group E — headers
+# ===========================================================================
+
+function test_header_rules_report_bad_dispatch_missing_fields_and_dead_topic { #@test
+    run lint_fixture "$FIXTURES"/commands/demo/bu-header-problems.sh
+    assert_success
+    assert_line "2 BU042"   # Dispatch: teleport
+    assert_line "1 BU044"   # Pipeline: producer with no Fields
+    assert_line "5 BU045"   # Help-Topic with no page
+}
+
+# ===========================================================================
+# Registry invariants
+# ===========================================================================
+
+function test_every_rule_has_a_summary_and_an_explanation { #@test
+    run node -e '
+        const { RULES } = require(process.argv[1]);
+        const bad = RULES.filter((r) => !r.summary || (!r.explain && r.kind !== "alias"));
+        if (bad.length) { console.log(bad.map((r) => r.id).join(" ")); process.exit(1); }
+    ' "$BU_ROOT/lib/lint/rules.js"
+    assert_success
+}
+
+function test_every_rule_id_is_unique { #@test
+    run node -e '
+        const { RULES } = require(process.argv[1]);
+        const ids = RULES.map((r) => r.id);
+        const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
+        if (dupes.length) { console.log(dupes.join(" ")); process.exit(1); }
+    ' "$BU_ROOT/lib/lint/rules.js"
+    assert_success
 }
