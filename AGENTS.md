@@ -456,14 +456,19 @@ preinit callback to be sourced during init.
 
 `tree-sitter-bash` rejects constructs that are valid bash. That hurts completion
 most, because it parses command lines the user types — which cannot be rewritten
-to suit the grammar. `lib/grammar/patches.js` carries a small patch set against
-the installed upstream grammar; only that file is committed, everything else is
-generated into the gitignored `lib/grammar/build/`.
+to suit the grammar. The fork is vendored in `lib/grammar/vendor/`;
+`lib/grammar/patches.js` records how it derives from upstream.
 
 ```sh
-node lib/grammar/build.js    # optional, needs a C toolchain
-node lib/grammar/test.js     # regression sweep + cause expectations
+node lib/grammar/build.js           # optional: needs a C toolchain + python3
+node lib/grammar/test.js            # regression sweep + cause expectations
+node lib/grammar/build.js --check   # vendored == upstream + patches?
+node lib/grammar/build.js --rebase  # adopt a new upstream
 ```
+
+Edit the grammar through `patches.js` + `--rebase`, not by hand — `--check`
+fails on hand edits. Building needs a C toolchain and Python 3 (node-gyp);
+using BashTab needs neither.
 
 The fork is optional: `load.js` falls back to the stock parser, and the linter
 then reports the gaps as `BU000` instead. Before adding a patch, read

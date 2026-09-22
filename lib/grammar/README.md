@@ -16,21 +16,49 @@ grammar, plus the build and the checks that keep it honest.
 
 | Path | |
 |---|---|
-| `patches.js` | The patch set. Exact string replacements with assertions — **the only file that is committed** |
-| `build.js` | Stage upstream → patch → `tree-sitter generate` → compile |
+| `vendor/` | **The fork.** Committed: `grammar.js` (patched), `src/scanner.c`, the binding boilerplate, and `PROVENANCE.json` |
+| `patches.js` | How `vendor/grammar.js` is derived from upstream. Not applied at build time — it is the record `--check` and `--rebase` use |
+| `build.js` | Compile `vendor/` into `out/`; also `--check` and `--rebase` |
 | `load.js` | Resolve the fork if built, else stock. Every consumer goes through this |
 | `corpus/causes/` | One repro per known gap, each marked `# expect: fixed` or `# expect: unfixed` |
 | `corpus/regression/` | Constructs that must keep parsing |
 | `test.js` | Regression sweep + cause expectations + `bash -n` validity |
-| `build/` | Generated. Gitignored |
+| `out/` | Generated: `parser.c`, the compiled addon. Gitignored |
 
 ## Using it
 
 ```sh
-node lib/grammar/build.js          # build the fork (needs a C toolchain)
-node lib/grammar/test.js           # verify it
-node lib/grammar/build.js --check  # do the patches still apply? no build
+node lib/grammar/build.js           # compile vendor/ into out/
+node lib/grammar/test.js            # regression sweep + cause expectations
+node lib/grammar/build.js --check   # vendored == upstream + patches?
+node lib/grammar/build.js --rebase  # re-derive vendor/ from current upstream
 ```
+
+The grammar is edited through `patches.js`, not by hand: `--check` fails if
+`vendor/grammar.js` stops matching upstream + the patch set, so a hand edit is
+caught rather than quietly becoming untracked divergence. `src/scanner.c` is
+vendored too and *may* be edited directly — two unfixed causes need it — but
+`--check` reports when it diverges from upstream so the divergence stays
+deliberate.
+
+## Dependencies
+
+**Using BashTab: nothing new.** The fork is optional. `load.js` falls back to
+the stock parser, and the linter reports the gaps as `BU000` instead.
+
+**Building the fork** additionally needs:
+
+| | |
+|---|---|
+| C/C++ toolchain | `gcc`/`g++` or `clang`, plus `make` — compiles `parser.c`, `scanner.c`, `binding.cc` |
+| Python 3 | required by `node-gyp` (gyp is a Python program) |
+| `node-gyp` | *not* a repo dependency; fetched by `npx` on first build, so that build needs network. Add it as a devDependency if you want hermetic builds |
+| Node.js + `pnpm install` | already needed for the tree-sitter daemon and Fig spec conversion |
+
+`tree-sitter-cli` (pinned exactly) is a prebuilt binary from npm and needs no
+toolchain of its own. Vendoring also *dropped* one dependency: upstream's
+`bindings/node/index.js` pulls in `node-gyp-build`, which the vendored fork
+does not use — `load.js` requires the compiled addon directly.
 
 The fork is **optional**. Without it, `load.js` falls back to the stock parser
 and everything still works — the linter just reports more `BU000` coverage

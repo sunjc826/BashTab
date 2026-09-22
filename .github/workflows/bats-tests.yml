@@ -103,6 +103,9 @@ jobs:
       - name: Install Node.js dependencies (tree-sitter)
         run: pnpm install
 
+      - name: Check the vendored grammar still matches upstream + patches
+        run: node lib/grammar/build.js --check
+
       - name: Build the tree-sitter-bash fork
         # Optional at runtime, but CI builds it so the patch set is checked
         # against upstream on every push: a patch whose anchor no longer

@@ -12,4 +12,4 @@ shims
 # Demo module runtime artifacts (BU_OUT_DIR under each example module tree)
 examples/gitshelf/.bu/
 examples/devbox/.bu/
-lib/grammar/build/
+lib/grammar/out/
