@@ -52,11 +52,12 @@ the stock parser, and the linter reports the gaps as `BU000` instead.
 |---|---|
 | C/C++ toolchain | `gcc`/`g++` or `clang`, plus `make` — compiles `parser.c`, `scanner.c`, `binding.cc` |
 | Python 3 | required by `node-gyp` (gyp is a Python program) |
-| `node-gyp` | *not* a repo dependency; fetched by `npx` on first build, so that build needs network. Add it as a devDependency if you want hermetic builds |
 | Node.js + `pnpm install` | already needed for the tree-sitter daemon and Fig spec conversion |
 
-`tree-sitter-cli` (pinned exactly) is a prebuilt binary from npm and needs no
-toolchain of its own. Vendoring also *dropped* one dependency: upstream's
+`node-gyp` is a normal dependency (pinned exactly), so `pnpm install` provides
+it and building needs no network. `tree-sitter-cli` (also pinned) is a prebuilt
+binary and needs no toolchain of its own. Only the C toolchain and Python 3 are
+system-level — install those with your package manager. Vendoring also *dropped* one dependency: upstream's
 `bindings/node/index.js` pulls in `node-gyp-build`, which the vendored fork
 does not use — `load.js` requires the compiled addon directly.
 

@@ -467,8 +467,9 @@ node lib/grammar/build.js --rebase  # adopt a new upstream
 ```
 
 Edit the grammar through `patches.js` + `--rebase`, not by hand — `--check`
-fails on hand edits. Building needs a C toolchain and Python 3 (node-gyp);
-using BashTab needs neither.
+fails on hand edits. Building needs a C toolchain and Python 3 (both
+system-level; `node-gyp` itself is a pinned npm dependency). Using BashTab
+needs neither — `load.js` falls back to the stock parser.
 
 The fork is optional: `load.js` falls back to the stock parser, and the linter
 then reports the gaps as `BU000` instead. Before adding a patch, read
