@@ -1,0 +1,25 @@
+# bu lint baseline — pre-existing findings CI should not fail on.
+# Regenerate with: bu validate-script --all --write-baseline <file>
+BU000	commands/core/bu-get-config.sh	776824ad
+BU000	commands/docker/bu-pull-docker-image.sh	c2dbabf5
+BU000	commands/docker/bu-remove-docker-container.sh	780ebdee
+BU000	commands/docker/bu-remove-docker-image.sh	780ebdee
+BU000	commands/jc/bu-get-date.sh	84802240
+BU000	commands/shell/bu-resume-job.sh	d620aa6a
+BU000	lib/core/bu_core_autocomplete.sh	1d03c15e
+BU000	lib/core/bu_core_base.sh	fd6b6cf
+BU001	lib/core/bu_core_autocomplete.sh	d525d850
+BU001	lib/core/bu_core_autocomplete.sh	d525d850
+BU001	lib/core/bu_core_autocomplete.sh	d525d850
+BU001	lib/core/bu_core_cache.sh	43382fd0
+BU001	lib/core/bu_core_cap.sh	43382fd0
+BU001	lib/core/bu_core_cap.sh	47c79416
+BU001	lib/core/bu_core_out.sh	3694b799
+BU001	lib/core/bu_core_out.sh	3694b799
+BU001	lib/core/bu_core_out.sh	3694b799
+BU001	lib/core/bu_core_out.sh	3694b799
+BU001	lib/core/bu_core_transform.sh	b5713c25
+BU001	lib/core/bu_core_transform.sh	b5713c25
+BU001	lib/core/bu_core_transform.sh	b5713c25
+BU001	lib/core/bu_core_transform.sh	b5713c25
+BU040	commands/pipeline/bu-view-table.sh	36a0f280

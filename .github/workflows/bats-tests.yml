@@ -32,6 +32,7 @@ jobs:
           - test/help_preview_test.bats
           - test/help_topic_test.bats
           - test/integration_test.bats
+          - test/lint_test.bats
           - test/location_test.bats
           - test/module_provenance_test.bats
           - test/new_commands_test.bats
@@ -89,3 +90,33 @@ jobs:
           # in these files. Absence of an EXIT line for a vanished test = SIGKILL.
           cat /tmp/ts_diag.*.log 2>/dev/null || true
           exit "$rc"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install Node.js dependencies (tree-sitter)
+        run: pnpm install
+
+      - name: Lint BashTab against its own invariants
+        # New error-severity findings fail the build; everything already
+        # present is recorded in .bulintbaseline. Regenerate that file with
+        #   bu validate-script --all --write-baseline .bulintbaseline
+        run: |
+          node lib/lint/bu_lint.js \
+            --root "$PWD" \
+            --severity error \
+            --baseline .bulintbaseline \
+            $(find lib/core commands config -name '*.sh' -type f | sort)
+
+      - name: Report full findings (informational)
+        if: always()
+        run: |
+          node lib/lint/bu_lint.js --root "$PWD" \
+            $(find lib/core commands config -name '*.sh' -type f | sort) \
+            | sort -k3 || true
