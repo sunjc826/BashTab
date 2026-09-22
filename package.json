@@ -10,7 +10,9 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:grammar": "node lib/grammar/build.js",
+    "test:grammar": "node lib/grammar/test.js"
   },
   "repository": {
     "type": "git",
@@ -20,8 +22,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "tree-sitter": "^0.25.0",
-    "tree-sitter-bash": "^0.25.1",
-    "tree-sitter-cli": "^0.26.9"
+    "node-gyp": "13.0.2",
+    "tree-sitter": "0.25.0",
+    "tree-sitter-bash": "0.25.1",
+    "tree-sitter-cli": "0.26.11"
   }
 }

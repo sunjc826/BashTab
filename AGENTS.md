@@ -450,6 +450,53 @@ preinit callback to be sourced during init.
 - `lib/core/bu_core_ts.sh` — bash wrapper using `coproc`, exposes `bu_ts_parse()`
 - Toggle: `BU_AUTOCOMPLETE_USE_TREE_SITTER=true` (default `false`)
 - Handles pipes, command substitutions, variable expansions, returns range-based replacements
+- Grammar resolution goes through `lib/grammar/load.js`, never `require("tree-sitter-bash")` directly
+
+### Grammar fork (`lib/grammar/`)
+
+`tree-sitter-bash` rejects constructs that are valid bash. That hurts completion
+most, because it parses command lines the user types — which cannot be rewritten
+to suit the grammar. The fork is vendored in `lib/grammar/vendor/`;
+`lib/grammar/patches.js` records how it derives from upstream.
+
+```sh
+node lib/grammar/build.js           # optional: needs a C toolchain + python3
+node lib/grammar/test.js            # regression sweep + cause expectations
+node lib/grammar/build.js --check   # vendored == upstream + patches?
+node lib/grammar/build.js --rebase  # adopt a new upstream
+```
+
+Edit the grammar through `patches.js` + `--rebase`, not by hand — `--check`
+fails on hand edits. Building needs a C toolchain and Python 3 (both
+system-level; `node-gyp` itself is a pinned npm dependency). Using BashTab
+needs neither — `load.js` falls back to the stock parser.
+
+The fork is optional: `load.js` falls back to the stock parser, and the linter
+then reports the gaps as `BU000` instead. Before adding a patch, read
+`lib/grammar/README.md` — in particular, **always run the regression sweep**: a
+one-line patch that fixed its own repro silently broke `for ((i=0; i<3; i++))`,
+and only the sweep caught it.
+
+### Linting (`bu validate-script`)
+
+`bu validate-script --all` checks the invariants bash cannot express and
+shellcheck does not know about: errexit safety (BU001–BU005), the custom
+`source` wrapper's scoping (BU010–BU013), the case-block parser DSL
+(BU020–BU028), command template invariants (BU030–BU034), header windows
+(BU040–BU045), and pipeline cost (BU050). `bu validate-script --explain BU001`
+gives the rationale for any of them.
+
+Rules live in `lib/lint/rules.js` (the engine is `lib/lint/bu_lint.js`) and
+match on the CST, not on text. Suppress one where it is genuinely wrong with
+`# bu-lint: disable=BU001 -- reason`; a suppression with no reason is itself a
+finding (BU005).
+
+**Before adding a rule, run it over the whole repo and read every hit.** Rules
+that fire widely on healthy code get cut, not weakened: one candidate fired 210
+times and another 137, and both were describing conventions this codebase does
+not hold.
+`.bulintbaseline` records pre-existing findings so CI fails only on new ones;
+regenerate it with `bu validate-script --all --write-baseline .bulintbaseline`.
 
 ### fzf Autocomplete Display
 
