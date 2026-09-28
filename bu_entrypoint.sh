@@ -40,6 +40,33 @@ if [[ -f ./config/bu_config_local.sh ]]; then
     source ./config/bu_config_local.sh
 fi
 
+# Embedder-redirected settings file. `bu set-config` writes to
+# BU_CONFIG_LOCAL_FILE when an embedding project points it at its own tree, so
+# this is the read counterpart of that write target. It must be re-read here
+# (not just applied by the embedder's activate in the parent shell): execute-
+# type commands re-run this entrypoint in a child process, where the parent's
+# non-exported variables are invisible, so any persisted setting would
+# otherwise silently revert to its registered default inside those commands.
+#
+# Sourced before bu_config_dynamic.sh so its ${VAR:-default} assignments yield
+# to the persisted values, and (like the checkout-local file) NOT --__bu-once:
+# re-activation should re-read edits.
+if [[ -n "${BU_CONFIG_LOCAL_FILE:-}" && -f "$BU_CONFIG_LOCAL_FILE" ]]; then
+    # Normalize a relative path (same policy as bu_realpath) before comparing,
+    # so `./config/bu_config_local.sh` and `config/bu_config_local.sh` are
+    # recognized as the checkout-local file and not sourced a second time.
+    _bu_embedder_config_file=$BU_CONFIG_LOCAL_FILE
+    case "$_bu_embedder_config_file" in
+    /*) ;;
+    *) _bu_embedder_config_file=$PWD/${_bu_embedder_config_file#./} ;;
+    esac
+    if [[ "$_bu_embedder_config_file" != "$BU_DIR/config/bu_config_local.sh" ]]; then
+        # shellcheck disable=SC1090
+        source "$BU_CONFIG_LOCAL_FILE"
+    fi
+    unset _bu_embedder_config_file
+fi
+
 # Fleet-shared site glue (profile.d-style, sourced in glob order). Runs after
 # machine-local config and before capability probing so a site can install a
 # BU_CAP_MISS_RESOLVER hook that makes lazily-loaded binaries (module systems,

@@ -439,3 +439,84 @@ function test_set_config_degenerate_markers_refused { #@test
     assert_output --partial "inconsistent"
     assert_equal "$(cat "$file")" "$snapshot"
 }
+
+# ===========================================================================
+# Embedder-redirected settings file (BU_CONFIG_LOCAL_FILE)
+#
+# `bu set-config` writes to BU_CONFIG_LOCAL_FILE so an embedding project can
+# keep settings in its own tree, but execute-type commands re-run the
+# entrypoint in a child process where the parent's non-exported variables are
+# invisible. bu_entrypoint.sh must therefore re-read the file or persisted
+# values silently revert to their registered defaults inside those commands.
+# ===========================================================================
+
+function test_config_local_file_embedder_sourced_in_child { #@test
+    local settings="$BATS_TEST_TMPDIR/embedder_settings.sh"
+    printf 'BU_TABLE_PAGER=preset:never\n' > "$settings"
+
+    run env BU_CONFIG_LOCAL_FILE="$settings" bash -c \
+        'source "$1"/bu_entrypoint.sh >/dev/null 2>&1; printf "%s" "$BU_TABLE_PAGER"' \
+        _ "$DIR/.."
+    assert_success
+    assert_output "preset:never"
+}
+
+function test_config_local_file_set_config_roundtrips_to_child { #@test
+    # The exact reported scenario: bu set-config persists to BU_CONFIG_LOCAL_FILE,
+    # and a child (execute-type command) must observe the persisted value.
+    bu set-config BU_TABLE_PAGER preset:never >/dev/null
+    assert grep -q '^BU_TABLE_PAGER=preset:never$' "$BU_CONFIG_LOCAL_FILE"
+
+    run env BU_CONFIG_LOCAL_FILE="$BU_CONFIG_LOCAL_FILE" bash -c \
+        'source "$1"/bu_entrypoint.sh >/dev/null 2>&1; printf "%s" "$BU_TABLE_PAGER"' \
+        _ "$DIR/.."
+    assert_success
+    assert_output "preset:never"
+}
+
+function test_config_local_file_sourced_once_when_default { #@test
+    # Deterministic negative case: build a throwaway BU_DIR whose checkout-local
+    # settings file records every source, so we can tell "sourced once" from
+    # "sourced twice" without depending on the developer's real local config.
+    local minrepo="$BATS_TEST_TMPDIR/minrepo"
+    mkdir -p "$minrepo/config"
+    ln -s "$DIR/../bu_entrypoint.sh" "$minrepo/bu_entrypoint.sh"
+    ln -s "$DIR/../bu_custom_source.sh" "$minrepo/bu_custom_source.sh"
+    ln -s "$DIR/../lib" "$minrepo/lib"
+    ln -s "$DIR/../config/bu_config_static.sh" "$minrepo/config/bu_config_static.sh"
+    ln -s "$DIR/../config/bu_config_dynamic.sh" "$minrepo/config/bu_config_dynamic.sh"
+    cat > "$minrepo/config/bu_config_local.sh" <<'SCRIPT_EOF'
+BU_SRC_COUNT=$(( ${BU_SRC_COUNT:-0} + 1 ))
+printf '%s\n' "$BU_SRC_COUNT" >> "$BU_SRC_LOG"
+BU_TABLE_PAGER=preset:never
+SCRIPT_EOF
+
+    # (a) Unset: the checkout-local file is the only settings file, sourced once.
+    local log_unset="$BATS_TEST_TMPDIR/unset.log"
+    run env -u BU_CONFIG_LOCAL_FILE BU_SRC_LOG="$log_unset" bash -c \
+        'source "$1/bu_entrypoint.sh" >/dev/null 2>&1; printf "%s|%s" "$BU_TABLE_PAGER" "${BU_SRC_COUNT:-unset}"' \
+        _ "$minrepo"
+    assert_success
+    assert_output "preset:never|1"
+    assert_equal "$(grep -c . "$log_unset")" "1"
+
+    # (b) Equal to the checkout-local path: still sourced exactly once (the
+    # embedder re-read must be skipped, not a second source).
+    local log_equal="$BATS_TEST_TMPDIR/equal.log"
+    run env BU_CONFIG_LOCAL_FILE="$minrepo/config/bu_config_local.sh" BU_SRC_LOG="$log_equal" bash -c \
+        'source "$1/bu_entrypoint.sh" >/dev/null 2>&1; printf "%s|%s" "$BU_TABLE_PAGER" "${BU_SRC_COUNT:-unset}"' \
+        _ "$minrepo"
+    assert_success
+    assert_output "preset:never|1"
+    assert_equal "$(grep -c . "$log_equal")" "1"
+
+    # (c) A relative path that resolves to the checkout-local file is also
+    # recognized and skipped (no double source).
+    local log_relative="$BATS_TEST_TMPDIR/relative.log"
+    run env BU_CONFIG_LOCAL_FILE="./config/bu_config_local.sh" BU_SRC_LOG="$log_relative" bash -c \
+        'cd "$1" && source ./bu_entrypoint.sh >/dev/null 2>&1; printf "%s|%s" "$BU_TABLE_PAGER" "${BU_SRC_COUNT:-unset}"' \
+        _ "$minrepo"
+    assert_success
+    assert_output "preset:never|1"
+    assert_equal "$(grep -c . "$log_relative")" "1"
+}
