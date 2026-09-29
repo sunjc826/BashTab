@@ -74,14 +74,27 @@ function test_traceback_full_missing_file_fallback { #@test
 }
 
 function test_traceback_full_context_clamps_before_first_line { #@test
-    # Fault on line 1: no negative start; window begins at line 1.
-    run_traceback_frame full 0 myfunc "$FIXTURE" 1
+    # Fault on line 1: start clamps at 1 instead of going negative. The default
+    # 4-line context then shows lines 1..5.
+    local long_fixture="$BATS_TEST_TMPDIR/long.sh"
+    cat > "$long_fixture" <<'EOF'
+line one
+line two
+line three
+line four
+line five
+line six
+line seven
+line eight
+line nine
+EOF
+    run_traceback_frame full 0 myfunc "$long_fixture" 1
     assert_success
     assert_output --partial ">     1 │ line one"
     assert_output --partial "2 │ line two"
-    assert_output --partial "3 │ line three"
-    # line 4/5 are beyond the default 2-line context window for line 1.
-    refute_output --partial "4 │ line four"
+    assert_output --partial "5 │ line five"
+    # line 6+ is beyond the default 4-line context window for line 1.
+    refute_output --partial "6 │ line six"
 }
 
 # ===========================================================================
@@ -167,8 +180,8 @@ EOF
     assert_output --partial "> "
 }
 
-function test_exit_handler_default_short_end_to_end { #@test
-    local script="$BATS_TEST_TMPDIR/e2e_short.sh"
+function test_exit_handler_default_full_end_to_end { #@test
+    local script="$BATS_TEST_TMPDIR/e2e_default.sh"
     cat > "$script" <<'EOF'
 export TERM=dumb
 export BU_OUT_DIR=$(mktemp -d)
@@ -180,7 +193,7 @@ EOF
     run bash "$script" "$DIR/.."
     assert_failure
     assert_output --partial "Traceback (most recent call last):"
-    # Short style: one compact line per frame; no Python-style "File" header.
-    assert_output --partial "at e2e_short.sh:"
-    refute_output --partial "  File \""
+    # Full style is the registered default: Python-style frame + source window.
+    assert_output --partial "File \"$script\", line "
+    assert_output --partial "> "
 }

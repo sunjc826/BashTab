@@ -520,3 +520,71 @@ SCRIPT_EOF
     assert_output "preset:never|1"
     assert_equal "$(grep -c . "$log_relative")" "1"
 }
+
+# ===========================================================================
+# Documentation/registry default consistency
+# ===========================================================================
+
+function test_docs_config_defaults_match_registry { #@test
+    # Guard against docs/registry skew: the Configuration reference table
+    # (docs/structured_output.md) and the traceback style table
+    # (docs/technical_reference.md) advertise defaults that must match what
+    # bu_config_register records (e.g. classic->unicode, short->full).
+    local docs_out="$DIR/../docs/structured_output.md"
+    local docs_ref="$DIR/../docs/technical_reference.md"
+    local mismatches=()
+    local checked=0
+    local line var doc_default trail
+
+    # --- docs/structured_output.md Configuration reference table ---
+    while IFS='|' read -r _ var doc_default trail
+    do
+        var=${var//[[:space:]]/}
+        var=${var//\`/}
+        [[ "$var" =~ ^BU_[A-Z0-9_]+$ ]] || continue
+        # Only registered settings carry a registry default to compare against.
+        [[ "${BU_CONFIG_PROPERTIES[$var,registered]:-}" == true ]] || continue
+
+        doc_default=${doc_default//\`/}
+        doc_default=${doc_default#"${doc_default%%[![:space:]]*}"}
+        doc_default=${doc_default%"${doc_default##*[![:space:]]}"}
+        [[ "$doc_default" == "*(empty)*" ]] && doc_default=
+
+        checked=$((checked + 1))
+        if [[ "${BU_CONFIG_PROPERTIES[$var,default]}" != "$doc_default" ]]
+        then
+            mismatches+=("$var docs=[$doc_default] registry=[${BU_CONFIG_PROPERTIES[$var,default]}]")
+        fi
+    done < "$docs_out"
+
+    if ((${#mismatches[@]} > 0))
+    then
+        printf 'docs/registry default mismatch:\n'
+        printf '  %s\n' "${mismatches[@]}"
+        false
+    fi
+
+    # Must have actually parsed the registered settings this guard protects.
+    if (( checked < 4 ))
+    then
+        printf 'guard parsed only %d registered settings\n' "$checked"
+        false
+    fi
+
+    # --- docs/technical_reference.md traceback style table ---
+    # Exactly one style row is annotated "(default)"; it must match the
+    # registered BU_STACKTRACE_STYLE default.
+    local documented_style=
+    while IFS='|' read -r _ var doc_default trail
+    do
+        var=${var//[[:space:]]/}
+        var=${var//\`/}
+        [[ "$var" == short || "$var" == full ]] || continue
+        [[ "$doc_default" == *"(default)"* ]] || continue
+        documented_style=$var
+    done < "$docs_ref"
+    assert_equal "${BU_CONFIG_PROPERTIES[BU_STACKTRACE_STYLE,default]}" "$documented_style"
+
+    # The documented BU_STACKTRACE_CONTEXT_LINES default must match the global.
+    assert grep -q "(default \`${BU_STACKTRACE_CONTEXT_LINES}\`)" "$docs_ref"
+}

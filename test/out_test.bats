@@ -104,7 +104,7 @@ function test_bu_out_from_lines_basic { #@test
 function test_bu_format_table_basic { #@test
     local out
     out=$(printf '%s\n' '{"name":"bashtab","version":"0.1.0"}' '{"name":"myapp","version":"-"}' \
-        | bu_format_table --columns name,version)
+        | bu_format_table --columns name,version --style classic)
     assert_equal "$out" 'name     version
 -------  -------
 bashtab  0.1.0
@@ -115,7 +115,7 @@ function test_bu_format_table_default_columns_and_value_types { #@test
     # No --columns: keys of the first record in insertion order.
     # Numbers/booleans render via tostring, null renders empty.
     local out
-    out=$(printf '%s\n' '{"name":"x","n":3,"ok":true,"missing":null}' | bu_format_table)
+    out=$(printf '%s\n' '{"name":"x","n":3,"ok":true,"missing":null}' | bu_format_table --style classic)
     assert_equal "$out" 'name  n  ok    missing
 ----  -  ----  -------
 x     3  true'
@@ -124,7 +124,7 @@ x     3  true'
 function test_bu_format_table_truncates_to_terminal_width { #@test
     local out
     out=$(COLUMNS=30; printf '%s\n' '{"name":"bashtab","path":"/a/very/long/path/that/exceeds"}' \
-        | bu_format_table --columns name,path)
+        | bu_format_table --columns name,path --style classic)
     assert_equal "$out" 'name     path
 -------  ---------------------
 bashtab  /a/very/long/path/th…'
@@ -133,7 +133,7 @@ bashtab  /a/very/long/path/th…'
 function test_bu_format_table_empty_input_explicit_columns_shows_header { #@test
     # With explicit --columns, render header + separator even for zero rows
     local out
-    out=$(printf '' | bu_format_table --columns name,version)
+    out=$(printf '' | bu_format_table --columns name,version --style classic)
     # header line + separator line, no data rows
     local expected="name  version"$'\n'"----  -------"
     assert_equal "$out" "$expected"
@@ -167,7 +167,7 @@ function test_bu_format_table_colors_wrap_cells { #@test
 function test_bu_format_table_stream_proportional_widths { #@test
     local out
     out=$(COLUMNS=40; printf '%s\n' '{"name":"bashtab","version":"0.1.0"}' '{"name":"myapp","version":"-"}' \
-        | bu_format_table --stream --columns name,version)
+        | bu_format_table --stream --columns name,version --style classic)
     assert_equal "$out" 'name                 version
 -------------------  -------------------
 bashtab              0.1.0
@@ -303,7 +303,7 @@ function test_bu_out_sort_by_requires_key { #@test
 
 function test_bu_format_table_labels { #@test
     local out
-    out=$(printf '%s\n' '{"name":"bashtab","version":"0.1.0"}' | bu_format_table --columns name:Module,version)
+    out=$(printf '%s\n' '{"name":"bashtab","version":"0.1.0"}' | bu_format_table --columns name:Module,version --style classic)
     assert_equal "$out" 'Module   version
 -------  -------
 bashtab  0.1.0'
@@ -311,7 +311,7 @@ bashtab  0.1.0'
 
 function test_bu_format_table_label_widens_column { #@test
     local out
-    out=$(printf '%s\n' '{"name":"x"}' | bu_format_table --columns name:ModuleName)
+    out=$(printf '%s\n' '{"name":"x"}' | bu_format_table --columns name:ModuleName --style classic)
     assert_equal "$out" 'ModuleName
 ----------
 x'
@@ -319,7 +319,7 @@ x'
 
 function test_bu_format_table_label_with_spaces { #@test
     local out
-    out=$(printf '%s\n' '{"name":"x","version":"1"}' | bu_format_table --columns 'name:Module Name,version')
+    out=$(printf '%s\n' '{"name":"x","version":"1"}' | bu_format_table --columns 'name:Module Name,version' --style classic)
     assert_equal "$out" 'Module Name  version
 -----------  -------
 x            1'
@@ -334,7 +334,7 @@ version : 0.1.0'
 
 function test_bu_format_table_stream_labels { #@test
     local out
-    out=$(COLUMNS=40; printf '%s\n' '{"name":"bashtab","version":"0.1.0"}' | bu_format_table --stream --columns name:Module,version)
+    out=$(COLUMNS=40; printf '%s\n' '{"name":"bashtab","version":"0.1.0"}' | bu_format_table --stream --columns name:Module,version --style classic)
     assert_equal "$out" 'Module               version
 -------------------  -------------------
 bashtab              0.1.0'
@@ -599,14 +599,14 @@ function test_bu_get_command_table_header { #@test
     # Column padding depends on the longest registered command name, which
     # varies with the user's modules, so assert on structure not exact widths
     local out
-    out=$(bu get-command --format table | head -1)
+    out=$(BU_TABLE_STYLE=classic bu get-command --format table | head -1)
     assert_regex "$out" '^name +type +definition +synopsis *$'
 }
 
 function test_bu_get_command_table_legacy_columns { #@test
     # Explicit --columns still renders the legacy display set
     local out
-    out=$(bu get-command --format table --columns name,verb,noun,namespace,type | head -1)
+    out=$(BU_TABLE_STYLE=classic bu get-command --format table --columns name,verb,noun,namespace,type | head -1)
     assert_regex "$out" '^name +verb +noun +namespace +type *$'
 }
 
@@ -625,7 +625,7 @@ function test_bu_get_command_alias_definition { #@test
 
 function test_bu_pipeline_format_table_cmdlet { #@test
     local out
-    out=$(BU_MODULE_LIST="alpha:1.0.0:/a" bu get-module | bu format-table --columns name,version)
+    out=$(BU_MODULE_LIST="alpha:1.0.0:/a" bu get-module | bu format-table --columns name,version --style classic)
     assert_equal "$out" 'name   version
 -----  -------
 alpha  1.0.0'
@@ -655,7 +655,7 @@ function test_bu_pipeline_where_select_sort_table { #@test
     # Uses the deterministic BU_MODULE_LIST fixture: asserting on the sorted
     # bu command registry breaks whenever a command is added or removed.
     local out
-    out=$(BU_MODULE_LIST="zeta:1.0.0:/z;alpha:2.0.0:/a" bu get-module | bu_out_where '.version != ""' | bu_out_select name,version | bu_out_sort_by name | bu_format_table | head -3)
+    out=$(BU_MODULE_LIST="zeta:1.0.0:/z;alpha:2.0.0:/a" bu get-module | bu_out_where '.version != ""' | bu_out_select name,version | bu_out_sort_by name | bu_format_table --style classic | head -3)
     assert_equal "$out" 'name   version
 -----  -------
 alpha  2.0.0'
@@ -727,7 +727,7 @@ function test_bu_full_powershell_pipeline { #@test
         | bu where '.namespace == "bu" and .verb == "convert-to"' \
         | bu select name \
         | bu sort name \
-        | bu format-table)
+        | bu format-table --style classic)
     assert_equal "$out" 'name
 -----------------
 convert-to-base64
@@ -1284,6 +1284,9 @@ function test_cmdlets_table_when_terminal { #@test
     local helper=$BATS_TEST_TMPDIR/pty_select.sh
     cat > "$helper" <<EOF
 source "$DIR/../bu_entrypoint.sh" >/dev/null 2>&1
+# Pin style and disable the pager so the pty output is the table alone.
+export BU_TABLE_STYLE=classic
+export BU_TABLE_PAGER=
 BU_MODULE_LIST="a:1.0.0:/x" bu get-module | bu select name,version
 EOF
     local out

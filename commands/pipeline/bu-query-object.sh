@@ -897,8 +897,8 @@ its compact completion summary and takes precedence if both flags are used.
         --example "Query a CSV file" "from data.csv where type -eq source select name" \
         --example "Query a TSV file" "from data.tsv select name,verb order-by name" \
         --example "Save results to a file" "select name,verb order-by name outfile verbs.jsonl"
-    bu_scope_pop_function || cleanup_status=$?
-    if (( execution_status == 0 )); then execution_status=$cleanup_status; fi
+    # bu_autohelp pops the function-level scope on its way out; do not pop
+    # again here or the dynamic scope stack is left empty.
     return "$execution_status"
 fi
 
