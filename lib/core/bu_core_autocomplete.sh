@@ -1369,6 +1369,9 @@ bu_autocomplete_get_autocompletions()
     fi
 
     local has_ansi_colors=false
+    # Declared before the fallback arms below: they index the cursor word via
+    # ${command_line[-1]} and would otherwise trigger a bad-array-subscript.
+    local command_line=("$@")
 
     bu_autocomplete_get_completion_func "$1"
     case "$?" in
@@ -1397,8 +1400,7 @@ bu_autocomplete_get_autocompletions()
     esac
 
     local completion_func=$BU_RET
-    
-    local command_line=("$@")
+
     local COMP_LINE=${command_line[*]}
     local COMP_POINT=${#COMP_LINE}
     local COMP_CWORD=$(( $# - 1 ))

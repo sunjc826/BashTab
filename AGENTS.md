@@ -237,8 +237,11 @@ Arguments to `bu_parse_positional` are processed by `__bu_autocomplete_completio
 | `--ret func arg1 ... ret--` | Run function, use `BU_RET` array as completions |
 | `--options-at FILE LINE` | Parse case block at location for option completions |
 | `--as-if cmd subcmd ... as-if--` | Delegate to another command's autocomplete |
+| `+c/--no-append-cur-word` | Suppress appending the word under the cursor to the following `--as-if`/`--stdout`/`--ret` invocation. Use when the delegated list already ends with the cursor word (`bu_autocomplete_remaining +c --as-if "${remaining_options[@]}" as-if--`) or ends with a literal prefix to narrow on (`+c --as-if git checkout release/ as-if--` offers only `release/*` branches; the framework prefix-filters `COMPREPLY` against the real cursor word afterwards). `-c/--append-cur-word` restores the default. |
 | `--delimited [--delimiter X] opt1 opt2 ... delimited--` | Comma-delimited multiselect; excludes already-selected tokens, auto-hint shows available options |
 | `-a/--ansi COLOR` | Apply ANSI color to completions |
+
+During completion a cmdlet's `"$@"` is words 1..`cword` of the command line, so the word under the cursor is already the last element — `+c` stops the DSL from appending it again.
 
 Example usages from commands:
 ```bash

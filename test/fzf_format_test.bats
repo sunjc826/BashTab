@@ -272,6 +272,34 @@ function test_real_docker_fig_spec_nospace_still_one_space { #@test
     assert_equal "$BU_RET" "docker images "
 }
 
+# ── No-completer fallback keeps the cursor word ──
+
+function test_fallback_no_bad_array_subscript { #@test
+    # Regression: command_line was declared after the fallback case, so the
+    # no-completer arm indexed an unset array and printed
+    # "bad array subscript" on every TAB.
+    complete -r true 2>/dev/null || true
+    run bu_autocomplete_print_autocompletions true --he
+    refute_output --partial "bad array subscript"
+}
+
+function test_fig_fallback_passes_cursor_word { #@test
+    # Through the no-completer fallback the Fig lookup must receive the real
+    # cursor word; an empty word would return the whole unfiltered option set.
+    local spec_path="${BU_FIG_SPEC_DIR:-$DIR/../fig_specs/build}/degit.json"
+    [[ -f "$spec_path" ]] || skip "degit fig spec not found"
+    complete -r degit 2>/dev/null || true
+    COMPREPLY=()
+    # `|| true` keeps bats' errexit from aborting on the internal "no completer"
+    # probe (which returns 1 by design); the function handles it internally.
+    bu_autocomplete_get_autocompletions degit --c || true
+    assert [ "${#COMPREPLY[@]}" -gt 0 ]
+    local candidate
+    for candidate in "${COMPREPLY[@]}"; do
+        assert_regex "$candidate" '^--c'
+    done
+}
+
 # ── Docker-style column-padded completions (__start_docker) ──
 
 function test_extract_nested_parens_in_description { #@test
