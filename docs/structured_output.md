@@ -561,7 +561,7 @@ verb=`convert-to`, noun=`jsonl`. Extend the array for custom multi-word verbs.
 | `BU_OUTPUT_FORMAT` | *(empty)* | Force output format when `--format auto` |
 | `BU_QUERY_EXECUTOR` | `pipeline` | Query execution mode: `pipeline` (original separate stages) or `combined` (one jq evaluator before formatting). |
 | `BU_TABLE_STYLE` | `unicode` | Default table style. `plain`, `ascii`, `unicode`, `double`, `clickhouse`, `markdown`, `mysql`, or `psql` (see [Table styles](#table-styles)). Overridden per-call by `--style`. |
-| `BU_TABLE_PAGER` | `preset:less` | Pager for tables. `preset:less` → `less -R`, `preset:bat` → `bat --paging=always`, `preset:never` → cat, or a raw command like `less -R`. Empty disables. |
+| `BU_TABLE_PAGER` | `preset:less` | Pager for tables. `preset:less` → `less -FRX` (short output prints and returns), `preset:bat` → `bat --paging=always`, `preset:never` → cat, or a raw command like `less -FRX`. Empty disables. |
 | `BU_OUT_PRODUCER_FIELDS` | builtins | Assoc: producer prefix → field list |
 | `BU_OUT_PROBE_PIPELINE` | `false` | Master switch for live probing during completion |
 | `BU_OUT_PROBE_COMMANDS` | *(empty)* | Assoc allowlist of probe-safe producer heads |

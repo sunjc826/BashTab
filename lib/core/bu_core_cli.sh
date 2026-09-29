@@ -257,6 +257,10 @@ __bu_cli_environment_section()
 # ```
 __bu_cli_help()
 {
+    # Render the page as one uninterrupted document: shadow the pager setting
+    # locally so every nested table sink skips paging instead of opening a
+    # separate pager per section (execute/source/function/alias/key bindings).
+    local BU_TABLE_PAGER=
     local -r title="${BU_TPUT_BOLD}${BU_TPUT_DARK_BLUE}Help for ${BU_CLI_COMMAND_NAME}${BU_TPUT_RESET}"
     local -r dim="${BU_TPUT_GREY}"
     local -r rst="${BU_TPUT_RESET}"

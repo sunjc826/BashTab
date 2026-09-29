@@ -2507,9 +2507,9 @@ function test_bu_table_pager_cat_equivalent { #@test
 }
 
 function test_bu_table_pager_preset_on_terminal { #@test
-    # When stdout is a terminal and BU_TABLE_PAGER=preset:less, output must
-    # pass through the resolved preset (less -R).  We use sed as a marker
-    # pager via a custom preset registered at runtime.
+    # When stdout is a terminal and BU_TABLE_PAGER is a preset, output must
+    # pass through the resolved preset.  We use sed as a marker pager via a
+    # custom preset registered at runtime.
     if ! command -v script &>/dev/null; then
         skip "script(1) not available"
     fi
@@ -2566,6 +2566,36 @@ function test_bu_table_pager_register_preset { #@test
     # bu_register_table_pager_preset extends the presets at runtime.
     bu_register_table_pager_preset "my-pager" "my-custom-pager --flag"
     assert_equal "${__BU_TABLE_PAGER_PRESETS[my-pager]}" "my-custom-pager --flag"
+}
+
+function test_bu_table_pager_less_preset_flags { #@test
+    # preset:less must engage the pager only when the output exceeds a screen:
+    # -F quits when everything fits on one screen, -R passes colours through,
+    # and -X keeps short output in the scrollback (no alternate screen).
+    local cmd=${__BU_TABLE_PAGER_PRESETS[less]}
+    [[ "$cmd" == "less -FRX" ]]
+}
+
+function test_bu_table_pager_help_single_flow { #@test
+    # The top-level help renders several tables in one page. It must not open
+    # a separate pager per section: a marker pager preset must never run.
+    if ! command -v script &>/dev/null; then
+        skip "script(1) not available"
+    fi
+    local helper=$BATS_TEST_TMPDIR/pager_help_pty.sh
+    cat > "$helper" <<'SCRIPT_EOF'
+source "$HELPER_DIR/../bu_entrypoint.sh" >/dev/null 2>&1
+bu_register_table_pager_preset "marker" "sed s/^/PAGED:/"
+export BU_TABLE_PAGER="preset:marker"
+bu
+SCRIPT_EOF
+    local out
+    out=$(HELPER_DIR="$DIR" script -qec "bash $helper" /dev/null </dev/null | tr -d '\r\000\016\017' | sed 's/\x1b\[[0-9;]*m//g;s/\x1b(B//g')
+    # One uninterrupted help document with its command listing...
+    [[ "$out" == *"Help for bu"* ]]
+    [[ "$out" == *"The following commands using a"* ]]
+    # ...with no marker pager invoked for any nested table section.
+    [[ "$out" != *PAGED:* ]]
 }
 
 # ===========================================================================

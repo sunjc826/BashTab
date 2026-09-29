@@ -74,9 +74,9 @@ BU_QUERY_EXECUTOR=${BU_QUERY_EXECUTOR:-${BU_CONFIG_PROPERTIES[BU_QUERY_EXECUTOR,
 
 # Pager for tabular output. When set and stdout is a terminal,
 # bu_format_table pipes output through this command.
-#   "preset:less"   → less -R      "preset:bat" → bat --paging=always
+#   "preset:less"   → less -FRX    "preset:bat" → bat --paging=always
 #   "preset:never"  → cat (no paging)
-#   "less -R"       → custom command, used verbatim
+#   "less -FRX"     → custom command, used verbatim
 bu_config_register BU_TABLE_PAGER --default "preset:less" \
     --presets less less-quit bat never presets-- \
     --hint "Pager for tabular output (preset:less, preset:bat, or a custom command). Empty disables."

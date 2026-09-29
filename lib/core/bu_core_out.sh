@@ -27,8 +27,13 @@ BU_OUT_FORMATS=(auto table list json jsonl tsv)
 # Preset pager shortcuts for BU_TABLE_PAGER.  Maps preset names (the part
 # after "preset:") to full pager command lines.  Extend via
 # bu_register_table_pager_preset.
+# The default "less" preset passes:
+#   -F  exit immediately when the output fits on one screen, so short tables
+#       print like plain output instead of stopping in the pager
+#   -R  pass ANSI colour escapes through
+#   -X  leave short output in the scrollback (skip the alternate screen)
 declare -A -g __BU_TABLE_PAGER_PRESETS=(
-    [less]="less -R"
+    [less]="less -FRX"
     [less-quit]="less -FRSX"
     [bat]="bat --paging=always"
     [never]=cat
@@ -41,7 +46,7 @@ declare -A -g __BU_TABLE_PAGER_PRESETS=(
 #
 # *Params*:
 # - `$1`: Preset name (e.g. "less", "bat")
-# - `$2`: Full pager command (e.g. "less -R", "bat --paging=always")
+# - `$2`: Full pager command (e.g. "less -FRX", "bat --paging=always")
 #
 # *Examples*:
 # ```bash
@@ -1359,8 +1364,8 @@ bu_format_table()
 
     # Pager support: when BU_TABLE_PAGER is set and stdout is a terminal,
     # pipe table output through the configured pager.
-    # - "preset:less"   → resolves to "less -R" (or whatever the preset maps to)
-    # - "less -R"       → used verbatim as a custom pager command
+    # - "preset:less"   → resolves to "less -FRX" (or whatever the preset maps to)
+    # - "less -FRX"     → used verbatim as a custom pager command
     # - "" (empty)      → no paging (cat passthrough)
     # Falls back to cat if the pager command is invalid or not found.
     local __bu_pager_pipe=cat
