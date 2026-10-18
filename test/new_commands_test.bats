@@ -848,9 +848,14 @@ function test_bu_get_host_file_entry { #@test
 
 function test_bu_get_git_branch { #@test
     command -v git >/dev/null || skip "git not installed"
-    git -C "$DIR"/.. rev-parse --git-dir >/dev/null 2>&1 || skip "not a git repo"
+    # A fixture repo: the BashTab checkout itself may be on a detached HEAD
+    # (CI checks out pull requests that way), which has no current branch.
+    local repo="$BATS_TEST_TMPDIR"/repo
+    git init -q -b work "$repo"
+    git -C "$repo" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
     local out
-    out=$(bu get-git-branch | bu where '.current')
+    out=$(cd "$repo" && bu get-git-branch | bu where '.current')
+    [[ "$out" == *'"name":"work"'* ]]
     [[ "$out" == *'"current":true'* ]]
 }
 
