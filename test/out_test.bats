@@ -1203,7 +1203,11 @@ function test_validate_pipeline_command { #@test
 
 function test_get_shape_infers_types { #@test
     local out
-    out=$(bu get-shape get-module --format jsonl)
+    # A fixture module, ranked as __bu_parse_module_list would rank it: the
+    # test shell's own BU_MODULE_LIST is empty, so get-module has no rows.
+    BU_MODULE_RANK[alpha]=1
+    out=$(BU_MODULE_LIST="alpha:1.0.0:/a" bu get-shape get-module --format jsonl)
+    unset 'BU_MODULE_RANK[alpha]'
     assert_equal "$(printf '%s' "$out" | jq -r 'select(.name=="name") | .type')" "string"
     assert_equal "$(printf '%s' "$out" | jq -r 'select(.name=="rank") | .type')" "number"
     assert_equal "$(printf '%s' "$out" | jq -r 'select(.name=="name") | .required')" "true"
