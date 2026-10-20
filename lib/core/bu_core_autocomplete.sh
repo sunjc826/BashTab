@@ -55,6 +55,43 @@ __bu_fzf_compute_dimensions()
     BU_RET=("$left_pos" "$right_margin" "$box_length")
 }
 
+# ```
+# *Description*:
+# Strip terminal escapes from stdin so that `${#line}` is the display width.
+# BU_TPUT_RESET (`tput sgr0`) is not plain CSI: it is \e(B\e[m under xterm
+# terminfo and \e[m\x0f under screen/tmux terminfo on macOS, so besides CSI
+# (ESC [ ... letter, incl. `\e[6 q`), OSC (ESC ] ... BEL/ST) and DCS/SOS/PM/APC
+# this strips charset selection (ESC ( X / ESC ) X) and SO/SI shifts.
+# On Linux the previous GNU sed expressions run first, ahead of these.
+#
+# *Params*:
+# - `$@`: Extra sed arguments applied first (e.g. `-e 's/\\n/ /g'`)
+# - stdin: Lines to strip
+#
+# *Returns*:
+# - stdout: The lines without escapes
+# ```
+__bu_autocomplete_strip_ansi()
+{
+    local -a legacy_exprs=()
+    if [[ "$BU_ENV_IS_MACOS" == false ]]
+    then
+        legacy_exprs=(
+            -e 's/\x1B\(B\x1B\[m//g'
+            -e "s/\x1B\[([0-9]{1,3}(;[0-9]{1,3})*)?[mGK]//g"
+            -e 's/\x1B\[[^a-zA-Z]*[a-zA-Z]//g'
+            -e 's/\x1B\][^\x07]*(\x07|\x1B\\)//g'
+            -e 's/\x1B[PX^_][^\x1B]*(\x1B\\)?//g'
+        )
+    fi
+    sed -E "$@" "${legacy_exprs[@]}" \
+        -e $'s/\e\\[[^a-zA-Z]*[a-zA-Z]//g' \
+        -e $'s/\e\\][^\a\e]*(\a|\e\\\\)//g' \
+        -e $'s/\e[PX^_][^\e]*(\e\\\\)?//g' \
+        -e $'s/\e[()][0-9A-Za-z]//g' \
+        -e $'s/[\x0e\x0f]//g'
+}
+
 __bu_autocomplete_collect_compopt()
 {
     if [[ "$1" = compopt ]]
@@ -3453,10 +3490,10 @@ __bu_bind_fzf_autocomplete_impl()
     printf "%s" "$ps1_last_row" # | tee /tmp/bashtab_prompt.raw
     #echo "" >> /tmp/bashtab_prompt.raw
 
-    # Compute visible prompt width.  Strip all ANSI escape sequences from
-    # the already-rendered string: CSI (ESC [ ... letter), OSC (ESC ] ... BEL).
+    # Compute visible prompt width.  Strip all escape sequences from the
+    # already-rendered string (incl. the \e(B in a tput-derived reset).
     local ps1_noesc
-    ps1_noesc=$(printf '%s' "$ps1_last_row" | sed -E 's/\x1B\[[^a-zA-Z]*[a-zA-Z]//g; s/\x1B\][^\x07]*(\x07|\x1B\\)//g; s/\x1B[PX^_][^\x1B]*(\x1B\\)?//g')
+    ps1_noesc=$(printf '%s' "$ps1_last_row" | __bu_autocomplete_strip_ansi)
     local col_with_ps1=$((${#ps1_noesc} % COLUMNS))
 
     local command_line_back_last_word=${command_line_back%%[[:space:]]*}
@@ -3605,7 +3642,7 @@ __bu_bind_fzf_autocomplete_impl()
 
     if "$BU_AUTOCOMPLETE_BIND_FZF_DISPLAY_METADATA" && (("${#BU_COMPREPLY_METADATA[@]}" > 0)) && ((${#COMPREPLY[@]} < 2000))
     then
-        mapfile -t bu_compreply_metadata_no_ansi < <(sed -r -e 's/\\n/ /g' -e "s/\x1B\[([0-9]{1,3}(;[0-9]{1,3})*)?[mGK]//g" < <(printf "%s\n" "${BU_COMPREPLY_METADATA[@]}"))
+        mapfile -t bu_compreply_metadata_no_ansi < <(__bu_autocomplete_strip_ansi -e 's/\\n/ /g' < <(printf "%s\n" "${BU_COMPREPLY_METADATA[@]}"))
         local total_len=0
         for ((i=0; i < ${#bu_compreply_metadata_no_ansi[@]}; i++))
         do
@@ -3691,7 +3728,7 @@ __bu_bind_fzf_autocomplete_impl()
             # https://stackoverflow.com/questions/17998978/removing-colors-from-output
             # ansi2txt seems really good, but let's go dependency free and use sed
             local -a compreply_no_color
-            mapfile -t compreply_no_color < <(sed -r -e 's/\x1B\(B\x1B\[m//g' -e "s/\x1B\[([0-9]{1,3}(;[0-9]{1,3})*)?[mGK]//g" < <(printf "%s\n" "${COMPREPLY[@]}"))
+            mapfile -t compreply_no_color < <(__bu_autocomplete_strip_ansi < <(printf "%s\n" "${COMPREPLY[@]}"))
             # echo box_length: $box_length
             local _trim
             for i in "${!bu_compreply_metadata_no_ansi[@]}"
@@ -3953,7 +3990,7 @@ __bu_bind_fzf_autocomplete_impl_ts()
 
     # Compute visible prompt width.  Strip all ANSI escape sequences from
     # the already-rendered string: CSI (ESC [ ... letter), OSC (ESC ] ... BEL).
-    local ps1_noesc=$(sed -E 's/\\\[([^\\]*([^\\]\]|\\[^]])?)*\\\]//g; s/\x1B\[[^a-zA-Z]*[a-zA-Z]//g; s/\x1B\][^\x07]*(\x07|\x1B\\)//g; s/\x1B[PX^_][^\x1B]*(\x1B\\)?//g' <<<"$ps1_clean_last_row")
+    local ps1_noesc=$(__bu_autocomplete_strip_ansi -e 's/\\\[([^\\]*([^\\]\]|\\[^]])?)*\\\]//g' <<<"$ps1_clean_last_row")
     local ps1_noesc_rendered="${ps1_noesc@P}"
     local col_with_ps1=$((${#ps1_noesc_rendered} % COLUMNS))
 
@@ -4080,7 +4117,7 @@ __bu_bind_fzf_autocomplete_impl_ts()
     fi
 
     if "$BU_AUTOCOMPLETE_BIND_FZF_DISPLAY_METADATA" && (("${#BU_COMPREPLY_METADATA[@]}" > 0)) && ((${#COMPREPLY[@]} < 2000)); then
-        mapfile -t bu_compreply_metadata_no_ansi < <(sed -r -e 's/\\n/ /g' -e "s/\x1B\[([0-9]{1,3}(;[0-9]{1,3})*)?[mGK]//g" < <(printf "%s\n" "${BU_COMPREPLY_METADATA[@]}"))
+        mapfile -t bu_compreply_metadata_no_ansi < <(__bu_autocomplete_strip_ansi -e 's/\\n/ /g' < <(printf "%s\n" "${BU_COMPREPLY_METADATA[@]}"))
         local _ts_total=0 _ts_i
         for ((_ts_i=0; _ts_i < ${#bu_compreply_metadata_no_ansi[@]}; _ts_i++)); do
             : $((_ts_total+=${#bu_compreply_metadata_no_ansi[_ts_i]}))
@@ -4159,7 +4196,7 @@ __bu_bind_fzf_autocomplete_impl_ts()
             done
         else
             local -a _md_stripped
-            mapfile -t _md_stripped < <(sed -r -e 's/\x1B\(B\x1B\[m//g' -e "s/\x1B\[([0-9]{1,3}(;[0-9]{1,3})*)?[mGK]//g" < <(printf "%s\n" "${COMPREPLY[@]}"))
+            mapfile -t _md_stripped < <(__bu_autocomplete_strip_ansi < <(printf "%s\n" "${COMPREPLY[@]}"))
             local _md_trim
             for _md_i in "${!bu_compreply_metadata_no_ansi[@]}"; do
                 _md_trim=$((box_length - ${#_md_stripped[_md_i]}))

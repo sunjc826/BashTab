@@ -22,7 +22,7 @@ _fzf_format() {
     
     if ((${#BU_COMPREPLY_METADATA[@]})); then
         mapfile -t bu_compreply_metadata_no_ansi < <(
-            sed -r -e 's/\\n/ /g' -e "s/\x1B\[([0-9]{1,3}(;[0-9]{1,3})*)?[mGK]//g" < <(printf "%s\n" "${BU_COMPREPLY_METADATA[@]}")
+            __bu_autocomplete_strip_ansi -e 's/\\n/ /g' < <(printf "%s\n" "${BU_COMPREPLY_METADATA[@]}")
         )
     fi
 
@@ -32,7 +32,7 @@ _fzf_format() {
     local i _trim pad min_pad=1
     local -a compreply_no_color=()
     if "$is_ansi"; then
-        mapfile -t compreply_no_color < <(sed -r -e 's/\x1B\(B\x1B\[m//g' -e "s/\x1B\[([0-9]{1,3}(;[0-9]{1,3})*)?[mGK]//g" < <(printf "%s\n" "${COMPREPLY[@]}"))
+        mapfile -t compreply_no_color < <(__bu_autocomplete_strip_ansi < <(printf "%s\n" "${COMPREPLY[@]}"))
     fi
 
     for i in "${!bu_compreply_metadata_no_ansi[@]}"; do
@@ -129,6 +129,49 @@ function test_format_completion_parts_clean { #@test
     
     echo "candidate='$candidate'"
     assert_equal "$candidate" "images"
+}
+
+# Verify: tput sgr0 variants (\e(B\e[m under xterm, \e[m\x0f under
+# screen/tmux on macOS) count as zero width, so the metadata column aligns
+function test_format_tput_reset_variants_align { #@test
+    local reset_seq visible
+    for reset_seq in $'\e(B\e[m' $'\e[m\x0f' $'\e[0m'; do
+        COMPREPLY=($'\e[36m--verbose'"$reset_seq" --format link)
+        BU_COMPREPLY_METADATA=(
+            $'\e[32mflag'"$reset_seq"$' \e[90maka -v'"$reset_seq"
+            $'\e[36menum'"$reset_seq"$' \e[90maka -f — output\\nformat'"$reset_seq"
+            $'\e[36m→ ../a'"$reset_seq"$'  \e[32mtext'"$reset_seq"$' \e[90m(\e[33m9B\e[90m)'"$reset_seq"
+        )
+        _fzf_format 40 true
+
+        local line
+        for line in "${COMPREPLY[@]}"; do
+            line=${line%$'\x01'*}
+            line=${line//$'\x01'/}
+            line=${line//\\n/ }
+            visible=$(__bu_autocomplete_strip_ansi <<<"$line")
+            echo "reset=$(printf %q "$reset_seq") visible='$visible'"
+            assert_equal "${#visible}" 40
+        done
+    done
+}
+
+# Verify: the stripper used for prompt width (dropdown anchor) leaves only the
+# visible text of a rendered PS1 row
+function test_strip_ansi_prompt_sequences { #@test
+    local -a cases=(
+        $'\e[33m$ \e(B\e[m'                 # xterm sgr0
+        $'\e[33m$ \e[m\x0f'                 # screen/tmux sgr0 (macOS terminfo)
+        $'\e[6 q\e[1;32m$ \e[0m'            # vi-mode cursor shape
+        $'\e]0;me@host: ~\a$ '              # OSC title, BEL-terminated
+        $'\e]133;A\e\\$ '                   # OSC 133, ST-terminated
+    )
+    local raw got
+    for raw in "${cases[@]}"; do
+        got=$(__bu_autocomplete_strip_ansi <<<"$raw")
+        echo "raw=$(printf %q "$raw") got=$(printf %q "$got")"
+        assert_equal "$got" '$ '
+    done
 }
 
 # Verify: delimiter stripping after selection works
