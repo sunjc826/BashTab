@@ -20,6 +20,7 @@ jobs:
       matrix:
         test-file:
           - test/api_contract_test.bats
+          - test/bind_x_test.bats
           - test/cli_rename_test.bats
           - test/config_test.bats
           - test/context_test.bats
@@ -57,6 +58,12 @@ jobs:
 
       - name: Install system dependencies
         run: sudo apt-get update -qq && sudo apt-get install -y -qq jc
+
+      # bind_x_test.bats drives an interactive bash under tmux; its Tab test
+      # also needs fzf.
+      - name: Install tmux and fzf
+        if: matrix.test-file == 'test/bind_x_test.bats'
+        run: sudo apt-get install -y -qq tmux fzf
 
       - name: Install pnpm
         run: npm install -g pnpm

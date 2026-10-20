@@ -4363,7 +4363,12 @@ bu_read_word()
 BU_AUTOCOMPLETE_IS_CUSTOM_TAB=false
 bu_autocomplete_enable_tab()
 {
-    bind -x '"\t": "__bu_bind_fzf_tab_autocomplete"'
+    if "$BU_BIND_X_NEEDS_TTY_GUARD"
+    then
+        bind -x '"\t": __bu_bind_x_run __bu_bind_fzf_tab_autocomplete'
+    else
+        bind -x '"\t": "__bu_bind_fzf_tab_autocomplete"'
+    fi
     BU_AUTOCOMPLETE_IS_CUSTOM_TAB=true
     bu_log_info "fzf TAB enabled"
 }

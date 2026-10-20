@@ -247,7 +247,7 @@ An action is eval'd in the viewer's shell with the cursor record in
 Another point of customization are the pre-init functions. They are found in [bu_core_preinit.sh][bu_core_preinit]. They all have the `bu_preinit_` prefix.
 
 - `bu_preinit_register_user_defined_key_binding`:
-  - Description: Register a key binding for interactive shells. Values are stored in `BU_KEY_BINDINGS` and later applied via `bind -x`. When called from a module preinit callback (where `BU_CURRENT_MODULE` is set), the owning module is stamped into `BU_KEY_BINDING_MODULES` so `bu` help can attribute the binding; core defaults are stamped `bu`.
+  - Description: Register a key binding for interactive shells. Values are stored in `BU_KEY_BINDINGS` and later applied via `bind -x`. When called from a module preinit callback (where `BU_CURRENT_MODULE` is set), the owning module is stamped into `BU_KEY_BINDING_MODULES` so `bu` help can attribute the binding; core defaults are stamped `bu`. On bash < 5.2 every binding (and fzf Tab) is wrapped as `__bu_bind_x_run <value>`, which keeps an external command inside the handler from saving readline's raw mode as the shell's tty state (keystrokes would otherwise stop echoing after the next Ctrl-C'd command); bash 5.2+ binds the value directly.
   - Params: `$1` = key sequence (e.g. `\ee`), `$2` = command/function to invoke, `$3` (optional) = human-readable description shown in `bu` help.
   - Example: `bu_preinit_register_user_defined_key_binding '\em' my_custom_edit "Edit in my custom editor"`
 

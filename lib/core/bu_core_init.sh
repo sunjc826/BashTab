@@ -10,6 +10,58 @@ __bu_init_env()
     __bu_init_env_commands
 }
 
+# ```md
+# Whether `bind -x` handlers must go through `__bu_bind_x_run`.
+#
+# Before bash 5.2, an interactive bash snapshots the tty as its "cooked"
+# state after every foreground job that exits normally, skipping that only
+# during programmable completion (jobs.c `wait_for` -> `get_tty_state`). A
+# `bind -x` handler runs with readline's raw termios still applied, so any
+# plain external command inside it stores raw mode as cooked; the next
+# foreground job killed by a signal makes bash re-apply that snapshot and
+# keystrokes stop echoing until `stty sane`. bash 5.2 also skips the snapshot
+# while readline is dispatching a key with the terminal prepped
+# (CHANGES, bash-5.2-beta: "Fixed a problem with SIGINT during the execution
+# of a command bound with `bind -x' affecting the saved terminal settings"),
+# so 5.2+ binds handlers directly, exactly as before.
+# ```
+BU_BIND_X_NEEDS_TTY_GUARD=false
+if (( BASH_VERSINFO[0] < 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] < 2) ))
+then
+    BU_BIND_X_NEEDS_TTY_GUARD=true
+fi
+
+# ```md
+# Dispatcher for `bind -x` handlers on bash < 5.2 (see
+# BU_BIND_X_NEEDS_TTY_GUARD for the bug it works around).
+#
+# Two halves, both required:
+# 1. A subshell killed by SIGPIPE is a signalled foreground job, so bash
+#    re-applies its last *cooked* snapshot before the handler body runs. The
+#    body then runs cooked, and every plain job inside snapshots cooked.
+#    SIGPIPE deaths are never reported (DONT_REPORT_SIGPIPE is bash's
+#    default), so this prints nothing.
+# 2. Readline's mode is put back through command substitution: a comsub child
+#    is not a job and is not snapshotted. A plain `stty` here would store raw
+#    mode again and recreate the bug.
+# Without a controlling tty the command simply runs.
+#
+# Params:
+# - $1: command text, eval'd (what `bind -x` would otherwise run verbatim)
+# ```
+__bu_bind_x_run()
+{
+    local __bu_bx_pre
+    if ! __bu_bx_pre=$(stty -g </dev/tty 2>/dev/null)
+    then
+        eval "$1"
+        return
+    fi
+    ( kill -PIPE "$BASHPID" ) || :
+    eval "$1"
+    : "$(stty "$__bu_bx_pre" </dev/tty 2>/dev/null)"
+}
+
 __bu_init_keybindings()
 {
     if [[ $- == *i* ]]
@@ -18,7 +70,14 @@ __bu_init_keybindings()
         for shortcut_key in "${!BU_KEY_BINDINGS[@]}"
         do
             bu_log_debug "Mapping shortcut_key[$shortcut_key] to command[${BU_KEY_BINDINGS[$shortcut_key]}]"
-            bind -x '"'"$shortcut_key"'": '"${BU_KEY_BINDINGS[$shortcut_key]}"
+            if "$BU_BIND_X_NEEDS_TTY_GUARD"
+            then
+                # `bind -x` reparses its command text: pass the value as one
+                # quoted word for the dispatcher to eval.
+                bind -x '"'"$shortcut_key"'": __bu_bind_x_run '"$(printf '%q' "${BU_KEY_BINDINGS[$shortcut_key]}")"
+            else
+                bind -x '"'"$shortcut_key"'": '"${BU_KEY_BINDINGS[$shortcut_key]}"
+            fi
         done
 
         if "${BU_AUTOCOMPLETE_BIND_TAB_TO_FZF:-false}"
