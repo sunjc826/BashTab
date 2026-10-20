@@ -3994,6 +3994,9 @@ __bu_bind_fzf_autocomplete_impl_ts()
     # the already-rendered string: CSI (ESC [ ... letter), OSC (ESC ] ... BEL).
     local ps1_noesc=$(__bu_autocomplete_strip_ansi -e 's/\\\[([^\\]*([^\\]\]|\\[^]])?)*\\\]//g' <<<"$ps1_clean_last_row")
     local ps1_noesc_rendered="${ps1_noesc@P}"
+    # @P turns \n into a newline and can introduce escapes (${color},
+    # $(tput ...) outside \[ \]): measure only the last rendered row, stripped.
+    ps1_noesc_rendered=$(__bu_autocomplete_strip_ansi <<<"${ps1_noesc_rendered##*$'\n'}")
     local col_with_ps1=$((${#ps1_noesc_rendered} % COLUMNS))
 
     # bu_log_tty "Len:$col_with_ps1|$ps1_noesc|$ps1_clean_last_row|"
