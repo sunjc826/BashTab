@@ -3484,6 +3484,10 @@ __bu_bind_fzf_autocomplete_impl()
     # Remove \[ \] markers (preserve content — ANSI codes inside need to survive)
     # and strip kitty OSC 133 shell-integration sequences which contain $? that
     # @P would expand, corrupting them into visible garbage.
+    # TODO: the width below assumes \[ \] holds only escape codes. Anything
+    # else in there (e.g. a right-aligned segment drawn with tput sc/rc) is
+    # counted as visible and shifts the dropdown right; measure a copy with
+    # \[...\] removed entirely, as the TS path does, if that ever matters.
     local ps1_clean
     ps1_clean=$(printf '%s' "$PS1" | sed -E 's/\\\[|\\\]//g; s/\\e\\]133;[^\\]*(\\a|\\e\\)//g')
     # Now @P-expand the cleaned prompt and take the last line (after last \n → real newline)
