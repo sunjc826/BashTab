@@ -165,6 +165,8 @@ function test_strip_ansi_prompt_sequences { #@test
         $'\e[6 q\e[1;32m$ \e[0m'            # vi-mode cursor shape
         $'\e]0;me@host: ~\a$ '              # OSC title, BEL-terminated
         $'\e]133;A\e\\$ '                   # OSC 133, ST-terminated
+        $'\e]133;A\e\\$ \e]133;B\e\\'       # ST-terminated pair around the prompt
+        $'\e]133;A\e\\$ \e]0;title\a'       # ST-terminated, then BEL-terminated
     )
     local raw got
     for raw in "${cases[@]}"; do

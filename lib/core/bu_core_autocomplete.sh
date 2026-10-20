@@ -62,7 +62,9 @@ __bu_fzf_compute_dimensions()
 # terminfo and \e[m\x0f under screen/tmux terminfo on macOS, so besides CSI
 # (ESC [ ... letter, incl. `\e[6 q`), OSC (ESC ] ... BEL/ST) and DCS/SOS/PM/APC
 # this strips charset selection (ESC ( X / ESC ) X) and SO/SI shifts.
-# On Linux the previous GNU sed expressions run first, ahead of these.
+# On Linux the previous GNU sed expressions run first, ahead of these (their
+# OSC body excludes ESC too: a greedy [^\x07]* ran from an ST-terminated OSC to
+# the last ST/BEL on the line, swallowing the visible text in between).
 #
 # *Params*:
 # - `$@`: Extra sed arguments applied first (e.g. `-e 's/\\n/ /g'`)
@@ -80,7 +82,7 @@ __bu_autocomplete_strip_ansi()
             -e 's/\x1B\(B\x1B\[m//g'
             -e "s/\x1B\[([0-9]{1,3}(;[0-9]{1,3})*)?[mGK]//g"
             -e 's/\x1B\[[^a-zA-Z]*[a-zA-Z]//g'
-            -e 's/\x1B\][^\x07]*(\x07|\x1B\\)//g'
+            -e 's/\x1B\][^\x07\x1B]*(\x07|\x1B\\)//g'
             -e 's/\x1B[PX^_][^\x1B]*(\x1B\\)?//g'
         )
     fi
