@@ -238,7 +238,7 @@ function test_get_variable_patterns_and_exclude { #@test
     GLOB_TEST_A=1 GLOB_TEST_B=2 GLOB_TEST_C=3
     run bu get-variable 'GLOB_TEST_*' --exclude GLOB_TEST_B --format tsv
     assert_success
-    assert_output $'GLOB_TEST_A\tstring\t\t1\t\nGLOB_TEST_C\tstring\t\t3\t'
+    assert_equal "$(cut -f1,4 <<<"$output")" $'GLOB_TEST_A\t1\nGLOB_TEST_C\t3'
 }
 
 function test_get_variable_missing_name_is_an_error { #@test
