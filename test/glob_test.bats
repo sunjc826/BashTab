@@ -192,10 +192,11 @@ SCRIPT
 function test_help_shows_glob_labels { #@test
     run bu get-variable --help
     assert_success
-    assert_output --regexp 'NAME.*\(positional, glob\)'
-    assert_output --regexp '--exclude.*PATTERN.*\(glob\)'
+    # Line-wise: --regexp on the whole output lets `.` cross newlines
+    assert_line --regexp 'NAME.*\(positional, glob\)'
+    assert_line --regexp '--exclude.*PATTERN.*\(glob\)'
     assert_output --partial "(glob): takes a plain name or a bash pattern"
-    refute_output --regexp '--format.*\(glob\)'
+    refute_line --regexp '--format.*\(glob\)'
 }
 
 # ===========================================================================
