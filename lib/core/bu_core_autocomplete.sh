@@ -205,9 +205,138 @@ __bu_autocomplete_quote_prefix()
     BU_RET=("$prefix" "$rest")
 }
 
+# ```
+# *Description*:
+# Split a raw command-line word typed at a `--glob` parameter into the
+# pattern the command will receive and whether bash will pathname-expand it
+# first. A quoted word ('BU_*', "BU_*", also still open) and an escaped one
+# (BU_\*) reach the command intact; an unquoted wildcard is matched against
+# files in the working directory before the command runs.
+#
+# *Params*:
+# - `$1`: Raw word, quotes and backslashes included
+#
+# *Returns*:
+# - `BU_RET[0]`: The word after quote removal
+# - `BU_RET[1]`: `true` if it holds an unquoted, unescaped wildcard
+# ```
+__bu_autocomplete_glob_word()
+{
+    local -r raw=$1
+    local pattern=
+    local is_exposed=false
+    local -i i
+    case "$raw" in
+    \'*)
+        pattern=${raw#\'}
+        pattern=${pattern%\'}
+        ;;
+    \"*)
+        pattern=${raw#\"}
+        pattern=${pattern%\"}
+        ;;
+    *)
+        bu_glob_has_wildcard "$raw" && is_exposed=true
+        for ((i = 0; i < ${#raw}; i++))
+        do
+            if [[ "${raw:i:1}" == \\ ]]
+            then
+                : $((i++))
+            fi
+            pattern+=${raw:i:1}
+        done
+        ;;
+    esac
+    BU_RET=("$pattern" "$is_exposed")
+}
+
+# ```
+# *Description*:
+# Replace the candidates of a `--glob` parameter, whose word is a pattern,
+# by a hint listing the candidates the pattern matches. The hint is shown
+# without touching the word (see the hint handling in
+# `__bu_autocomplete_completion_func_master_impl`), so the pattern stays on
+# the command line. If bash would expand the pattern against files here,
+# the hint says so and shows the quoted form.
+#
+# *Params*:
+# - `$1`: Pattern (quotes removed)
+# - `$2`: Raw word as typed
+# - `$3`: `true` if the word is an unquoted wildcard
+# - `$4`: `true` if `COMPREPLY` carries ANSI colors
+#
+# *Returns*:
+# - `COMPREPLY`: emptied
+# - `BU_COMPREPLY_METADATA`: emptied
+# - `bu_autocomplete_hint`: the match summary, after any `--hint` text
+# ```
+__bu_autocomplete_glob_hint()
+{
+    local -r pattern=$1
+    local -r raw=$2
+    local -r is_exposed=$3
+    local -r has_ansi_colors=$4
+    local -r max_shown=10
+    local -a matches=()
+    local -A seen=()
+    local candidate
+    for candidate in "${COMPREPLY[@]}"
+    do
+        if "$has_ansi_colors"
+        then
+            while [[ "$candidate" =~ ^(.*)$'\e'\[[0-9\;]*m(.*)$ ]]
+            do
+                candidate=${BASH_REMATCH[1]}${BASH_REMATCH[2]}
+            done
+        fi
+        [[ -n "$candidate" && -z "${seen[$candidate]+x}" ]] || continue
+        seen[$candidate]=1
+        bu_glob_match "$candidate" "$pattern" && matches+=("$candidate")
+    done
+
+    local summary
+    case ${#matches[@]} in
+    0)
+        summary="'$pattern' matches nothing"
+        ;;
+    *)
+        summary="'$pattern' matches ${#matches[@]}: ${matches[*]:0:max_shown}"
+        ((${#matches[@]} > max_shown)) && summary+=" … (+$((${#matches[@]} - max_shown)) more)"
+        ;;
+    esac
+
+    if "$is_exposed"
+    then
+        local quoted
+        if [[ "$pattern" != *\'* ]]
+        then
+            quoted="'$pattern'"
+        else
+            printf -v quoted %q "$pattern"
+        fi
+        local -a files=()
+        mapfile -t files < <(compgen -G "$raw" 2>/dev/null)
+        if ((${#files[@]}))
+        then
+            summary+=" · unquoted, bash expands it to ${#files[@]} file(s) here first: quote it as $quoted"
+        elif shopt -q nullglob || shopt -q failglob
+        then
+            summary+=" · unquoted, and nullglob/failglob is on: quote it as $quoted"
+        fi
+    fi
+
+    bu_autocomplete_hint=${bu_autocomplete_hint:+$bu_autocomplete_hint · }$summary
+    COMPREPLY=()
+    BU_COMPREPLY_METADATA=()
+}
+
 # MARK: Parsers
 __BU_AUTOCOMPLETE_WORKING_DIRECTORY=.
-__BU_AUTOCOMPLETE_OPTION_REGEX='([-\+[:alnum:]_/]+[[:space:]]*\|?[[:space:]]*)*[-\+[:alnum:]_/]+[[:space:]]*'
+# Case-arm alternatives (`-v|--verb`). Every repetition needs a `|`, so a
+# line has one way to match: the older `(X+ S* |? S*)* X+` let a long word
+# split into exponentially many runs, and mawk's backtracking matcher hung
+# on arm bodies (`if bu_env_is_in_autocomplete && ...` took over 20s).
+__BU_AUTOCOMPLETE_OPTION_REGEX='[-\+[:alnum:]_/]+([[:space:]]*\|[[:space:]]*[-\+[:alnum:]_/]+)*[[:space:]]*'
 
 # ```
 # *Description*:
@@ -583,7 +712,7 @@ bu_autohelp_parse_case_block_help()
     fi
 
     cat <<EOF
-local -a bu_script_options=() bu_script_option_synopsis=() bu_script_option_docs=()
+local -a bu_script_options=() bu_script_option_synopsis=() bu_script_option_docs=() bu_script_option_glob=()
 EOF
 
     local start_row=0
@@ -805,6 +934,11 @@ EOF
         }
     }
 
+    # An arm body that passes --glob to its positional DSL takes a pattern
+    state == post_documentation && idx >= 0 && /(bu_parse_positional|autocompletion\+?=\().*[[:space:]]--glob([[:space:];)]|$)/ {
+        printf "bu_script_option_glob[%d]=1\n", idx
+    }
+
     state == post_documentation && /[[:space:]]*case .* in[[:space:]]*/ {
         ++case_count;
         if (debug_print) {
@@ -893,6 +1027,11 @@ bu_validate_positional()
         else
             local -r prev_word=
         fi
+    fi
+    # A pattern at a `--glob` parameter is valid even if it matches nothing
+    if [[ " ${autocompletion[*]} " == *" --glob "* ]] && bu_glob_has_wildcard "$cur_word"
+    then
+        return
     fi
     bu_scope_push
     local -r saved_dir=$PWD
@@ -1728,13 +1867,38 @@ __bu_autocomplete_completion_func_master_helper()
     local option
     local -a sub_args
     local -a stdout
-    local -a opt_cur_word=("$cur_word")
+    local generator_cur_word=$cur_word
+    local glob_pattern=
+    local glob_raw_word=
+    local glob_is_exposed=false
     local has_ansi_colors=false
     local -r accept_ansi_colors=${BU_AUTOCOMPLETE_ACCEPT_ANSI_COLORS:-false}
     local current_ansi_color=
     local reset_ansi_color=
     local BU_RET
     local exit_code=$BU_AUTOCOMPLETE_EXIT_CODE_SUCCESS
+    # A `--glob` parameter whose word is a pattern: the generators list every
+    # candidate (as for an empty word), and the end of this function shows
+    # what the pattern matches instead of offering completions.
+    if [[ " ${args[*]} " == *" --glob "* ]]
+    then
+        glob_raw_word=${COMP_WORDS[${COMP_CWORD:-0}]:-$cur_word}
+        __bu_autocomplete_glob_word "$glob_raw_word"
+        if [[ "${BU_RET[0]}" != "$cur_word" ]]
+        then
+            # Raw word and cursor word disagree (cursor inside the word):
+            # judge the cursor word alone
+            glob_raw_word=$cur_word
+            __bu_autocomplete_glob_word "$glob_raw_word"
+        fi
+        if bu_glob_has_wildcard "${BU_RET[0]}"
+        then
+            glob_pattern=${BU_RET[0]}
+            glob_is_exposed=${BU_RET[1]}
+            generator_cur_word=
+        fi
+    fi
+    local -a opt_cur_word=("$generator_cur_word")
     while ((i<${#args[@]}))
     do
         shift_by=1
@@ -1761,7 +1925,10 @@ __bu_autocomplete_completion_func_master_helper()
             reset_ansi_color=
             ;;
         -c|--append-cur-word)
-            opt_cur_word=("$cur_word")
+            opt_cur_word=("$generator_cur_word")
+            ;;
+        --glob)
+            # Marker only, handled before the loop
             ;;
         +c|--no-append-cur-word)
             opt_cur_word=()
@@ -2081,6 +2248,14 @@ __bu_autocomplete_completion_func_master_helper()
         esac
         : $(( i += shift_by ))
     done
+
+    if [[ -n "$glob_pattern" ]]
+    then
+        cd "$original_cwd"
+        __bu_autocomplete_glob_hint "$glob_pattern" "$glob_raw_word" "$glob_is_exposed" "$has_ansi_colors"
+        BU_RET_MAP=([has_ansi_colors]=false)
+        return "$exit_code"
+    fi
 
     if [[ -e "${COMPREPLY[0]}" && -e "${COMPREPLY[-1]}" ]]
     then

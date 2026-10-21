@@ -29,6 +29,7 @@ jobs:
           - test/first_test.bats
           - test/fzf_dims_test.bats
           - test/fzf_format_test.bats
+          - test/glob_test.bats
           - test/gitshelf_demo_test.bats
           - test/help_preview_test.bats
           - test/help_topic_test.bats

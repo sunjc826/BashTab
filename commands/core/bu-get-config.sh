@@ -32,6 +32,8 @@ bu_scope_push_function
 bu_scope_add_cleanup bu_popd_silent
 bu_run_log_command "$@"
 
+local -a names=()
+local -a excludes=()
 local format=${BU_OUTPUT_FORMAT:-auto}
 local columns=
 local is_help=false
@@ -52,13 +54,27 @@ do
         bu_parse_positional $# --hint "Comma-separated fields: name value origin phase default allowed module description location"
         columns=${!shift_by}
         ;;
+    --exclude)# PATTERN
+        # Leave out settings matching this name or pattern (repeatable)
+        bu_parse_positional $# --glob --ret __bu_config_completion_names ret-- --hint "Setting name or pattern"
+        excludes+=("${!shift_by}")
+        ;;
     -h|--help)# _FLAG
         # Print help
         is_help=true
         ;;
-    *)
-        bu_parse_error_enum "$1"
-        break
+    *)# NAME
+        # Setting name or pattern (repeatable); none lists every setting
+        if bu_env_is_in_autocomplete && [[ "$1" != -* ]]
+        then
+            autocompletion=(--glob --ret __bu_config_completion_names ret-- --hint "Setting name or pattern")
+        fi
+        if [[ "$1" == -* ]]
+        then
+            bu_parse_error_enum "$1"
+            break
+        fi
+        names+=("$1")
         ;;
     esac
     if "$is_help"
@@ -81,7 +97,10 @@ fi
 
 if "$is_help"
 then
-    bu_autohelp
+    bu_autohelp \
+        --example "Every setting" "" \
+        --example "One setting" "BU_OUT_DIR" \
+        --example "Output settings" "'BU_OUT*'"
     return 0
 fi
 
@@ -106,14 +125,27 @@ do
     done
 done
 
+# Select names in this shell: the record loop below runs in a pipeline
+# subshell, and seen must survive it for the missing-name report.
+local key name
+local -a selected=()
+local -A seen=()
+for key in "${!BU_CONFIG_PROPERTIES[@]}"
+do
+    [[ "$key" == *,registered ]] || continue
+    name=${key%,registered}
+    bu_glob_match "$name" "${names[@]}" || continue
+    seen[$name]=1
+    bu_glob_excludes "$name" "${excludes[@]}" && continue
+    selected+=("$name")
+done
+
 # Stream TSV records (zero forks in the loop), recordify once, then
 # let bu_out decide presentation (table on a terminal, JSONL when piped).
 {
-    local key name current origin location phase_label
-    for key in "${!BU_CONFIG_PROPERTIES[@]}"
+    local current origin location phase_label
+    for name in "${selected[@]}"
     do
-        [[ "$key" == *,registered ]] || continue
-        name=${key%,registered}
         current=${!name:-}
         phase_label=${BU_CONFIG_PROPERTIES[$name,phase]:-}
         [[ -n "${__BU_CONFIG_PHASE_VARIANT[$phase_label]:-}" ]] && phase_label+="[${__BU_CONFIG_PHASE_VARIANT[$phase_label]}]"
@@ -146,7 +178,11 @@ done
     done
 } | bu_out_from_tsv --columns name,value,origin,phase,default,allowed,module,description,location | bu_out --format "$format" ${columns:+--columns "$columns"}
 
+local exit_code=0
+bu_glob_report_missing setting seen "${names[@]}" || exit_code=1
+
 bu_scope_pop_function
+return "$exit_code"
 }
 
 __bu_bu_get_config_main "$@"

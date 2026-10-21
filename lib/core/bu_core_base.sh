@@ -1551,6 +1551,175 @@ bu_gen_remove_empty_lines()
     sed -r -e '/^$/d'
 }
 
+# MARK: Glob matching
+#
+# Name filters for getter cmdlets, with PowerShell -Name semantics:
+# - several patterns may be given, a name is kept if any of them matches
+# - a pattern is a bash glob (`*`, `?`, `[...]`), matched against the whole
+#   name; one without wildcards is an exact name
+# - an exact name that matches nothing is an error (bu_glob_report_missing),
+#   a wildcard that matches nothing is just an empty result
+#
+# The patterns reach the command only if bash has not expanded them against
+# files first, so callers document them quoted ('BU_*'). Parameters taking a
+# pattern pass `--glob` to bu_parse_positional, which makes completion list
+# what a typed pattern matches and marks the option `(glob)` in --help.
+
+# ```
+# *Description*:
+# Test whether a string contains an unescaped glob wildcard: `*`, `?`, `[`,
+# or an extglob opener (`+(`, `@(`, `!(`).
+#
+# *Params*:
+# - `$1`: String to test
+#
+# *Returns*:
+# - `$?`: 0 if the string is a pattern, 1 if it is a plain name
+#
+# *Examples*:
+# ```bash
+# bu_glob_has_wildcard 'BU_*'   # 0
+# bu_glob_has_wildcard 'BU_\*'  # 1 (escaped)
+# bu_glob_has_wildcard HOME     # 1
+# ```
+# ```
+bu_glob_has_wildcard()
+{
+    local -r str=$1
+    [[ "$str" == *[\*\?\[\(]* ]] || return 1
+    local -i i
+    local ch
+    for ((i = 0; i < ${#str}; i++))
+    do
+        ch=${str:i:1}
+        case "$ch" in
+        \\)
+            : $((i++))
+            ;;
+        \*|\?|\[)
+            return 0
+            ;;
+        [+@!])
+            [[ "${str:i+1:1}" == '(' ]] && return 0
+            ;;
+        esac
+    done
+    return 1
+}
+
+# ```
+# *Description*:
+# Test whether a name matches any of the given glob patterns. With no
+# patterns every name matches (no filter given).
+#
+# *Params*:
+# - `$1`: Name to test
+# - `...`: Glob patterns
+#
+# *Returns*:
+# - `$?`: 0 if the name is kept, 1 otherwise
+#
+# *Examples*:
+# ```bash
+# bu_glob_match BU_OUT_DIR 'BU_OUT*' HOME  # 0
+# bu_glob_match PATH 'BU_*'                # 1
+# bu_glob_match PATH                       # 0
+# ```
+# ```
+bu_glob_match()
+{
+    local -r name=$1
+    shift
+    (($#)) || return 0
+    local pattern
+    for pattern
+    do
+        # Unquoted right-hand side: pattern match, not string equality
+        [[ "$name" == $pattern ]] && return 0
+    done
+    return 1
+}
+
+# ```
+# *Description*:
+# Test whether a name matches any of the given exclude patterns. With no
+# patterns nothing is excluded.
+#
+# *Params*:
+# - `$1`: Name to test
+# - `...`: Glob patterns to exclude
+#
+# *Returns*:
+# - `$?`: 0 if the name is excluded, 1 otherwise
+#
+# *Examples*:
+# ```bash
+# bu_glob_excludes BU_OUT_JQ '*_JQ'  # 0
+# bu_glob_excludes BU_OUT_JQ         # 1
+# ```
+# ```
+bu_glob_excludes()
+{
+    (($# > 1)) || return 1
+    bu_glob_match "$@"
+}
+
+# ```
+# *Description*:
+# Log an error for each exact name (pattern without wildcards) that matched
+# nothing, as PowerShell does for `Get-Variable -Name NOSUCH`. Wildcard
+# patterns never report: matching nothing is a valid, empty result.
+#
+# *Params*:
+# - `$1`: Noun for the message ("variable" gives "No variable named 'X'")
+# - `$2`: Name of an associative array whose keys are the names that matched
+#         an include pattern (before excludes are applied)
+# - `...`: The include patterns
+#
+# *Returns*:
+# - `$?`: 1 if an exact name was not found, 0 otherwise
+#
+# *Examples*:
+# ```bash
+# local -A seen=([HOME]=1)
+# bu_glob_report_missing variable seen HOME 'BU_*'  # 0
+# bu_glob_report_missing variable seen NOSUCH       # 1, logs the error
+# ```
+# ```
+bu_glob_report_missing()
+{
+    local -r noun=$1
+    local -n __bu_glob_report_missing_seen=$2
+    shift 2
+    local pattern key is_found
+    local -i exit_code=0
+    for pattern
+    do
+        bu_glob_has_wildcard "$pattern" && continue
+        is_found=false
+        if [[ "$pattern" != *\\* ]]
+        then
+            [[ -n "${__bu_glob_report_missing_seen[$pattern]+x}" ]] && is_found=true
+        else
+            # Escaped wildcards (BU_\*): compare as a pattern
+            for key in "${!__bu_glob_report_missing_seen[@]}"
+            do
+                if [[ "$key" == $pattern ]]
+                then
+                    is_found=true
+                    break
+                fi
+            done
+        fi
+        if ! "$is_found"
+        then
+            bu_log_err -i 1 "No $noun named '$pattern'"
+            exit_code=1
+        fi
+    done
+    return "$exit_code"
+}
+
 # MARK: RAII Scopes
 
 # ```

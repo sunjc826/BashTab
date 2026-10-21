@@ -53,8 +53,9 @@ function __bu_compat_macos()
     fi
 }
 
-# Always prefer gawk over mawk (mawk's regex engine catastrophically backtracks
-# on patterns like __BU_AUTOCOMPLETE_OPTION_REGEX, turning 1ms awk calls into 15s)
+# Always prefer gawk over mawk (mawk's regex engine backtracks catastrophically
+# on nested quantifiers, turning 1ms awk calls into 15s; keep regexes such as
+# __BU_AUTOCOMPLETE_OPTION_REGEX unambiguous so mawk-only systems stay usable)
 # BSD awk also doesn't support certain features
 function __bu_compat_gawk()
 {

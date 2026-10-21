@@ -692,10 +692,13 @@ function test_bu_get_alias_root_filter { #@test
 }
 
 function test_bu_get_alias_excludes_bash_aliases { #@test
-    # A bash alias must never appear in get-alias output
+    # A bash alias must never appear in get-alias output: asking for it by
+    # name is a missing CLI alias (No alias named 'zz', status 1)
     local out
-    out=$(shopt -s expand_aliases; alias zz='echo hi'; bu get-alias zz)
+    local rc=0
+    out=$(shopt -s expand_aliases; alias zz='echo hi'; bu get-alias zz 2>/dev/null) || rc=$?
     assert_equal "$out" ""
+    assert_equal "$rc" 1
 }
 
 function test_bu_get_alias_synopsis { #@test

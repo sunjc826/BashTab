@@ -14,7 +14,8 @@ source "$BU_NULL"
 bu_scope_push_function
 bu_run_log_command "$@"
 
-local name=
+local -a names=()
+local -a excludes=()
 local no_status=false
 local format=auto
 local is_help=false
@@ -29,6 +30,11 @@ do
         # Skip slow status probes (branch/dirty/ahead/behind)
         no_status=true
         ;;
+    --exclude)# PATTERN
+        # Leave out repos matching this name or pattern (repeatable)
+        bu_parse_positional $# --glob --stdout bu_repo_names stdout-- --hint "Repo name or pattern"
+        excludes+=("${!shift_by}")
+        ;;
     --format)# FORMAT
         # Output format
         bu_parse_positional $# --enum ${BU_OUT_FORMATS[@]} enum-- --hint "Output format"
@@ -38,16 +44,18 @@ do
         # Print help
         is_help=true
         ;;
-    *)
+    *)# NAME
+        # Repo name or pattern (repeatable); none lists every repo. Patterns
+        # are matched before the status probes run, so only matches pay for them.
         if bu_env_is_in_autocomplete && [[ "$1" != -* ]]
         then
-            autocompletion=(--stdout bu_repo_names stdout-- --hint "Repo name")
+            autocompletion=(--glob --stdout bu_repo_names stdout-- --hint "Repo name or pattern")
         fi
-        if [[ -z "$name" ]]
+        if [[ "$1" == -* ]]
         then
-            name=$1
-        else
             bu_parse_error_enum "$1"
+        else
+            names+=("$1")
         fi
         ;;
     esac
@@ -79,28 +87,64 @@ exists=false. Use --no-status to skip the slow git status/upstream probes.
 " \
         --example "All repos" "" \
         --example "One repo" "myrepo" \
+        --example "Service repos, except the legacy one" "'svc-*' --exclude svc-legacy" \
         --example "Skip status probes" "--no-status"
     return 0
 fi
 
-# Collect the repo keys to report.
+# Collect the repo keys to report. A plain name goes through the location
+# resolver (aliases, qualified names); a pattern matches the display name or
+# the qualified key of every repo.
 local -a keys=()
-local key k
-if [[ -n "$name" ]]
+local -a candidates=()
+local -a patterns=()
+local -A is_selected=()
+local key k pattern
+local exit_code=0
+for key in "${!BU_LOCATION_REGISTRY[@]}"
+do
+    k=${BU_LOCATION_REGISTRY[$key]}
+    [[ "$k" == dir ]] || continue
+    __bu_location_tag_match "${BU_LOCATION_PROPERTIES[$key,tags]:-}" repo || continue
+    candidates+=("$key")
+done
+for pattern in "${names[@]}"
+do
+    if bu_glob_has_wildcard "$pattern"
+    then
+        patterns+=("$pattern")
+    elif __bu_location_resolve_key "$pattern" --kind dir 2>/dev/null
+    then
+        if [[ -z "${is_selected[$BU_RET]:-}" ]]
+        then
+            is_selected[$BU_RET]=1
+            keys+=("$BU_RET")
+        fi
+    else
+        bu_log_err "No repo named '$pattern'"
+        exit_code=1
+    fi
+done
+if ((${#patterns[@]})) || ! ((${#names[@]}))
 then
-    __bu_location_resolve_key "$name" --kind dir 2>/dev/null || {
-        error_msg="Unknown repo[$name]"
-        bu_autohelp
-        return 1
-    }
-    keys=("$BU_RET")
-else
-    for key in "${!BU_LOCATION_REGISTRY[@]}"
+    for key in "${candidates[@]}"
     do
-        k=${BU_LOCATION_REGISTRY[$key]}
-        [[ "$k" == dir ]] || continue
-        __bu_location_tag_match "${BU_LOCATION_PROPERTIES[$key,tags]:-}" repo || continue
+        [[ -z "${is_selected[$key]:-}" ]] || continue
+        if ((${#patterns[@]}))
+        then
+            bu_glob_match "${key#*:}" "${patterns[@]}" || bu_glob_match "$key" "${patterns[@]}" || continue
+        fi
+        is_selected[$key]=1
         keys+=("$key")
+    done
+fi
+if ((${#excludes[@]}))
+then
+    candidates=("${keys[@]}")
+    keys=()
+    for key in "${candidates[@]}"
+    do
+        bu_glob_excludes "${key#*:}" "${excludes[@]}" || bu_glob_excludes "$key" "${excludes[@]}" || keys+=("$key")
     done
 fi
 
@@ -177,6 +221,7 @@ fi
 } | bu_out --format "$format"
 
 bu_scope_pop_function
+return "$exit_code"
 }
 
 __bu_bu_get_repo_main "$@"

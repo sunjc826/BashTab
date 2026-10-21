@@ -466,6 +466,7 @@ bu_autohelp()
     local -a bu_script_options=()
     local -a bu_script_option_synopsis=()
     local -a bu_script_option_docs=()
+    local -a bu_script_option_glob=()
     bu_log_trace "bu_autohelp before parse_case"
     eval "$(bu_autohelp_parse_case_block_help "${script_path}" "" "" "${BASH_LINENO[0]}")"
     bu_log_trace "bu_autohelp after parse_case"
@@ -563,17 +564,23 @@ bu_autohelp()
     local i
     local option
     local option_docs
+    local glob_label
     for i in "${!bu_script_options[@]}"
     do
         option=${bu_script_options[i]}
         option_parameter_description=${bu_script_option_synopsis[i]}
         option_docs=${bu_script_option_docs[i]}
+        glob_label=
+        if [[ -n "${bu_script_option_glob[i]:-}" ]]
+        then
+            glob_label="${BU_TPUT_GREY}(glob)${BU_TPUT_RESET}"
+        fi
 
         if [[ "$option" == '*' ]]
         then
             # Positional catch-all: show synopsis as the name, labeled (positional)
             local _pos_name="${BU_TPUT_BOLD}${option_parameter_description}${BU_TPUT_RESET}"
-            local _pos_label="${BU_TPUT_GREY}(positional)${BU_TPUT_RESET}"
+            local _pos_label="${BU_TPUT_GREY}(positional${glob_label:+, glob})${BU_TPUT_RESET}"
             if [[ -z "$option_docs" ]]
             then
                 printf "$padding%s %s (No additional help)\n\n" "$_pos_name" "$_pos_label"
@@ -596,12 +603,20 @@ bu_autohelp()
 
         if [[ -z "$option_docs" ]]
         then
-            printf "$padding%s%s (No additional help)\n\n" "${BU_TPUT_BOLD}$option${BU_TPUT_RESET}" "${option_parameter_description:+ ${BU_TPUT_UNDERLINE}$option_parameter_description${BU_TPUT_NO_UNDERLINE}}"
+            printf "$padding%s%s%s (No additional help)\n\n" "${BU_TPUT_BOLD}$option${BU_TPUT_RESET}" "${option_parameter_description:+ ${BU_TPUT_UNDERLINE}$option_parameter_description${BU_TPUT_NO_UNDERLINE}}" "${glob_label:+ $glob_label}"
         else
-            printf "$padding%s%s\n$padding$padding%s\n" "${BU_TPUT_BOLD}$option${BU_TPUT_RESET}" "${option_parameter_description:+ ${BU_TPUT_UNDERLINE}$option_parameter_description${BU_TPUT_NO_UNDERLINE}}" "${option_docs//$'\n'/$'\n'$padding$padding}"
+            printf "$padding%s%s%s\n$padding$padding%s\n" "${BU_TPUT_BOLD}$option${BU_TPUT_RESET}" "${option_parameter_description:+ ${BU_TPUT_UNDERLINE}$option_parameter_description${BU_TPUT_NO_UNDERLINE}}" "${glob_label:+ $glob_label}" "${option_docs//$'\n'/$'\n'$padding$padding}"
         fi
         fi
     done
+
+    if ((${#bu_script_option_glob[@]}))
+    then
+        echo
+        printf "$padding%s\n" \
+            "${BU_TPUT_GREY}(glob): takes a plain name or a bash pattern (* ? [...]). Quote patterns ('BU_*'):" \
+            "unquoted, bash expands them against files in the current directory before the command runs.${BU_TPUT_RESET}"
+    fi
 
     if ((${#example_purposes[@]}))
     then

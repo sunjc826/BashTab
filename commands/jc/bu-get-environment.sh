@@ -23,7 +23,7 @@ bu_run_log_command "$@"
 
 local is_help=false
 local format=auto
-local name=
+local -a names=()
 local error_msg=
 local autocompletion=()
 local shift_by=
@@ -37,9 +37,9 @@ do
         format=${!shift_by}
         ;;
     -n|--name)# NAME
-        # Filter to a specific variable (e.g. HOME, PATH)
-        bu_parse_positional $# --hint "Variable name"
-        name=${!shift_by}
+        # Variable name or pattern, e.g. HOME or 'LC_*' (repeatable)
+        bu_parse_positional $# --glob --stdout compgen -e stdout-- --hint "Variable name or pattern"
+        names+=("${!shift_by}")
         ;;
     -h|--help)# _FLAG
         is_help=true
@@ -76,6 +76,7 @@ then
         --description "Show environment variables (jc env parser wrapper). ANSI escape sequences are stripped from values." \
         --example "All variables" "" \
         --example "Single variable" "--name HOME" \
+        --example "Locale variables" "--name 'LC_*' --name LANG" \
         --example "With extra flags" "-- -u /usr/bin/env"
     return 0
 fi
@@ -95,21 +96,39 @@ else
     cmd=(env)
 fi
 
-# When --name is given, pre-filter to that variable before jc parsing.
-# Use cat as a no-op when name is not set.
-local name_filter_cmd=(cat)
-[[ -n "$name" ]] && name_filter_cmd=(grep "^${name}=")
-
 # jc env parser emits an array of {name, value} records.
 # Strip ANSI escape sequences from values (CSI: ESC[params letter,
 # charset: ESC( or ESC) + single char) to prevent display corruption.
-"${cmd[@]}" 2>/dev/null | "${name_filter_cmd[@]}" 2>/dev/null | jc --env 2>/dev/null | jq -c '
+# Each record comes back as "name<TAB>json" so --name can filter in this
+# shell (seen must survive for the missing-name report).
+local -a lines=()
+mapfile -t lines < <("${cmd[@]}" 2>/dev/null | jc --env 2>/dev/null | jq -r '
     if type == "array" then .[] else . end
     | .value |= gsub("\u001b\\[[0-9;?]*[a-zA-Z]"; "")
     | .value |= gsub("\u001b[()]."; "")
-' 2>/dev/null | bu_out --format "$format"
+    | "\(.name)\t\(tojson)"
+' 2>/dev/null)
+
+local line var_name
+local -a records=()
+local -A seen=()
+for line in "${lines[@]}"
+do
+    var_name=${line%%$'\t'*}
+    bu_glob_match "$var_name" "${names[@]}" || continue
+    seen[$var_name]=1
+    records+=("${line#*$'\t'}")
+done
+if ((${#records[@]}))
+then
+    printf '%s\n' "${records[@]}"
+fi | bu_out --format "$format"
+
+local exit_code=0
+bu_glob_report_missing "environment variable" seen "${names[@]}" || exit_code=1
 
 bu_scope_pop_function
+return "$exit_code"
 }
 
 __bu_bu_get_environment_main "$@"

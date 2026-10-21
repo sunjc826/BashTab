@@ -15,6 +15,8 @@ source "$BU_NULL"
 bu_scope_push_function
 bu_run_log_command "$@"
 
+local -a names=()
+local -a excludes=()
 local format=auto
 local columns=
 local no_status=false
@@ -42,13 +44,28 @@ do
         # Skip live git probes (describe/branch/dirty)
         no_status=true
         ;;
+    --exclude)# PATTERN
+        # Leave out modules matching this name or pattern (repeatable)
+        bu_parse_positional $# --glob --enum "${!BU_MODULE_REGISTRY[@]}" enum-- --hint "Module name or pattern"
+        excludes+=("${!shift_by}")
+        ;;
     -h|--help)# _FLAG
         # Print help
         is_help=true
         ;;
-    *)
-        bu_parse_error_enum "$1"
-        break
+    *)# NAME
+        # Module name or pattern (repeatable); none lists every module.
+        # Matched before the git probes run, so only matches pay for them.
+        if bu_env_is_in_autocomplete && [[ "$1" != -* ]]
+        then
+            autocompletion=(--glob --enum "${!BU_MODULE_REGISTRY[@]}" enum-- --hint "Module name or pattern")
+        fi
+        if [[ "$1" == -* ]]
+        then
+            bu_parse_error_enum "$1"
+            break
+        fi
+        names+=("$1")
         ;;
     esac
     if "$is_help"
@@ -88,6 +105,7 @@ Output is structured: piped output defaults to JSONL, terminal output
 defaults to a table. Use --format to override.
 " \
         --example "List modules" "" \
+        --example "One module" "myapp" \
         --example "List modules as a JSON array" "--format json" \
         --example "List modules as a list" "--format list" \
         --example "Modules with uncommitted changes" "| bu query-object where dirty -eq true" \
@@ -104,6 +122,20 @@ if [[ -n "$BU_MODULE_LIST" ]]; then
     IFS=$_ifs
 fi
 
+# Filter by name here, before the git probes; seen feeds the missing-name
+# report (the record loop below runs in a pipeline subshell).
+local -a selected=()
+local -A seen=()
+local entry
+for entry in "${entries[@]}"
+do
+    [[ -z "$entry" ]] && continue
+    bu_glob_match "${entry%%:*}" "${names[@]}" || continue
+    seen[${entry%%:*}]=1
+    bu_glob_excludes "${entry%%:*}" "${excludes[@]}" && continue
+    selected+=("$entry")
+done
+
 if ((${#entries[@]} == 0))
 then
     # Hints go to stderr so they never pollute the structured stream
@@ -114,9 +146,8 @@ else
     # Stream one typed record per entry, then let bu_out decide presentation
     # (table on a terminal, JSONL when piped).  bu_out_record forks one jq per
     # record — fine here because module registries are small.
-    local entry
     {
-        for entry in "${entries[@]}"
+        for entry in "${selected[@]}"
         do
             [[ -z "$entry" ]] && continue
             local name=${entry%%:*}
@@ -169,7 +200,11 @@ else
     } | bu_out --format "$format" ${columns:+--columns "$columns"}
 fi
 
+local exit_code=0
+bu_glob_report_missing module seen "${names[@]}" || exit_code=1
+
 bu_scope_pop_function
+return "$exit_code"
 }
 
 __bu_bu_get_module_main "$@"

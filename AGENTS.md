@@ -279,6 +279,7 @@ Arguments to `bu_parse_positional` are processed by `__bu_autocomplete_completio
 | `--as-if cmd subcmd ... as-if--` | Delegate to another command's autocomplete |
 | `+c/--no-append-cur-word` | Suppress appending the word under the cursor to the following `--as-if`/`--stdout`/`--ret` invocation. Use when the delegated list already ends with the cursor word (`bu_autocomplete_remaining +c --as-if "${remaining_options[@]}" as-if--`) or ends with a literal prefix to narrow on (`+c --as-if git checkout release/ as-if--` offers only `release/*` branches; the framework prefix-filters `COMPREPLY` against the real cursor word afterwards). `-c/--append-cur-word` restores the default. |
 | `--delimited [--delimiter X] opt1 opt2 ... delimited--` | Comma-delimited multiselect; excludes already-selected tokens, auto-hint shows available options |
+| `--glob` | The parameter takes a name or a bash pattern. When the word holds a wildcard, the generators run as for an empty word and completion shows a hint listing what the pattern matches (and warns if bash would expand it against files) instead of completing; `bu_validate_positional` accepts any pattern; `--help` labels the option `(glob)` |
 | `-a/--ansi COLOR` | Apply ANSI color to completions |
 
 During completion a cmdlet's `"$@"` is words 1..`cword` of the command line, so the word under the cursor is already the last element — `+c` stops the DSL from appending it again.
@@ -301,6 +302,20 @@ bu_parse_positional $# --hint "Name of the script"
 **Executable** (`script_template.sh`): Sources `bu_entrypoint.sh`, uses `bu_exit_handler_setup`
 
 **Sourceable** (`source_script_template.sh`): Assumes entrypoint already loaded, sources `$BU_NULL` for shellcheck
+
+### Name filters on getters (PowerShell `-Name`)
+
+A getter that lists named things (variables, settings, modules, repos)
+takes names as a repeatable positional plus a repeatable `--exclude`, both
+marked `--glob`, and filters with the `bu_glob_*` helpers in
+`bu_core_base.sh`: `bu_glob_match NAME PATTERN...` (no patterns = keep all),
+`bu_glob_excludes NAME PATTERN...`, and `bu_glob_report_missing NOUN SEEN
+PATTERN...` (an exact name that matched nothing logs `No NOUN named 'X'` and
+returns 1; a wildcard that matched nothing is just an empty result). Filter
+in the current shell before the `{ ... } | bu_out` producer block (that block
+is a subshell, so `seen` set inside it is lost) and before any expensive
+per-record probe. Examples quote patterns (`'BU_*'`): unquoted, bash expands
+them against files first.
 
 ## Bash Style Guide
 
