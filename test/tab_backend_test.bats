@@ -17,6 +17,14 @@ setup() {
     DIR="$( cd "$( dirname "$BATS_TEST_FILENAME" )" >/dev/null 2>&1 && pwd )"
     source "$DIR"/../bu_entrypoint.sh
     source "$BU_NULL"
+    TB_SOCK=
+}
+
+teardown() {
+    # A failed assertion ends the test before its own kill-server
+    if [[ -n "$TB_SOCK" ]]; then
+        tmux -L "$TB_SOCK" kill-server 2>/dev/null || true
+    fi
 }
 
 # ```md
@@ -54,7 +62,9 @@ function __tb_wait_pane {
 function __tb_tmux_setup {
     local pane
     command -v tmux >/dev/null || skip "tmux not available"
-    tmux -L "$1" new-session -d -s "$2" -x 120 -y 30 "bash --norc"
+    TB_SOCK=$1
+    # fd 3 closed: bats waits for every holder of its output fd to exit
+    tmux -L "$1" new-session -d -s "$2" -x 120 -y 30 "bash --norc" 3>&-
     tmux -L "$1" send-keys -t "$2" "PS1='tb\$ '; source \"$DIR\"/../activate >/dev/null 2>&1; bu_autocomplete_enable_tab $3 >/dev/null 2>&1; clear; echo tb-ready" Enter
     # Activation time varies wildly across hosts: wait (up to 60s).
     __tb_wait_pane "$1" "$2" '^tb-ready' 120 || { tmux -L "$1" kill-server; fail "shell did not start"; }
