@@ -109,8 +109,9 @@ function test_readline_describe_aligns_and_truncates { #@test
     assert_equal "${COMPREPLY[0]}" "get-alias           (flag alias)"
     # No description: left bare
     assert_equal "${COMPREPLY[1]}" "get-all-the-things"
+    # 60 columns: the string pins it (${#} would count the … as 3 bytes
+    # under the C locale bats runs in)
     assert_equal "${COMPREPLY[2]}" "get-x               (a very long description that will not…)"
-    assert_equal "${#COMPREPLY[2]}" 60
 }
 
 function test_readline_describe_common_prefix_stops_before_padding { #@test
