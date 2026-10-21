@@ -36,7 +36,7 @@ function __tb_wait_pane {
     local -i _w
     for (( _w = 0; _w < ${4:-20}; _w++ )); do
         pane=$(tmux -L "$1" capture-pane -t "$2" -p)
-        grep -qE "$3" <<<"$pane" && return 0
+        grep -qE -e "$3" <<<"$pane" && return 0
         sleep 0.5
     done
     return 1
