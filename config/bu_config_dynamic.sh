@@ -33,7 +33,22 @@ bu_config_register BU_AUTOCOMPLETE_BIND_FZF_DISPLAY_METADATA --bool --default tr
     --hint "Show color-coded metadata (type tags, sizes) in fzf completion"
 
 bu_config_register BU_AUTOCOMPLETE_BIND_TAB_TO_FZF --bool --default true \
-    --hint "Bind Tab to fzf completion (Alt-Z toggles per session)"
+    --hint "Bind Tab to BashTab completion, shown by BU_AUTOCOMPLETE_TAB_BACKEND (Alt-Z toggles per session)"
+
+# ```
+# How BashTab Tab completion shows its candidates (all three use the same
+# completion engine):
+# - fzf:       fzf dropdown placed under the word being completed, with a
+#              preview pane for long descriptions
+# - fzf-cheap: fzf dropdown on the prompt row; skips the terminal queries,
+#              stty/tput calls and prompt rendering that placing it takes
+# - readline:  readline's own candidate list, with descriptions; honours
+#              inputrc settings and needs no fzf
+# The fzf backends fall back to readline when fzf is not installed.
+# ```
+bu_config_register BU_AUTOCOMPLETE_TAB_BACKEND --default fzf \
+    --enum fzf fzf-cheap readline enum-- \
+    --hint "Tab completion UI: fzf (dropdown under the word), fzf-cheap (dropdown on the prompt row, fewer processes), readline (native list with descriptions)"
 
 # ```
 # Use tree-sitter-bash (via node daemon) for command-line parsing

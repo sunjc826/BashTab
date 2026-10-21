@@ -172,7 +172,7 @@ declare -A -g BU_KEY_BINDINGS=(
 declare -A -g BU_KEY_BINDING_DOCS=(
     ['\ee']='Edit the current command line in $EDITOR'
     ['\ea']='Fuzzy-search command history'
-    ['\ez']='Toggle Tab between default and fzf completion'
+    ['\ez']='Toggle Tab between default and BashTab completion'
 )
 
 # Owning module for each key binding, keyed by the same escape sequence.

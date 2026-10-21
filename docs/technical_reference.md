@@ -440,6 +440,41 @@ Located at `lib/bin/bu_ts_daemon.js`. The bash wrapper `lib/core/bu_core_ts.sh` 
 
 Toggle with `BU_AUTOCOMPLETE_USE_TREE_SITTER=true`.
 
+### Tab backends
+
+`BU_AUTOCOMPLETE_TAB_BACKEND` picks how Tab shows candidates. Tab is bound on
+activation, and again when `Alt-Z` turns it back on; `bu_autocomplete_enable_tab
+BACKEND` binds a backend directly. All three run
+the same completion engine (`__bu_autocomplete_tab_parse_line` to find the
+command and its words, `__bu_autocomplete_tab_collect` to run its completion
+function); they differ only in the display:
+
+| Backend | Tab runs | Per Tab, besides the completion function |
+|---|---|---|
+| `fzf` (default) | `__bu_bind_fzf_tab_autocomplete`: dropdown placed under the word, preview pane for long descriptions | ~15 processes: 3 cursor-position queries (each a round trip to the terminal, over the network on ssh) with their `stty` calls, `tput`, `sed` for the prompt, `sort`, fzf |
+| `fzf-cheap` | `__bu_bind_fzf_cheap_tab_autocomplete`: the dropdown on the prompt row, the line as fzf's prompt, no preview | `sort`, fzf |
+| `readline` | readline's own completion with cobra-style `word  (description)` entries | one subshell, no process |
+
+`fzf-cheap` relies on bash clearing the prompt row before a `bind -x` handler
+and redrawing it afterwards, and on `fzf --height` drawing from the cursor row
+and returning there: nothing to measure or restore. The fzf backends fall back
+to `readline` when fzf is not installed.
+
+`readline` binds Tab to a macro of two internal key sequences
+(`\C-x\C-_t`, `\C-x\C-_c`). The first runs `__bu_bind_readline_tab_prepare`
+(`bind -x`): it runs the engine, adds the descriptions, stashes the
+candidates and points the command's compspec at
+`__bu_autocomplete_readline_stash_func`. The second is readline's `complete`,
+which calls that function: it restores the original compspec and returns the
+stash, minus the part of the word in front of readline's own word start
+(`--format=` in `--format=js`, an opening quote). Readline then inserts the
+common prefix, lists the candidates and honours inputrc settings
+(`show-all-if-ambiguous`, `completion-query-items`, `colored-stats`, ...) as
+usual. Because `complete` lists only when the command before it was
+`complete`, a Tab on an unchanged line rebinds the second key sequence to
+`possible-completions`. Command names and filename completions are left
+undescribed: readline displays a filename's last path component only.
+
 ### fzf autocomplete display
 
 The `__bu_fzf_compute_dimensions` function handles dropdown positioning (tested across 40–200 column terminals). Metadata formatting is shared between the legacy and tree-sitter autocomplete paths, with:

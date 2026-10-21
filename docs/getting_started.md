@@ -72,13 +72,25 @@ ls <TAB>                     # file completions with type + size hints
 echo $HO<TAB>                # variable name completion
 ```
 
+### Choose the Tab display
+
+```sh
+bu set-config BU_AUTOCOMPLETE_TAB_BACKEND readline
+```
+
+- `fzf` (default): fzf dropdown under the word being completed, with a preview pane
+- `fzf-cheap`: the same dropdown on the prompt row, without the terminal queries that placing it costs (snappier, especially over ssh)
+- `readline`: bash's own completion list, with descriptions; no fzf needed
+
+Tab is bound when BashTab activates: press `Alt-Z` twice (off, then on) to switch the current shell over.
+
 ### Key bindings
 
 | Keys | Action |
 |---|---|
 | `Alt-E` | Edit the current command line in `$EDITOR` |
 | `Alt-A` | Fuzzy-search command history |
-| `Alt-Z` | Toggle Tab between default and fzf completion |
+| `Alt-Z` | Toggle Tab between default and BashTab completion |
 | `Tab` | Confirm fzf selection |
 | `Ctrl-T` / `Ctrl-R` | fzf file / history search (if available) |
 

@@ -3391,23 +3391,29 @@ __bu_bind_fzf_autocomplete_impl_display()
 
 export -f __bu_bind_fzf_autocomplete_impl_display
 
-__bu_bind_fzf_autocomplete_impl()
+# ```
+# *Description*:
+# Split the command line in front of the cursor for a Tab backend: the command
+# being completed (the one after the last pipe or operator), its leading
+# environment assignments and its words. Pure Bash, no forks.
+#
+# *Params*:
+# - `$1`: Command line in front of the cursor
+# - `$2`: Command line behind the cursor
+#
+# *Returns* (assigned to the caller's locals of the same names):
+# - `command_line`: words of the command being completed; the last is the word
+#   under the cursor ("" after a space)
+# - `command_name`, `environment_vars`, `command_line_options_colored`
+# - `command_line_front_before_pipe`: the text in front of the command, kept as
+#   is when a completion is inserted
+# - `command_line_back_no_operator`: the rest of the cursor word behind the cursor
+# ```
+__bu_autocomplete_tab_parse_line()
 {
     local command_line_front=$1
     local command_line_back=$2
-    local move_cursor_to_end=$3
-    local fzf_dynamic_reload=${4:-false}
-    local use_tab_to_confirm=${5:-false}
 
-    if "$BU_AUTOCOMPLETE_USE_TREE_SITTER" && bu_symbol_is_function bu_ts_parse; then
-        __bu_bind_fzf_autocomplete_impl_ts "$@"
-        return
-    fi
-
-    local delimiter=$'\x01'
-
-
-    
     # This works for many simple expressions, but even something like
     # grep $(ls) --<autocomplete> will break
     # command_line_front_after_pipe=${command_line_front_after_pipe##*'('}
@@ -3421,8 +3427,6 @@ __bu_bind_fzf_autocomplete_impl()
     local -a token_stack color_stack op_idx_stack 
     local i colored_command_line
     __bu_parse_bash token_stack color_stack op_idx_stack "$command_line_front"
-
-    local environment_vars=
 
     while ((${#op_idx_stack[@]} > 1))
     do
@@ -3452,7 +3456,6 @@ __bu_bind_fzf_autocomplete_impl()
     bu_list_join '' "${token_stack[@]:i}"
     local command_line_front_after_pipe=${BU_RET#"${BU_RET%%[![:space:]]*}"} # Remove any leading space
 
-    local command_line_options_colored=
     for ((i++; i < ${#token_stack[@]}; i++))
     do
         case "${token_stack[i]}" in
@@ -3468,12 +3471,209 @@ __bu_bind_fzf_autocomplete_impl()
     command_name=${command_name#"${command_name%%[![:space:]]*}"}
     environment_vars=${environment_vars#"${environment_vars%%[![:space:]]*}"}
 
-    local command_line_front_before_pipe=${command_line_front:0:${#command_line_front}-${#command_line_front_after_pipe}}
+    command_line_front_before_pipe=${command_line_front:0:${#command_line_front}-${#command_line_front_after_pipe}}
     command_line_front_before_pipe=${command_line_front_before_pipe%$environment_vars}
 
     # printf "%s\n" "$command_line_front_before_pipe"
 
-    local command_line=($command_line_front_after_pipe)
+    # shellcheck disable=SC2206
+    command_line=($command_line_front_after_pipe)
+
+    # We need to append a space if we swallowed a space
+    if [[ "${command_line_front:${#command_line_front}-1}" = ' ' ]]
+    then
+        command_line+=("")
+    fi
+
+    if ((!${#command_line[@]}))
+    then
+        command_line+=("")
+    fi
+
+    local command_line_back_last_word=${command_line_back%%[[:space:]]*}
+    command_line_back_no_operator=${command_line_back_last_word}
+    command_line_back_no_operator=${command_line_back_no_operator%%')'*}
+    command_line_back_no_operator=${command_line_back_no_operator%%';'*}
+    command_line_back_no_operator=${command_line_back_no_operator%%'&&'*}
+    command_line_back_no_operator=${command_line_back_no_operator%%'|'*}
+}
+
+# ```
+# *Description*:
+# Run the completion engine for a Tab backend on the words that
+# `__bu_autocomplete_tab_parse_line` left in the caller's `command_line`, and
+# read back the completion options the completion function set.
+#
+# *Params*: None
+#
+# *Returns*:
+# - Exit code: 0 with candidates, 1 when the engine failed, 2 when there are none
+# - `${COMPREPLY[@]}`, and the caller's `BU_COMPREPLY_METADATA`, `BU_COMPREPLY_HINT`
+# - The caller's `completion_func_has_ansi_colors`, `is_nospace`,
+#   `is_dynamic_nospace`, `is_filenames`
+# ```
+__bu_autocomplete_tab_collect()
+{
+    if ((${#command_line[@]} > 1))
+    then
+        bu_autocomplete_initialize_current_completion_options "${command_line[0]}"
+    else
+        BU_COMPOPT_CURRENT_COMPLETION_OPTIONS=()
+        BU_COMPOPT_DYNAMIC_COMPLETION_OPTIONS=()
+    fi
+
+    BU_RET_MAP=()
+    BU_COMPREPLY_HINT=
+    BU_COMPREPLY_METADATA=()
+    # bu_print_var BU_COMPOPT_CURRENT_COMPLETION_OPTIONS > /dev/tty
+    bu_autocomplete_get_autocompletions --accept-ansi-colors "${command_line[@]}"
+    if (($? && !${#COMPREPLY[@]}))
+    then
+        return 1
+    fi
+
+    if ((!${#COMPREPLY[@]}))
+    then
+        return 2
+    fi
+
+    completion_func_has_ansi_colors=${BU_RET_MAP[has_ansi_colors]:-false}
+    # bu_print_var BU_COMPOPT_CURRENT_COMPLETION_OPTIONS > /dev/tty
+    if ((${#command_line[@]} > 1))
+    then
+        if [[ "${BU_COMPOPT_CURRENT_COMPLETION_OPTIONS[nospace]}" = -o ]]
+        then
+            is_nospace=true
+        fi
+        if [[ "${BU_COMPOPT_DYNAMIC_COMPLETION_OPTIONS[nospace]}" = -o ]]
+        then
+            is_dynamic_nospace=true
+        fi
+        if [[ "${BU_COMPOPT_CURRENT_COMPLETION_OPTIONS[filenames]}" = -o || "${BU_COMPOPT_DYNAMIC_COMPLETION_OPTIONS[filenames]}" = -o ]]
+        then
+            is_filenames=true
+        fi
+    fi
+    return 0
+}
+
+# ```
+# *Description*:
+# Put a chosen completion in place of the word under the cursor, and add the
+# trailing space unless the completion asked for none. For the Tab backends
+# that pick the candidate themselves.
+#
+# *Params*:
+# - `$1`: The completion as it goes on the line (opening quote included)
+#
+# Reads the caller's `__bu_autocomplete_tab_parse_line` and
+# `__bu_autocomplete_tab_collect` results, its `command_line_back` and its
+# optional `move_cursor_to_end`.
+#
+# *Returns*:
+# - `READLINE_LINE`, `READLINE_POINT`
+# ```
+__bu_autocomplete_tab_insert()
+{
+    local command_line_back=$command_line_back
+    # Bash seems to be bugged sometimes when READLINE_LINE is modified multiple times
+    # So we use these temporary variables, and set READLINE_LINE, READLINE_POINT in one shot at the end
+    local readline_line
+    local readline_point
+    command_line[-1]=$1
+    readline_line=${command_line[*]}
+    # Remove the last word of command_line_back
+    command_line_back=${command_line_back:${#command_line_back_no_operator}}
+    # Remove a space if any, because we're about to insert one later one (of course, depending on if nospace is set, and some other conditions)
+    command_line_back=${command_line_back# }
+    
+    # If we are expecting filenames, then if the file is a directory, we're not done, so don't append a space.
+    # Dynamic nospace (compopt -o nospace issued DURING the completion) is
+    # honored unconditionally — the completion function asked for no space.
+    # Static spec nospace keeps the suffix heuristic: respect it only when
+    # the completed word looks like it needs a suffix (directory /, option
+    # =, namespace :, etc.) — not for subcommands that just happen to have
+    # nospace set by their completion spec.
+    if ! "$is_dynamic_nospace" && \
+       ! { "$is_filenames" && [[ "${readline_line:${#readline_line}-1}" = / ]]; } && \
+       ! { "$is_nospace" && [[ "${readline_line:${#readline_line}-1}" = [/=:@] ]]; } && \
+       [[ "${readline_line:${#readline_line}-1}" != ' ' && "${command_line_back:0:1}" != ' ' ]]
+    then
+        readline_line+=' '
+    fi
+
+    readline_line=${command_line_front_before_pipe}${environment_vars}${readline_line}
+
+    readline_point=${#readline_line}
+    readline_line+=$command_line_back
+    if "${move_cursor_to_end:-false}"
+    then
+        if [[ "${readline_line:${#readline_line}-1}" != ' ' && "${command_line_back:0:1}" != ' ' ]]
+        then
+            readline_line+=' '
+        fi
+        readline_point=${#readline_line}
+    fi
+    READLINE_LINE=$readline_line
+    READLINE_POINT=$readline_point
+}
+
+# fzf --color entries of the Tab dropdowns (VSCode Dark+ palette)
+declare -a -g __BU_AUTOCOMPLETE_FZF_COLORS=(
+    #   fg         Text
+    #   bg         Background
+    #   preview-fg Preview window text
+    #   preview-bg Preview window background
+    #   hl         Highlighted substrings
+    #   fg+        Text (current line)
+    #   bg+        Background (current line)
+    #   gutter     Gutter on the left (defaults to bg+)
+    #   hl+        Highlighted substrings (current line)
+    #   info       Info
+    #   border     Border of the preview window and horizontal separators (--border)
+    #   prompt     Prompt
+    #   pointer    Pointer to the current line
+    #   marker     Multi-select marker
+    #   spinner    Streaming input indicator
+    #   header     Header
+    'fg:#569CD6' # VSCode Dark+ dark blue text, approx xterm 74
+    'bg:#1F1F1F' # VSCode Dark+ background, approx xterm 16
+    'hl:#C586C0' # VSCode Dark+ pink text, approx xterm 175
+    'fg+:#9CDCFE' # VSCode Dark+ blue text, approx xterm 153
+    'hl+:#D16969' # VSCode Dark+ red text, approx xterm 167
+    'header:#DCDCAA' # VSCode Dark+ function text, approx xterm 187
+    'prompt:#DCDCAA'
+    'info:#B5CEA8'
+    'pointer:#CCCCCC' # VSCode Dark+ regular text, approx xterm 188
+    'border:#CCCCCC'
+    'gutter:#1F1F1F'
+    'preview-fg:-1'
+    'preview-bg:-1'
+)
+
+__bu_bind_fzf_autocomplete_impl()
+{
+    local command_line_front=$1
+    local command_line_back=$2
+    local move_cursor_to_end=$3
+    local fzf_dynamic_reload=${4:-false}
+    local use_tab_to_confirm=${5:-false}
+
+    if "$BU_AUTOCOMPLETE_USE_TREE_SITTER" && bu_symbol_is_function bu_ts_parse; then
+        __bu_bind_fzf_autocomplete_impl_ts "$@"
+        return
+    fi
+
+    local delimiter=$'\x01'
+    local i
+
+    local -a command_line=()
+    local command_name=
+    local environment_vars=
+    local command_line_options_colored=
+    local command_line_front_before_pipe=
+    local command_line_back_no_operator=
+    __bu_autocomplete_tab_parse_line "$command_line_front" "$command_line_back"
 
     tput sc
     local oldstty=$(stty -g </dev/tty)
@@ -3502,51 +3702,27 @@ __bu_bind_fzf_autocomplete_impl()
     ps1_noesc=$(printf '%s' "$ps1_last_row" | __bu_autocomplete_strip_ansi)
     local col_with_ps1=$((${#ps1_noesc} % COLUMNS))
 
-    local command_line_back_last_word=${command_line_back%%[[:space:]]*}
-    local command_line_back_no_operator=${command_line_back_last_word}
-    command_line_back_no_operator=${command_line_back_no_operator%%')'*}
-    command_line_back_no_operator=${command_line_back_no_operator%%';'*}
-    command_line_back_no_operator=${command_line_back_no_operator%%'&&'*}
-    command_line_back_no_operator=${command_line_back_no_operator%%'|'*}
-
     local displayed_command_line_back=${BU_TPUT_RED}${command_line_back_no_operator}${BU_TPUT_RESET}${BU_TPUT_GREY}${command_line_back:${#command_line_back_no_operator}}${BU_TPUT_RESET}
 
     printf "%s%s%s%s%s%s" "${BU_TPUT_GREY}${command_line_front_before_pipe}${BU_TPUT_RESET}" "${BU_TPUT_VSCODE_GREEN}${environment_vars}${BU_TPUT_RESET}" "${BU_TPUT_VSCODE_YELLOW}${command_name}${BU_TPUT_RESET}" "${command_line_options_colored}" "${BU_TPUT_BLUE}${BU_TPUT_UNDERLINE}?${BU_TPUT_RESET}" "$displayed_command_line_back"
 
-    # We need to append a space if we swallowed a space
-    if [[ "${command_line_front:${#command_line_front}-1}" = ' ' ]]
-    then
-        command_line+=("")
-    fi
-
-    if ((!${#command_line[@]}))
-    then
-        command_line+=("")
-    fi
-
-    if ((${#command_line[@]} > 1))
-    then
-        bu_autocomplete_initialize_current_completion_options "${command_line[0]}"
-    else
-        BU_COMPOPT_CURRENT_COMPLETION_OPTIONS=()
-        BU_COMPOPT_DYNAMIC_COMPLETION_OPTIONS=()
-    fi
-
-    BU_RET_MAP=()
     local BU_COMPREPLY_HINT=
     # "Type info"
     local -a BU_COMPREPLY_METADATA=()
-    # bu_print_var BU_COMPOPT_CURRENT_COMPLETION_OPTIONS > /dev/tty
-    bu_autocomplete_get_autocompletions --accept-ansi-colors "${command_line[@]}"
-    if (($? && !${#COMPREPLY[@]}))
-    then
+    local completion_func_has_ansi_colors=false
+    local is_nospace=false
+    local is_dynamic_nospace=false
+    local is_filenames=false
+    __bu_autocomplete_tab_collect
+    case "$?" in
+    0)
+        ;;
+    1)
         tput rc
         bu_log_err "bu_autocomplete_get_autocompletions ${command_line[0]} ... failed"
         return 1
-    fi
-
-    if ((!${#COMPREPLY[@]}))
-    then
+        ;;
+    *)
         if [[ -n "${BU_COMPREPLY_HINT}" ]]
         then
             printf "\n%s\n" "${BU_TPUT_VSCODE_YELLOW}Hint:${BU_TPUT_RESET} ${BU_COMPREPLY_HINT}"
@@ -3554,28 +3730,8 @@ __bu_bind_fzf_autocomplete_impl()
         tput rc
 
         return 0
-    fi
-
-    local completion_func_has_ansi_colors=${BU_RET_MAP[has_ansi_colors]:-false}
-    # bu_print_var BU_COMPOPT_CURRENT_COMPLETION_OPTIONS > /dev/tty
-    local is_nospace=false
-    local is_dynamic_nospace=false
-    local is_filenames=false
-    if ((${#command_line[@]} > 1))
-    then
-        if [[ "${BU_COMPOPT_CURRENT_COMPLETION_OPTIONS[nospace]}" = -o ]]
-        then
-            is_nospace=true
-        fi
-        if [[ "${BU_COMPOPT_DYNAMIC_COMPLETION_OPTIONS[nospace]}" = -o ]]
-        then
-            is_dynamic_nospace=true
-        fi
-        if [[ "${BU_COMPOPT_CURRENT_COMPLETION_OPTIONS[filenames]}" = -o || "${BU_COMPOPT_DYNAMIC_COMPLETION_OPTIONS[filenames]}" = -o ]]
-        then
-            is_filenames=true
-        fi
-    fi
+        ;;
+    esac
 
     local is_ansi=$completion_func_has_ansi_colors
     if ! "$completion_func_has_ansi_colors"
@@ -3771,38 +3927,7 @@ __bu_bind_fzf_autocomplete_impl()
         fzf_opts+=(--ansi)
     fi
 
-    local fzf_colors=(
-        #   fg         Text
-        #   bg         Background
-        #   preview-fg Preview window text
-        #   preview-bg Preview window background
-        #   hl         Highlighted substrings
-        #   fg+        Text (current line)
-        #   bg+        Background (current line)
-        #   gutter     Gutter on the left (defaults to bg+)
-        #   hl+        Highlighted substrings (current line)
-        #   info       Info
-        #   border     Border of the preview window and horizontal separators (--border)
-        #   prompt     Prompt
-        #   pointer    Pointer to the current line
-        #   marker     Multi-select marker
-        #   spinner    Streaming input indicator
-        #   header     Header
-        'fg:#569CD6' # VSCode Dark+ dark blue text, approx xterm 74
-        'bg:#1F1F1F' # VSCode Dark+ background, approx xterm 16
-        'hl:#C586C0' # VSCode Dark+ pink text, approx xterm 175
-        'fg+:#9CDCFE' # VSCode Dark+ blue text, approx xterm 153
-        'hl+:#D16969' # VSCode Dark+ red text, approx xterm 167
-        'header:#DCDCAA' # VSCode Dark+ function text, approx xterm 187
-        'prompt:#DCDCAA'
-        'info:#B5CEA8'
-        'pointer:#CCCCCC' # VSCode Dark+ regular text, approx xterm 188
-        'border:#CCCCCC'
-        'gutter:#1F1F1F'
-        'preview-fg:-1'
-        'preview-bg:-1'
-    )
-    bu_list_join , "${fzf_colors[@]}"
+    bu_list_join , "${__BU_AUTOCOMPLETE_FZF_COLORS[@]}"
     fzf_opts+=(--color=dark,"$BU_RET")
 
     local selected_command
@@ -3855,46 +3980,7 @@ __bu_bind_fzf_autocomplete_impl()
         then
             selected_command=${selected_command%%"${delimiter}"*}
         fi
-        # Bash seems to be bugged sometimes when READLINE_LINE is modified multiple times
-        # So we use these temporary variables, and set READLINE_LINE, READLINE_POINT in one shot at the end
-        local readline_line
-        local readline_point
-        command_line[-1]="${quote_prefix}${selected_command}"
-        readline_line=${command_line[*]}
-        # Remove the last word of command_line_back
-        command_line_back=${command_line_back:${#command_line_back_no_operator}}
-        # Remove a space if any, because we're about to insert one later one (of course, depending on if nospace is set, and some other conditions)
-        command_line_back=${command_line_back# }
-        
-        # If we are expecting filenames, then if the file is a directory, we're not done, so don't append a space.
-        # Dynamic nospace (compopt -o nospace issued DURING the completion) is
-        # honored unconditionally — the completion function asked for no space.
-        # Static spec nospace keeps the suffix heuristic: respect it only when
-        # the completed word looks like it needs a suffix (directory /, option
-        # =, namespace :, etc.) — not for subcommands that just happen to have
-        # nospace set by their completion spec.
-        if ! "$is_dynamic_nospace" && \
-           ! { "$is_filenames" && [[ "${readline_line:${#readline_line}-1}" = / ]]; } && \
-           ! { "$is_nospace" && [[ "${readline_line:${#readline_line}-1}" = [/=:@] ]]; } && \
-           [[ "${readline_line:${#readline_line}-1}" != ' ' && "${command_line_back:0:1}" != ' ' ]]
-        then
-            readline_line+=' '
-        fi
-
-        readline_line=${command_line_front_before_pipe}${environment_vars}${readline_line}
-
-        readline_point=${#readline_line}
-        readline_line+=$command_line_back
-        if "$move_cursor_to_end"
-        then
-            if [[ "${readline_line:${#readline_line}-1}" != ' ' && "${command_line_back:0:1}" != ' ' ]]
-            then
-                readline_line+=' '
-            fi
-            readline_point=${#readline_line}
-        fi
-        READLINE_LINE=$readline_line
-        READLINE_POINT=$readline_point
+        __bu_autocomplete_tab_insert "${quote_prefix}${selected_command}"
     fi
     __bu_terminal_get_pos2 "$oldstty"
     local row_after_fzf=${BU_RET[0]}
@@ -3931,6 +4017,527 @@ __bu_bind_fzf_autocomplete_dynamic()
 __bu_bind_fzf_tab_autocomplete()
 {
     __bu_bind_fzf_autocomplete_impl "${READLINE_LINE:0:$READLINE_POINT}" "${READLINE_LINE:$READLINE_POINT}" false false true
+}
+
+# MARK: Tab backends
+#
+# What Tab runs is chosen by BU_AUTOCOMPLETE_TAB_BACKEND (see
+# bu_autocomplete_enable_tab). All of them complete with the same engine
+# (`__bu_autocomplete_tab_parse_line`, `__bu_autocomplete_tab_collect`); they
+# differ in how the candidates are shown:
+# - fzf:       `__bu_bind_fzf_tab_autocomplete`, a dropdown placed under the
+#              word being completed. Finding that place costs terminal queries,
+#              stty/tput calls and prompt rendering on every Tab.
+# - fzf-cheap: `__bu_bind_fzf_cheap_tab_autocomplete`, the same dropdown on the
+#              prompt row, none of that work.
+# - readline:  `__bu_bind_readline_tab_prepare`, readline's own completion list
+#              with descriptions; needs no fzf.
+
+# ```
+# *Description*:
+# Strip ANSI escape sequences (CSI such as SGR colours, OSC, the `ESC ( B`
+# charset reset of `tput sgr0`) and SI/SO bytes from every element of arrays,
+# in pure Bash: the `__bu_autocomplete_strip_ansi` filter costs a sed process.
+#
+# The elements are joined and split at each ESC, so every part after the
+# first starts with a sequence, which an anchored pattern removes: a few
+# array-wide expansions in all, ~20ms for 2000 coloured elements, nothing when
+# there is no ESC. (A `//` substitution with an extglob, which tries the
+# pattern at every position of every element, is 1.5-3x slower.)
+#
+# *Params*:
+# - `$@`: Names of the arrays to strip, modified in place. Elements must not
+#   contain the US byte (\x1f), which separates them meanwhile.
+# ```
+__bu_autocomplete_strip_ansi_arrays()
+{
+    local __bu_sa_name __bu_sa_joined __bu_sa_i
+    local -a __bu_sa_parts
+    for __bu_sa_name in "$@"
+    do
+        local -n __bu_sa_arr=$__bu_sa_name
+        printf -v __bu_sa_joined '%s\x1f' "${__bu_sa_arr[@]}"
+        if [[ "$__bu_sa_joined" == *[$'\e\x0e\x0f']* ]]
+        then
+            # The text before the first ESC is no sequence: a leading `x`
+            # keeps the patterns below off it
+            __bu_sa_joined=x$__bu_sa_joined
+            mapfile -t -d $'\e' __bu_sa_parts <<< "$__bu_sa_joined"
+            # CSI: `[`, parameters, then a final byte. Parameters hold no
+            # letters, so the shortest prefix ending in one is the sequence.
+            __bu_sa_parts=("${__bu_sa_parts[@]#\[*[A-Za-z@~]}")
+            if [[ "$__bu_sa_joined" == *$'\e'[\(\)]* ]]
+            then
+                __bu_sa_parts=("${__bu_sa_parts[@]#[()][A-Za-z0-9]}")
+            fi
+            if [[ "$__bu_sa_joined" == *$'\e]'* ]]
+            then
+                # OSC: `]` up to BEL, or up to `ESC \`, whose `\` then opens
+                # the next part
+                for __bu_sa_i in "${!__bu_sa_parts[@]}"
+                do
+                    if [[ "${__bu_sa_parts[__bu_sa_i]}" != ']'* ]]
+                    then
+                        continue
+                    fi
+                    if [[ "${__bu_sa_parts[__bu_sa_i]}" == *$'\a'* ]]
+                    then
+                        __bu_sa_parts[__bu_sa_i]=${__bu_sa_parts[__bu_sa_i]#*$'\a'}
+                    else
+                        __bu_sa_parts[__bu_sa_i]=
+                        __bu_sa_parts[__bu_sa_i + 1]=${__bu_sa_parts[__bu_sa_i + 1]#\\}
+                    fi
+                done
+            fi
+            printf -v __bu_sa_joined '%s' "${__bu_sa_parts[@]}"
+            __bu_sa_joined=${__bu_sa_joined:1}
+            __bu_sa_joined=${__bu_sa_joined//[$'\x0e\x0f']/}
+            mapfile -t -d $'\x1f' __bu_sa_arr <<< "$__bu_sa_joined"
+            # The here-string's newline, after the last separator
+            unset -v '__bu_sa_arr[-1]'
+        fi
+        unset -n __bu_sa_arr
+    done
+}
+
+# ```
+# *Description*:
+# Tab backend `fzf-cheap`: the fzf dropdown, without placing it under the word
+# being completed.
+#
+# Before a `bind -x` handler runs, bash clears the prompt row, and redraws it
+# when the handler returns. `fzf --height` starts on the cursor row and puts
+# the cursor back there when it exits, so there is nothing to save, measure or
+# restore: no stty or tput call, no cursor-position query (a round trip to the
+# terminal, over the network on ssh), no prompt rendering, no sed, file or ls
+# decoration. The command line is shown as fzf's prompt instead; no preview
+# pane. One fzf and one sort process per Tab, plus whatever the completion
+# function itself runs.
+#
+# This is a readline binding function.
+# ```
+__bu_bind_fzf_cheap_tab_autocomplete()
+{
+    local command_line_front=${READLINE_LINE:0:$READLINE_POINT}
+    local command_line_back=${READLINE_LINE:$READLINE_POINT}
+    local delimiter=$'\x01'
+
+    local -a command_line=()
+    local command_name=
+    local environment_vars=
+    local command_line_options_colored=
+    local command_line_front_before_pipe=
+    local command_line_back_no_operator=
+    __bu_autocomplete_tab_parse_line "$command_line_front" "$command_line_back"
+
+    local BU_COMPREPLY_HINT=
+    local -a BU_COMPREPLY_METADATA=()
+    local completion_func_has_ansi_colors=false
+    local is_nospace=false
+    local is_dynamic_nospace=false
+    local is_filenames=false
+    __bu_autocomplete_tab_collect
+    case "$?" in
+    0)
+        ;;
+    1)
+        bu_log_err "bu_autocomplete_get_autocompletions ${command_line[0]} ... failed"
+        return 1
+        ;;
+    *)
+        # Printed where the prompt was; bash redraws the prompt below it
+        if [[ -n "$BU_COMPREPLY_HINT" ]]
+        then
+            printf "%s\n" "${BU_TPUT_VSCODE_YELLOW}Hint:${BU_TPUT_RESET} ${BU_COMPREPLY_HINT}"
+        fi
+        return 0
+        ;;
+    esac
+
+    local quote_prefix=
+    local query_word=${command_line[-1]}
+    __bu_autocomplete_quote_prefix "$query_word"
+    quote_prefix=${BU_RET[0]}
+    query_word=${BU_RET[1]}
+
+    # The line in front of the cursor word stands in for the prompt
+    local fzf_prompt=${command_line_front:0:${#command_line_front}-${#command_line[-1]}}
+    local -r max_prompt_len=$(( ${COLUMNS:-80} / 2 ))
+    if ((${#fzf_prompt} > max_prompt_len))
+    then
+        fzf_prompt=…${fzf_prompt:${#fzf_prompt}-max_prompt_len+1}
+    fi
+
+    local fzf_opts=(
+        --exit-0
+        --select-1
+        --reverse
+        --height 20% --min-height 14
+        --extended --exact -i
+        --cycle
+        --no-sort
+        --sync
+        --bind tab:accept
+        --prompt "$fzf_prompt"
+        --query "$query_word"
+    )
+
+    if [[ -n "$BU_COMPREPLY_HINT" ]]
+    then
+        fzf_opts+=(--header "Hint: $BU_COMPREPLY_HINT")
+    fi
+
+    local is_ansi=$completion_func_has_ansi_colors
+    if "$BU_AUTOCOMPLETE_BIND_FZF_DISPLAY_METADATA" && ((${#BU_COMPREPLY_METADATA[@]})) && ((${#COMPREPLY[@]} < 2000))
+    then
+        # Metadata goes in a second field, aligned on the longest candidate
+        local -a compreply_plain=("${COMPREPLY[@]}")
+        if "$is_ansi"
+        then
+            __bu_autocomplete_strip_ansi_arrays compreply_plain
+        fi
+        local -a metadata=("${BU_COMPREPLY_METADATA[@]//$'\n'/ }")
+        metadata=("${metadata[@]//'\n'/ }")
+        local i
+        local width=0
+        for i in "${!compreply_plain[@]}"
+        do
+            if ((${#compreply_plain[i]} > width))
+            then
+                width=${#compreply_plain[i]}
+            fi
+        done
+        width=$(( width + 2 ))
+        if ((width > ${#__BU_PADDING_TABLE[@]} - 1))
+        then
+            width=$(( ${#__BU_PADDING_TABLE[@]} - 1 ))
+        fi
+        local pad
+        for i in "${!compreply_plain[@]}"
+        do
+            pad=$(( width - ${#compreply_plain[i]} ))
+            COMPREPLY[i]=${COMPREPLY[i]}${delimiter}${__BU_PADDING_TABLE[pad > 1 ? pad : 1]}${metadata[i]:-}
+        done
+        fzf_opts+=(
+            --delimiter "$delimiter"
+            --nth 1
+            --with-nth 1,2
+        )
+        is_ansi=true
+    fi
+
+    if "$is_ansi"
+    then
+        fzf_opts+=(--ansi)
+    fi
+
+    bu_list_join , "${__BU_AUTOCOMPLETE_FZF_COLORS[@]}"
+    fzf_opts+=(--color=dark,"$BU_RET")
+
+    local selected_command
+    if selected_command=$(
+        if ((${#COMPREPLY[@]} > 10000))
+        then
+            printf "%s\n" "${COMPREPLY[@]}" | __bu_fzf "${fzf_opts[@]}"
+        else
+            printf "%s\n" "${COMPREPLY[@]}" | sort --unique | __bu_fzf "${fzf_opts[@]}"
+        fi
+    ) && [[ -n "$selected_command" ]]
+    then
+        selected_command=${selected_command%%"${delimiter}"*}
+        __bu_autocomplete_tab_insert "${quote_prefix}${selected_command}"
+    fi
+}
+
+# ```
+# *Description*:
+# Append descriptions to readline completion candidates, the way cobra's bash
+# completion does: `word  (description)`, the words padded so the descriptions
+# line up, the descriptions cut to fit `$COLUMNS`.
+#
+# With several candidates readline inserts only their common prefix, which
+# ends before the padding of the shortest word, so a description is never
+# inserted. A single candidate is left bare, since readline inserts it whole.
+#
+# *Params*: None
+#
+# *Globals*:
+# - `COMPREPLY`: plain-text candidates, modified in place
+# - `BU_COMPREPLY_METADATA`: plain-text descriptions, parallel to `COMPREPLY`
+# ```
+__bu_autocomplete_readline_describe()
+{
+    local -i n=${#COMPREPLY[@]}
+    if ((n < 2))
+    then
+        return 0
+    fi
+
+    local -i i
+    local -i longest=0
+    local has_description=false
+    for ((i = 0; i < n; i++))
+    do
+        if ((${#COMPREPLY[i]} > longest))
+        then
+            longest=${#COMPREPLY[i]}
+        fi
+        if [[ -n "${BU_COMPREPLY_METADATA[i]:-}" ]]
+        then
+            has_description=true
+        fi
+    done
+    if ! "$has_description"
+    then
+        return 0
+    fi
+
+    local -i columns=${COLUMNS:-80}
+    local -i room
+    local word description
+    for ((i = 0; i < n; i++))
+    do
+        description=${BU_COMPREPLY_METADATA[i]:-}
+        if [[ -z "$description" ]]
+        then
+            continue
+        fi
+        description=${description//$'\n'/ }
+        description=${description//'\n'/ }
+        word=${COMPREPLY[i]}
+        # 4 = the two spaces and the parentheses
+        room=$(( columns - longest - 4 ))
+        if ((room > 8 && longest - ${#word} < ${#__BU_PADDING_TABLE[@]}))
+        then
+            word+=${__BU_PADDING_TABLE[longest - ${#word}]}
+        else
+            # Too narrow to align: give the description the room instead
+            room=$(( columns - ${#word} - 4 ))
+        fi
+        if ((room > 0))
+        then
+            if ((${#description} > room))
+            then
+                description=${description:0:room-1}…
+            fi
+            COMPREPLY[i]="$word  ($description)"
+        fi
+    done
+}
+
+# Candidates handed from `__bu_bind_readline_tab_prepare` to
+# `__bu_autocomplete_readline_stash_func`, and the compspec swapped out
+declare -a -g __BU_AUTOCOMPLETE_RL_STASH=()
+declare -a -g __BU_AUTOCOMPLETE_RL_STASH_COMPOPT=()
+declare -g __BU_AUTOCOMPLETE_RL_STASH_IS_SET=false
+declare -g __BU_AUTOCOMPLETE_RL_STASH_FRONT=
+declare -g __BU_AUTOCOMPLETE_RL_STASH_WORD=
+declare -g __BU_AUTOCOMPLETE_RL_SWAPPED_COMMAND=
+declare -g __BU_AUTOCOMPLETE_RL_SWAPPED_SPEC=
+
+# Internal key sequences of the readline backend's Tab macro, the readline
+# command the second one is bound to, and the line it last ran on
+declare -g __BU_AUTOCOMPLETE_RL_PREPARE_KEYSEQ='\C-x\C-_t'
+declare -g __BU_AUTOCOMPLETE_RL_COMPLETE_KEYSEQ='\C-x\C-_c'
+declare -g __BU_AUTOCOMPLETE_RL_COMPLETE_ACTION=complete
+declare -g __BU_AUTOCOMPLETE_RL_LAST_LINE=
+declare -g __BU_AUTOCOMPLETE_RL_LAST_POINT=
+
+# ```
+# *Description*:
+# Give back the compspec `__bu_bind_readline_tab_prepare` swapped out, if any.
+# ```
+__bu_autocomplete_readline_restore_spec()
+{
+    if [[ -z "$__BU_AUTOCOMPLETE_RL_SWAPPED_COMMAND" ]]
+    then
+        return 0
+    fi
+    if [[ -n "$__BU_AUTOCOMPLETE_RL_SWAPPED_SPEC" ]]
+    then
+        eval "$__BU_AUTOCOMPLETE_RL_SWAPPED_SPEC"
+    else
+        complete -r -- "$__BU_AUTOCOMPLETE_RL_SWAPPED_COMMAND" 2>/dev/null
+    fi
+    __BU_AUTOCOMPLETE_RL_SWAPPED_COMMAND=
+    __BU_AUTOCOMPLETE_RL_SWAPPED_SPEC=
+    return 0
+}
+
+# ```
+# *Description*:
+# Compspec function that `__bu_bind_readline_tab_prepare` puts on the command
+# being completed for one readline `complete`. It puts the original compspec
+# back and hands readline the stashed candidates.
+#
+# Called for any other completion (the stash is used once, and must belong to
+# this line), it returns 124 instead: the compspec changed, so bash restarts
+# completion with the original one.
+#
+# *Params*:
+# - `$2`: The text readline completes. Readline starts a word after any
+#   COMP_WORDBREAKS character (`--format=js` completes `js`) and after an
+#   opening quote, while the stash holds whole words: the part in front is
+#   dropped, as it stays on the line.
+# ```
+__bu_autocomplete_readline_stash_func()
+{
+    __bu_autocomplete_readline_restore_spec
+    if ! "$__BU_AUTOCOMPLETE_RL_STASH_IS_SET" \
+        || [[ "$__BU_AUTOCOMPLETE_RL_STASH_FRONT" != *"${COMP_LINE:0:COMP_POINT}" ]]
+    then
+        __BU_AUTOCOMPLETE_RL_STASH_IS_SET=false
+        return 124
+    fi
+    __BU_AUTOCOMPLETE_RL_STASH_IS_SET=false
+
+    local text=$2
+    local word=$__BU_AUTOCOMPLETE_RL_STASH_WORD
+    COMPREPLY=("${__BU_AUTOCOMPLETE_RL_STASH[@]}")
+    if ((${#word} > ${#text}))
+    then
+        local prefix=${word:0:${#word}-${#text}}
+        COMPREPLY=("${COMPREPLY[@]#"$prefix"}")
+    fi
+
+    local option
+    for option in "${__BU_AUTOCOMPLETE_RL_STASH_COMPOPT[@]}"
+    do
+        compopt -o "$option"
+    done
+    return 0
+}
+
+# ```
+# *Description*:
+# Tab backend `readline`: readline's own completion, fed by BashTab's engine so
+# the candidates carry descriptions.
+#
+# Tab is bound to a macro of two internal key sequences:
+# 1. this `bind -x` handler: it runs the engine on the line as the fzf
+#    backends do, adds the descriptions and stashes the candidates, then points
+#    the command's compspec at `__bu_autocomplete_readline_stash_func`;
+# 2. readline's `complete`, which calls that function for the candidates.
+# Readline does the rest as it always does: common-prefix insertion, the list
+# of candidates (show-all-if-ambiguous, completion-query-items, ...), quoting,
+# directory slashes. Nothing here touches the terminal; the only process
+# started besides the completion function's own is the subshell reading the
+# command's compspec.
+#
+# A second Tab on an unchanged line lists the candidates. Readline's
+# `complete` does that only when the command before it was `complete` too,
+# which is never so in the macro, so this handler binds the second key
+# sequence to `possible-completions` for that Tab instead.
+#
+# Command names (the first word) are left to readline. So are filename
+# completions, which get no descriptions: readline shows a filename's last
+# path component only, and would show the description alone. Its own
+# colored-stats / visible-stats settings mark the file types.
+#
+# This is a readline binding function.
+# ```
+__bu_bind_readline_tab_prepare()
+{
+    __bu_autocomplete_readline_restore_spec
+    __BU_AUTOCOMPLETE_RL_STASH_IS_SET=false
+
+    local action=complete
+    if [[ "$READLINE_LINE" == "$__BU_AUTOCOMPLETE_RL_LAST_LINE" && "$READLINE_POINT" == "$__BU_AUTOCOMPLETE_RL_LAST_POINT" ]]
+    then
+        action=possible-completions
+    fi
+    __BU_AUTOCOMPLETE_RL_LAST_LINE=$READLINE_LINE
+    __BU_AUTOCOMPLETE_RL_LAST_POINT=$READLINE_POINT
+    if [[ "$action" != "$__BU_AUTOCOMPLETE_RL_COMPLETE_ACTION" ]]
+    then
+        bind '"'"$__BU_AUTOCOMPLETE_RL_COMPLETE_KEYSEQ"'": '"$action"
+        __BU_AUTOCOMPLETE_RL_COMPLETE_ACTION=$action
+    fi
+
+    local command_line_front=${READLINE_LINE:0:$READLINE_POINT}
+    local command_line_back=${READLINE_LINE:$READLINE_POINT}
+
+    local -a command_line=()
+    local command_name=
+    local environment_vars=
+    local command_line_options_colored=
+    local command_line_front_before_pipe=
+    local command_line_back_no_operator=
+    __bu_autocomplete_tab_parse_line "$command_line_front" "$command_line_back"
+    if ((${#command_line[@]} < 2))
+    then
+        return 0
+    fi
+
+    local BU_COMPREPLY_HINT=
+    local -a BU_COMPREPLY_METADATA=()
+    local completion_func_has_ansi_colors=false
+    local is_nospace=false
+    local is_dynamic_nospace=false
+    local is_filenames=false
+    __bu_autocomplete_tab_collect
+    case "$?" in
+    0)
+        __bu_autocomplete_strip_ansi_arrays COMPREPLY BU_COMPREPLY_METADATA
+        # Paths without `compopt -o filenames`: the same test the engine
+        # uses before it adds file metadata
+        if ! "$is_filenames" && [[ -e "${COMPREPLY[0]}" && -e "${COMPREPLY[-1]}" ]]
+        then
+            is_filenames=true
+        fi
+        if "$is_filenames"
+        then
+            # The engine ends directories with a slash; readline adds its own
+            # (mark-directories), when listing as well
+            local i
+            for i in "${!COMPREPLY[@]}"
+            do
+                if [[ "${COMPREPLY[i]}" == ?*/ ]]
+                then
+                    COMPREPLY[i]=${COMPREPLY[i]%/}
+                fi
+            done
+        elif "$BU_AUTOCOMPLETE_BIND_FZF_DISPLAY_METADATA"
+        then
+            __bu_autocomplete_readline_describe
+        fi
+        ;;
+    2)
+        if [[ -z "$BU_COMPREPLY_HINT" ]]
+        then
+            # Nothing to add: the command's own compspec runs as usual
+            return 0
+        fi
+        # Readline lists both entries and inserts nothing: their common
+        # prefix is empty
+        COMPREPLY=("Hint: $BU_COMPREPLY_HINT" $'\xC2\xA0')
+        ;;
+    *)
+        return 0
+        ;;
+    esac
+
+    __BU_AUTOCOMPLETE_RL_STASH_COMPOPT=()
+    if "$is_filenames"
+    then
+        __BU_AUTOCOMPLETE_RL_STASH_COMPOPT+=(filenames)
+    fi
+    # As in __bu_autocomplete_tab_insert: a nospace from the compspec itself
+    # holds only for words that need a suffix
+    if "$is_dynamic_nospace" \
+        || { "$is_nospace" && ((${#COMPREPLY[@]} == 1)) && [[ "${COMPREPLY[0]: -1}" = [/=:@] ]]; }
+    then
+        __BU_AUTOCOMPLETE_RL_STASH_COMPOPT+=(nospace)
+    fi
+    __BU_AUTOCOMPLETE_RL_STASH=("${COMPREPLY[@]}")
+    __BU_AUTOCOMPLETE_RL_STASH_FRONT=$command_line_front
+    __BU_AUTOCOMPLETE_RL_STASH_WORD=${command_line[-1]}
+    __BU_AUTOCOMPLETE_RL_STASH_IS_SET=true
+
+    __BU_AUTOCOMPLETE_RL_SWAPPED_COMMAND=${command_line[0]}
+    __BU_AUTOCOMPLETE_RL_SWAPPED_SPEC=$(complete -p -- "${command_line[0]}" 2>/dev/null) || __BU_AUTOCOMPLETE_RL_SWAPPED_SPEC=
+    complete -F __bu_autocomplete_readline_stash_func -- "${command_line[0]}"
+    return 0
 }
 
 # ```
@@ -4407,16 +5014,64 @@ bu_read_word()
 # bind -X | grep -q __bu_bind_fzf_tab_autocomplete
 # Hence, to work on older Bash versions, we use a book-keeping variable.
 BU_AUTOCOMPLETE_IS_CUSTOM_TAB=false
+# The backend Tab is bound to, empty while BashTab Tab is off
+BU_AUTOCOMPLETE_ACTIVE_TAB_BACKEND=
+# ```
+# *Description*:
+# Bind Tab to BashTab completion.
+#
+# *Params*:
+# - `$1` (optional): Tab backend, one of `fzf`, `fzf-cheap`, `readline`
+#   (default: `BU_AUTOCOMPLETE_TAB_BACKEND`). The fzf backends fall back to
+#   `readline` when fzf is not installed.
+# ```
 bu_autocomplete_enable_tab()
 {
+    local backend=${1:-${BU_AUTOCOMPLETE_TAB_BACKEND:-fzf}}
+    local handler
+    case "$backend" in
+    fzf)
+        handler=__bu_bind_fzf_tab_autocomplete
+        ;;
+    fzf-cheap)
+        handler=__bu_bind_fzf_cheap_tab_autocomplete
+        ;;
+    readline)
+        handler=__bu_bind_readline_tab_prepare
+        ;;
+    *)
+        bu_log_warn "Unknown Tab backend[$backend], using fzf (choices: fzf fzf-cheap readline)"
+        backend=fzf
+        handler=__bu_bind_fzf_tab_autocomplete
+        ;;
+    esac
+    if [[ "$backend" == fzf* ]] && ! command -v fzf &>/dev/null
+    then
+        bu_log_warn "fzf not found, Tab uses the readline backend instead of $backend"
+        backend=readline
+        handler=__bu_bind_readline_tab_prepare
+    fi
+
+    local keyseq='\t'
+    if [[ "$backend" == readline ]]
+    then
+        keyseq=$__BU_AUTOCOMPLETE_RL_PREPARE_KEYSEQ
+    fi
     if "$BU_BIND_X_NEEDS_TTY_GUARD"
     then
-        bind -x '"\t": __bu_bind_x_run __bu_bind_fzf_tab_autocomplete'
+        bind -x '"'"$keyseq"'": __bu_bind_x_run '"$handler"
     else
-        bind -x '"\t": "__bu_bind_fzf_tab_autocomplete"'
+        bind -x '"'"$keyseq"'": "'"$handler"'"'
+    fi
+    if [[ "$backend" == readline ]]
+    then
+        bind '"'"$__BU_AUTOCOMPLETE_RL_COMPLETE_KEYSEQ"'": complete'
+        __BU_AUTOCOMPLETE_RL_COMPLETE_ACTION=complete
+        bind '"\t": "'"$__BU_AUTOCOMPLETE_RL_PREPARE_KEYSEQ$__BU_AUTOCOMPLETE_RL_COMPLETE_KEYSEQ"'"'
     fi
     BU_AUTOCOMPLETE_IS_CUSTOM_TAB=true
-    bu_log_info "fzf TAB enabled"
+    BU_AUTOCOMPLETE_ACTIVE_TAB_BACKEND=$backend
+    bu_log_info "$backend TAB enabled"
 }
 
 bu_autocomplete_disable_tab()
@@ -4424,8 +5079,10 @@ bu_autocomplete_disable_tab()
     # This works on bash 5.2.21 but doesn't on Bash 4.4
     # bind -r "\t"
     bind '"\t": complete'
+    __bu_autocomplete_readline_restore_spec
     BU_AUTOCOMPLETE_IS_CUSTOM_TAB=false
-    bu_log_info "fzf TAB disabled"
+    BU_AUTOCOMPLETE_ACTIVE_TAB_BACKEND=
+    bu_log_info "BashTab TAB disabled"
 }
 
 bu_autocomplete_toggle_tab()
