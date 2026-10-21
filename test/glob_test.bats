@@ -141,8 +141,6 @@ function test_glob_completion_end_to_end { #@test
 
 function test_glob_completion_show_command_matches_get_command { #@test
     # show-command passes its filters to get-command: same completion.
-    # Complete in a subshell: completion turns errexit off in its shell,
-    # after which no assertion there can fail the test.
     __glob_complete() {
         local COMPREPLY=() BU_COMPREPLY_METADATA=()
         bu_autocomplete_get_autocompletions bu "$@" 2>/dev/null
