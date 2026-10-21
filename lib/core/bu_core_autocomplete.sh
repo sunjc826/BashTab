@@ -935,7 +935,7 @@ EOF
     }
 
     # An arm body that passes --glob to its positional DSL takes a pattern
-    state == post_documentation && idx >= 0 && /(bu_parse_positional|autocompletion\+?=\().*[[:space:]]--glob([[:space:];)]|$)/ {
+    state == post_documentation && idx >= 0 && /(bu_parse_positional|autocompletion\+?=\()(.*[[:space:]])?--glob([[:space:];)]|$)/ {
         printf "bu_script_option_glob[%d]=1\n", idx
     }
 
