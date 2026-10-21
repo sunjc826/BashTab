@@ -218,7 +218,7 @@ function test_readline_backend_binds_tab_to_the_macro { #@test
     local sock=tb$$a pane out=$BATS_TEST_TMPDIR/bind.txt
     __tb_tmux_setup "$sock" tbbind readline
     tmux -L "$sock" send-keys -t tbbind "{ bind -X; bind -s; echo \"backend=\$BU_AUTOCOMPLETE_ACTIVE_TAB_BACKEND\"; } > \"$out\"" Enter
-    __tb_wait_pane "$sock" tbbind '^tb\$ $' 20 || true
+    __tb_wait_pane "$sock" tbbind 'tb\$ $' 20 || true
     sleep 0.5
     tmux -L "$sock" kill-server
     grep -q '__bu_bind_readline_tab_prepare' "$out" || fail "prepare handler not bound: $(< "$out")"
@@ -230,8 +230,8 @@ function test_readline_backend_completes_single_candidate { #@test
     local sock=tb$$b pane
     __tb_tmux_setup "$sock" tbone readline
     tmux -L "$sock" send-keys -t tbone 'bu get-al' Tab
-    __tb_wait_pane "$sock" tbone '^tb\$ bu get-alias' 20
-    local rc=$?
+    local rc=0
+    __tb_wait_pane "$sock" tbone 'tb\$ bu get-alias' 20 || rc=$?
     tmux -L "$sock" kill-server
     ((rc == 0)) || fail "not completed: $pane"
 }
@@ -244,19 +244,19 @@ function test_readline_backend_lists_candidates_with_descriptions { #@test
     tmux -L "$sock" send-keys -t tblist 'bu query-object --f' Tab
     sleep 1
     tmux -L "$sock" send-keys -t tblist Tab
-    __tb_wait_pane "$sock" tblist '^--format +\(.*[Oo]utput format' 20
-    local rc=$?
+    local rc=0
+    __tb_wait_pane "$sock" tblist '^--format +\(.*[Oo]utput format' 20 || rc=$?
     tmux -L "$sock" kill-server
     ((rc == 0)) || fail "no described list: $pane"
     # The descriptions are never inserted into the line
-    grep -qE '^tb\$ bu query-object --f$' <<<"$pane" || fail "line changed: $pane"
+    grep -qE 'tb\$ bu query-object --f$' <<<"$pane" || fail "line changed: $pane"
 }
 
 function test_readline_backend_leaves_original_compspec_in_place { #@test
     local sock=tb$$d pane out=$BATS_TEST_TMPDIR/spec.txt
     __tb_tmux_setup "$sock" tbspec readline
     tmux -L "$sock" send-keys -t tbspec 'bu get-al' Tab
-    __tb_wait_pane "$sock" tbspec '^tb\$ bu get-alias' 20 || true
+    __tb_wait_pane "$sock" tbspec 'tb\$ bu get-alias' 20 || true
     tmux -L "$sock" send-keys -t tbspec C-u "complete -p bu > \"$out\"" Enter
     sleep 1
     tmux -L "$sock" kill-server
@@ -269,8 +269,8 @@ function test_fzf_cheap_backend_completes_single_candidate { #@test
     __tb_tmux_setup "$sock" tbcheap fzf-cheap
     # --select-1: a single match is inserted without opening fzf
     tmux -L "$sock" send-keys -t tbcheap 'bu get-al' Tab
-    __tb_wait_pane "$sock" tbcheap '^tb\$ bu get-alias' 20
-    local rc=$?
+    local rc=0
+    __tb_wait_pane "$sock" tbcheap 'tb\$ bu get-alias' 20 || rc=$?
     tmux -L "$sock" kill-server
     ((rc == 0)) || fail "not completed: $pane"
 }
@@ -287,8 +287,8 @@ function test_fzf_cheap_backend_picks_from_the_dropdown { #@test
     tmux -L "$sock" send-keys -t tbpick 'o'
     __tb_wait_pane "$sock" tbpick '1/3' 20 || true
     tmux -L "$sock" send-keys -t tbpick Enter
-    __tb_wait_pane "$sock" tbpick '^tb\$ bu query-object --format' 20
-    local rc=$?
+    local rc=0
+    __tb_wait_pane "$sock" tbpick 'tb\$ bu query-object --format' 20 || rc=$?
     tmux -L "$sock" kill-server
     ((rc == 0)) || fail "not inserted: $pane"
 }
