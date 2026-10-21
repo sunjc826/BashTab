@@ -2517,9 +2517,17 @@ __bu_exit_handler()
 #
 # *Params*: None
 # *Returns*: None
+#
+# *Notes*
+# - A no-op during autocompletion: the command is then sourced into the
+#   completing shell, whose ERR/EXIT traps it must not replace
 # ```
 bu_exit_handler_setup_no_e()
 {
+    if bu_env_is_in_autocomplete
+    then
+        return 0
+    fi
     trap 'BU_ERR_LINENO=$LINENO; BU_ERR_COMMAND=$BASH_COMMAND' ERR
     trap __bu_exit_handler EXIT
 }
@@ -2530,9 +2538,16 @@ bu_exit_handler_setup_no_e()
 #
 # *Params*: None
 # *Returns*: None
+#
+# *Notes*
+# - A no-op during autocompletion (see bu_exit_handler_setup_no_e)
 # ```
 bu_exit_handler_setup()
 {
+    if bu_env_is_in_autocomplete
+    then
+        return 0
+    fi
     set -e -E
     bu_exit_handler_setup_no_e
 }

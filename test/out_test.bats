@@ -1102,7 +1102,7 @@ function test_e2e_select_pipeline_fields { #@test
     # Full completion driver: bu get-command | bu select <TAB>
     local command_line_front_before_pipe="bu get-command | "
     bu_autocomplete_get_autocompletions bu select ""
-    assert_equal "${COMPREPLY[*]}" "name verb noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by"
+    assert_equal "${COMPREPLY[*]}" "name verb noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by --help -h"
 }
 
 function test_e2e_select_comma_continuation { #@test
@@ -1114,13 +1114,13 @@ function test_e2e_select_comma_continuation { #@test
 function test_e2e_where_dot_fields { #@test
     local command_line_front_before_pipe="bu get-command | "
     bu_autocomplete_get_autocompletions bu where ""
-    assert_equal "${COMPREPLY[*]}" "name verb noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by"
+    assert_equal "${COMPREPLY[*]}" "name verb noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by --help -h"
 }
 
 function test_e2e_sort_pipeline_fields { #@test
     local pipe_before="bu get-module | "
     bu_autocomplete_get_autocompletions bu sort ""
-    assert_equal "${COMPREPLY[*]}" "name rank version path describe branch dirty"
+    assert_equal "${COMPREPLY[*]}" "name rank version path describe branch dirty --help -h"
 }
 
 function test_e2e_format_table_columns_pipeline_fields { #@test
@@ -1131,14 +1131,14 @@ function test_e2e_format_table_columns_pipeline_fields { #@test
 
 function test_e2e_no_pipeline_shows_hint_only { #@test
     bu_autocomplete_get_autocompletions bu select na
-    assert_equal "${COMPREPLY[0]}" "Hint: field"
+    assert_equal "${COMPREPLY[0]}" "Hint: Fields, new=old renames"
 }
 
 function test_pipeline_fields_dsl_keyword_basic { #@test
     # The --pipeline-fields DSL keyword resolves pipeline producer fields
     local command_line_front_before_pipe="bu get-command | "
     bu_autocomplete_get_autocompletions bu select ""
-    assert_equal "${COMPREPLY[*]}" "name verb noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by"
+    assert_equal "${COMPREPLY[*]}" "name verb noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by --help -h"
 }
 
 function test_pipeline_fields_dsl_keyword_dot { #@test
@@ -1155,7 +1155,7 @@ function test_pipeline_fields_dsl_dynamic_hint { #@test
     local command_line_front_before_pipe="bu get-command | "
     bu_autocomplete_get_autocompletions bu sort ""
     # The hint should now mention the available fields, not the static text
-    assert_equal "${COMPREPLY[*]}" "name verb noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by"
+    assert_equal "${COMPREPLY[*]}" "name verb noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by --help -h"
 }
 
 # ===========================================================================
@@ -2404,7 +2404,7 @@ function test_alias_merged_single_row { #@test
     local count=0 candidate
     for candidate in "${COMPREPLY[@]}"
     do
-        [[ "$candidate" == "--select" || "$candidate" == "select" ]] && ((count++))
+        [[ "$candidate" == "--select" || "$candidate" == "select" ]] && count=$((count + 1))
     done
     assert_equal "$count" 1
     assert_equal "${COMPREPLY[0]}" "--select"
@@ -2430,8 +2430,8 @@ function test_alias_excluded_after_any_form_used { #@test
     local candidate
     for candidate in "${COMPREPLY[@]}"
     do
-        refute_equal "$candidate" "--select"
-        refute_equal "$candidate" "select"
+        assert_not_equal "$candidate" "--select"
+        assert_not_equal "$candidate" "select"
     done
     # Other clauses are still offered
     local has_where=false
@@ -2672,7 +2672,8 @@ function test_e2e_query_object_from_completion { #@test
     touch "$BATS_TEST_TMPDIR"/alpha.jsonl "$BATS_TEST_TMPDIR"/beta.jsonl
     cd "$BATS_TEST_TMPDIR"
     bu_autocomplete_get_autocompletions bu query-object from ""
-    assert_equal "${COMPREPLY[*]}" "alpha.jsonl beta.jsonl"
+    # Filename order is the directory's, not sorted
+    assert_equal "$(printf '%s\n' "${COMPREPLY[@]}" | sort | paste -sd ' ' -)" "alpha.jsonl beta.jsonl"
     bu_autocomplete_get_autocompletions bu query-object outfile b
     assert_equal "${COMPREPLY[*]}" "beta.jsonl"
 }

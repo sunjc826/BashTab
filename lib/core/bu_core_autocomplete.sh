@@ -2353,6 +2353,12 @@ __bu_autocomplete_completion_func_master_impl()
     local comp_cword=$4
     local tail=$5
     shift 5
+    # The command sourced below runs `set -e` (and its exit handler setup
+    # would add -E): `local -` restores the caller's single-letter options
+    # when this function returns, so completion never changes the caller's
+    # errexit/xtrace/errtrace.
+    local -
+    set +ex
     # bu_log_tty
     # bu_log_tty "__bu_autocomplete_completion_func_master_impl path[$completion_command_path] cur[$cur_word] prev[$prev_word] cword[$comp_cword] tail[$tail] $(printf "'%s' " "$@")"
     # bu_log_tty
@@ -2393,6 +2399,7 @@ __bu_autocomplete_completion_func_master_impl()
         fi
         # bu_log_tty reached3
         # Scripts might set -e, and because we are sourcing them, we unset it
+        # (only until this function returns, see `local -` above)
         set +ex
         # bu_log_tty lazy_autocomplete_args="${lazy_autocomplete_args[*]}"
         

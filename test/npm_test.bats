@@ -96,7 +96,7 @@ function test_bu_get_npm_package_total_count { #@test
 function test_e2e_get_npm_package_pipeline_fields { #@test
     local command_line_front_before_pipe="bu get-npm-package | "
     bu_autocomplete_get_autocompletions bu select ""
-    assert_equal "${COMPREPLY[*]}" "name version resolved depth _path _parent_path"
+    assert_equal "${COMPREPLY[*]}" "name version resolved depth _path _parent_path --help -h"
 }
 
 # ===========================================================================

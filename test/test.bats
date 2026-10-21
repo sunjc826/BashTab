@@ -891,6 +891,53 @@ function test_alias_help_completion_respects_prefix { #@test
     assert_equal "$_has_help" false
 }
 
+function test_autocomplete_preserves_caller_shell_options { #@test
+    # Lazy completion sources the command into the completing shell. It used
+    # to leave errexit/xtrace off (a bare `set +ex`), turn errtrace on and
+    # replace the ERR/EXIT traps, so every assertion after a completion call
+    # in a bats test could no longer fail. Each case completes in a child
+    # bash: completing here would leave this test unable to fail if it broke.
+
+    # Options and traps are unchanged, also for an executable command, whose
+    # script runs `set -e` and bu_exit_handler_setup when sourced
+    run bash -c '
+        source "$1"/bu_entrypoint.sh &>/dev/null
+        set -e
+        trap "echo caller-err" ERR
+        trap "" EXIT
+        before="$- $(trap -p ERR EXIT)"
+        bu_autocomplete_get_autocompletions bu get-command --verb x &>/dev/null
+        bu_autocomplete_get_autocompletions bu new-command --dir "" &>/dev/null
+        after="$- $(trap -p ERR EXIT)"
+        printf "%s=%q\n" before "$before" after "$after"
+    ' _ "$BU_DIR"
+    assert_success
+    assert_equal "${lines[1]#after=}" "${lines[0]#before=}"
+
+    # A failure after the completion call still aborts an errexit caller
+    run bash -c '
+        source "$1"/bu_entrypoint.sh &>/dev/null
+        set -e
+        bu_autocomplete_get_autocompletions bu get-command --verb x &>/dev/null
+        false
+        echo survived
+    ' _ "$BU_DIR"
+    assert_failure
+    refute_output --partial survived
+
+    # xtrace stays on
+    run bash -c '
+        source "$1"/bu_entrypoint.sh &>/dev/null
+        set -x
+        bu_autocomplete_get_autocompletions bu get-command --verb x &>/dev/null
+        flags=$-
+        set +x
+        echo "flags=$flags"
+    ' _ "$BU_DIR"
+    assert_success
+    assert_line --regexp '^flags=.*x'
+}
+
 # ===========================================================================
 # --options-of / --options-at completion path bugs
 # ===========================================================================
