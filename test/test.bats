@@ -2072,3 +2072,59 @@ function test_bu_cli_caller_shell_option_seen_and_set_by_commands { #@test
     out=$(set +e; bu set-shell-option errexit >/dev/null || true; echo "$-")
     [[ "$out" == *e* ]]
 }
+
+function test_bu_validate_positional_rejects_unique_prefix { #@test
+    __validate() {
+        local is_help=false error_msg=
+        local -a autocompletion=("$@")
+        bu_validate_positional "$value"
+        echo "$is_help"
+    }
+    # A one-character (or longer) prefix completing to a single option
+    # used to pass: it is a completion of the value, not the value
+    value=a run __validate --enum auto table json jsonl enum--
+    assert_output true
+    value=ta run __validate --enum auto table json jsonl enum--
+    assert_output true
+    value=j run __validate --enum auto table json jsonl enum--
+    assert_output true
+    value=x run __validate --enum auto table json jsonl enum--
+    assert_output true
+    value=auto run __validate --enum auto table json jsonl enum--
+    assert_output false
+    value=json run __validate --enum auto table json jsonl enum--
+    assert_output false
+    value=b run __validate --enum b ba enum--
+    assert_output false
+}
+
+function test_bu_validate_positional_suggests_alternatives { #@test
+    __validate() {
+        local is_help=false error_msg=
+        local -a autocompletion=("$@")
+        bu_validate_positional "$value"
+        echo "$error_msg"
+    }
+    value=ta run __validate --enum auto table enum--
+    assert_output --partial 'possible alternatives:'
+    assert_output --partial 'table'
+}
+
+function test_bu_validate_positional_directory_trailing_slash { #@test
+    __validate() {
+        local is_help=false error_msg=
+        local -a autocompletion=("$@")
+        bu_validate_positional "$value"
+        echo "$is_help"
+    }
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    mkdir "$tmpdir/sub"
+    value=$tmpdir/sub run __validate --enum "$tmpdir/sub" enum--
+    assert_output false
+    value=$tmpdir/sub/ run __validate --enum "$tmpdir/sub" enum--
+    assert_output false
+    value=$tmpdir/su run __validate --enum "$tmpdir/sub" enum--
+    assert_output true
+    rm -rf "$tmpdir"
+}
