@@ -110,6 +110,10 @@ GITSHELF_STATE[config_file]=$GITSHELF_CONFIG_FILE
 # framework canonicalizes renamed CLIs back to `bu` before matching.
 bu_register_stage_effect "bu get-repo" producer
 bu_register_stage_effect "bu sync-repo" producer
+# The config mutators take their input as arguments and print only log lines,
+# so they sit outside any pipeline (`standalone`: none -> none).
+bu_register_stage_effect "bu add-repo" standalone
+bu_register_stage_effect "bu remove-repo" standalone
 
 # ── Help topics ───────────────────────────────────────────────────
 # Modules register their own subsystem help pages; `bu get-help gitshelf`

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: standalone
 # Demo: --as-if color and hint propagation.
 #
 # The parent delegates completions for --child to `bu propagation-child`

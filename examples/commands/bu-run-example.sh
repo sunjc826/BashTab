@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: standalone
 function __bu_bu_run_example_main()
 {
 set -e

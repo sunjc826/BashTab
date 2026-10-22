@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pipeline: standalone
 # Demo: child command for --as-if propagation test.
 #
 # This command's options should inherit the parent's --ansi YELLOW
