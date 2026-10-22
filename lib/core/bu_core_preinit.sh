@@ -823,6 +823,8 @@ bu_preinit_register_new_alias()
 _bu_cur_module_prev=${BU_CURRENT_MODULE:-}
 BU_CURRENT_MODULE=bu
 bu_preinit_register_new_alias gc get-command --namespace {} {?} --verb {} {?} --noun {} {...}
+# No script file to carry a `# Pipeline:` header; get-command emits JSONL.
+bu_register_stage_effect "bu gc" producer
 
 # Short aliases that expand to query-object --where / --select / --grep /
 # --order-by / --agg count.
