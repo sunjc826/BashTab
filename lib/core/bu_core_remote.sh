@@ -25,12 +25,11 @@ then
     declare -g -r BU_REMOTE_JQ_HOST_FILTER='. as $l | try ($l | fromjson | .host = $host | tojson) catch $l'
 fi
 
-# *Description*:
 # Resolve the local username ($USER, falling back to `id -un` in stripped
 # environments where USER is unset).
 #
-# *Returns*:
-# - `BU_RET`: local username
+# @set BU_RET local username
+# bash-ide parse-func-sig
 __bu_remote_local_user()
 {
     BU_RET=${USER:-}
@@ -40,19 +39,18 @@ __bu_remote_local_user()
     fi
 }
 
-# *Description*:
 # Normalize a remote spec `[user@]host` into `user@host`.  A bare host gets
 # the local $USER.  Each part is validated against [A-Za-z0-9._-] so socket
 # filenames stay bijective with specs.
 #
-# *Params*:
-# - `$1`: spec, e.g. `web01` or `deploy@web01`
+# @arg $1 {string} spec spec, e.g. `web01` or `deploy@web01`
+# @set BU_RET normalized `user@host`
+# @set BU_RET_MAP[user] user part
+# @set BU_RET_MAP[host] host part
 #
-# *Returns*:
-# - `BU_RET`: normalized `user@host`
-# - `BU_RET_MAP[user]`: user part
-# - `BU_RET_MAP[host]`: host part
+# @returns
 # - Exit code 0 on success, 1 on an invalid spec
+# bash-ide parse-func-sig
 bu_remote_spec_normalize()
 {
     local -r spec=$1
@@ -101,27 +99,25 @@ bu_remote_spec_normalize()
     return 0
 }
 
-# *Description*:
 # The directory holding ControlMaster sockets (a helper so every consumer
 # agrees on the same `$BU_REMOTE_SSH_DIR`/`$BU_OUT_DIR/ssh` resolution).
 #
-# *Returns*:
-# - `BU_RET`: the ssh socket directory
+# @set BU_RET the ssh socket directory
+# bash-ide parse-func-sig
 __bu_remote_ssh_dir()
 {
     BU_RET=${BU_REMOTE_SSH_DIR:-$BU_OUT_DIR/ssh}
 }
 
-# *Description*:
 # Compute the ControlMaster socket path for a spec: `<dir>/cm-<normalized>`.
 #
-# *Params*:
-# - `$1`: spec
+# @arg $1 {string} spec spec
+# @set BU_RET socket path
 #
-# *Returns*:
-# - `BU_RET`: socket path
+# @returns
 # - Exit code 0 on success, 1 when the path exceeds ~100 bytes (unix
 #   sun_path is 104/108 bytes and ssh fails obscurely past it)
+# bash-ide parse-func-sig
 bu_remote_socket()
 {
     local -r spec=$1
@@ -143,16 +139,15 @@ bu_remote_socket()
     return 0
 }
 
-# *Description*:
 # True when a live ControlMaster exists for the spec: the socket file exists
 # AND `ssh -o ControlPath=<sock> -O check <spec>` succeeds.  The socket
 # existence check comes first so a bare no-socket case never even spawns ssh
 # (important for PATH-stub tests that count ssh invocations).
 #
-# *Params*:
-# - `$1`: spec
+# @arg $1 {string} spec spec
 #
-# *Returns*: Exit code 0 (alive) or 1 (not alive)
+# @returns Exit code 0 (alive) or 1 (not alive)
+# bash-ide parse-func-sig
 bu_remote_session_alive()
 {
     local -r spec=$1
@@ -164,16 +159,15 @@ bu_remote_session_alive()
     ssh -o "ControlPath=$sock" -O check "$spec" &>/dev/null
 }
 
-# *Description*:
 # Resolve the master pid from `ssh -O check` stderr (e.g.
 # `Master running (pid=1234)`).
 #
-# *Params*:
-# - `$1`: spec
+# @arg $1 {string} spec spec
+# @set BU_RET master pid
 #
-# *Returns*:
-# - `BU_RET`: master pid
+# @returns
 # - Exit code 0 on success, 1 when the check fails or yields no pid
+# bash-ide parse-func-sig
 __bu_remote_master_pid()
 {
     local -r spec=$1
@@ -190,16 +184,15 @@ __bu_remote_master_pid()
     return 1
 }
 
-# *Description*:
 # Build the ssh options for a non-interactive command invocation: always
 # `-o BatchMode=yes` (fail fast, never prompt), plus `-o ControlPath=<sock>`
 # only when a master is already alive (sessions accelerate, never gate).
 #
-# *Params*:
-# - `$1`: spec
-# - `$2`: nameref to an array to populate
+# @arg $1 {string} spec spec
+# @arg $2 {var} out nameref to an array to populate
 #
-# *Returns*: Exit code 0 on success
+# @returns Exit code 0 on success
+# bash-ide parse-func-sig
 bu_remote_ssh_opts()
 {
     local -r spec=$1
@@ -215,12 +208,12 @@ bu_remote_ssh_opts()
     return 0
 }
 
-# *Description*:
 # Default remote bootstrap (used when BU_REMOTE_BOOTSTRAP_CALLBACK is unset):
 # defines `__bu_remote_dispatch()` as a thin wrapper over the CLI command
 # name, then type-checks that the CLI is actually available remotely (rc
 # files that activate the project provide it), erroring with guidance when
 # it is not.
+# bash-ide parse-func-sig
 __bu_remote_default_bootstrap()
 {
     local -r cli=$BU_CLI_COMMAND_NAME
@@ -231,7 +224,6 @@ __bu_remote_default_bootstrap()
     printf 'fi\n'
 }
 
-# *Description*:
 # Print the full remote payload for a spec.
 #
 # Preamble: `set -e`, then source /etc/profile and ~/.bashrc with stdout AND
@@ -245,12 +237,11 @@ __bu_remote_default_bootstrap()
 # `set +e; fn() { set -e; <block>; }; fn; exit $?` so one activation serves
 # N commands.
 #
-# *Params*:
-# - `$1`: remote dir (passed to the bootstrap callback; may be empty)
-# - `$2`: `command` or `script`
-# - `...`: command argv (command mode) or a single script block (script mode)
-#
-# *Returns*: stdout: the remote payload
+# @arg $1 {string} remote_dir remote dir (passed to the bootstrap callback; may be empty)
+# @arg $2 {string} mode `command` or `script`
+# @arg $@ {string} args... command argv (command mode) or a single script block (script mode)
+# @stdout the remote payload
+# bash-ide parse-func-sig
 bu_remote_build_script()
 {
     local -r remote_dir=$1
@@ -279,14 +270,13 @@ bu_remote_build_script()
     fi
 }
 
-# *Description*:
 # True when a host is this machine (`localhost` or $HOSTNAME) so the runner
 # can short-circuit to `env -i ... bash -s` instead of ssh.
 #
-# *Params*:
-# - `$1`: host
+# @arg $1 {string} host host
 #
-# *Returns*: Exit code 0 (local) or 1 (not local)
+# @returns Exit code 0 (local) or 1 (not local)
+# bash-ide parse-func-sig
 __bu_remote_is_local_host()
 {
     local -r host=$1
@@ -297,7 +287,6 @@ __bu_remote_is_local_host()
     return 1
 }
 
-# *Description*:
 # Run a marshaled payload on one or more hosts, sequentially.
 #
 # Local short-circuit: when the host is this machine (`localhost`/`$HOSTNAME`)
@@ -312,12 +301,12 @@ __bu_remote_is_local_host()
 # this function only (the jq at the pipeline tail would otherwise mask remote
 # failures) and restored on exit.
 #
-# *Params*:
-# - `$1`: script file to feed to `bash -s`
-# - `$2`: `true` to inject a host field, `false` for passthrough
-# - `...`: specs
+# @arg $1 {string} script_file script file to feed to `bash -s`
+# @arg $2 {string} inject `true` to inject a host field, `false` for passthrough
+# @arg $@ {string} args... specs
 #
-# *Returns*: Exit code: last non-zero host rc (0 if all succeed)
+# @returns Exit code: last non-zero host rc (0 if all succeed)
+# bash-ide parse-func-sig
 bu_remote_invoke()
 {
     local -r script_file=$1
@@ -380,16 +369,15 @@ bu_remote_invoke()
     return "$overall_rc"
 }
 
-# *Description*:
 # Remove one remote session: send `-O exit` when a master answers, else
 # just clear the stale socket.  Emits one JSONL record with action
 # `closed` (master was live), `removed-stale` (socket present, no master),
 # or `absent` (no socket at all).
 #
-# *Params*:
-# - `$1`: spec
+# @arg $1 {string} spec spec
 #
-# *Returns*: Exit code 0 on success (including absent), 1 on an invalid spec
+# @returns Exit code 0 on success (including absent), 1 on an invalid spec
+# bash-ide parse-func-sig
 __bu_remote_remove_spec()
 {
     local -r spec=$1

@@ -143,6 +143,7 @@ bu_scope_pop_function
 }
 
 # Completion helper: distinct tags in the registry.
+# bash-ide parse-func-sig
 __bu_bu_get_location_registry_complete_tags()
 {
     BU_RET=()

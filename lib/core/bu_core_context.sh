@@ -125,6 +125,7 @@ bu_var_origin_enable()
 
 # Disarm origin tracking: restore the pre-existing DEBUG trap and functrace
 # flag captured by bu_var_origin_enable.  Idempotent when not armed.
+# bash-ide parse-func-sig
 bu_var_origin_disable()
 {
     if [[ $BU_VAR_ORIGIN_ARMED != true ]]
@@ -165,6 +166,7 @@ declare -ft bu_var_origin_enable bu_var_origin_disable
 # Params:
 # - $1: Value to flatten
 # - $2: Name of the caller variable to receive the result (nameref)
+# bash-ide parse-func-sig
 __bu_context_flatten()
 {
     local s=$1
@@ -182,6 +184,7 @@ __bu_context_flatten()
 # Params:
 # - $1: Value to escape
 # - $2: Name of the caller variable to receive the result (nameref)
+# bash-ide parse-func-sig
 __bu_context_json_escape()
 {
     local s=$1
@@ -206,6 +209,7 @@ __bu_context_json_escape()
 # - $4: Value actually used by the command (stderr display value)
 # - $5: source field — context | flag | read
 # - $6: Consuming script basename, .sh stripped (command field)
+# bash-ide parse-func-sig
 __bu_context_log()
 {
     local _var=$1
@@ -318,6 +322,7 @@ bu_context_default()
 #
 # Returns:
 # - BU_RET: The context variable's value (BU_RET[0]; empty when unset)
+# bash-ide parse-func-sig
 bu_context_use()
 {
     local _ctx_var=$1

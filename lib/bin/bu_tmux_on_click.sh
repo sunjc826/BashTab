@@ -1,4 +1,5 @@
-#!/usr/bin/env bash
+# !/usr/bin/env bash
+# bash-ide parse-func-sig
 function __bu_tmux_on_click_main()
 {
     local -a filename

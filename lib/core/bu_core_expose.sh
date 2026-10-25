@@ -11,9 +11,9 @@
 # Track currently exposed names so teardown is precise.
 declare -A -g __BU_EXPOSED_NAMES=()
 
-# *Description*:
 # Teardown all previously exposed bare-name functions and completions.
 # Idempotent — safe to call when nothing is exposed.
+# bash-ide parse-func-sig
 __bu_expose_teardown()
 {
     local name
@@ -25,7 +25,6 @@ __bu_expose_teardown()
     __BU_EXPOSED_NAMES=()
 }
 
-# *Description*:
 # Completion function for an exposed bare name.  Resolves the bare name
 # to its real script path via BU_COMMANDS before calling the master
 # completion impl (which sources its first arg for lazy DSL harvesting
@@ -40,11 +39,11 @@ __bu_expose_completion_func()
         "${script_path:-$bare_name}" "$2" "$3" "$COMP_CWORD" "" "${COMP_WORDS[@]}"
 }
 
-# *Description*:
 # Set up bare-name function wrappers and completions for all eligible
 # source-type and execute-type commands.  Skips function/alias types
 # and any name that would shadow a real tool (builtin, keyword, PATH
 # binary, existing function, or alias).
+# bash-ide parse-func-sig
 __bu_expose_setup()
 {
     local command script_path type
@@ -92,10 +91,10 @@ __bu_expose_setup()
     done
 }
 
-# *Description*:
 # Idempotent expose/teardown entry point.  Tears down any previous
 # exposure, then re-exposes iff BU_EXPOSE_COMMANDS is true.
 # Called from bu_init after autocomplete is set up.
+# bash-ide parse-func-sig
 __bu_expose()
 {
     __bu_expose_teardown

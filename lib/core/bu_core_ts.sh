@@ -15,6 +15,7 @@ BU_TS_COPROC_PID=
 BU_TS_TRAP_SET=
 
 # Start the daemon via coproc if not running
+# bash-ide parse-func-sig
 __bu_ts_daemon_start()
 {
     # Check if daemon is still alive
@@ -71,6 +72,7 @@ __bu_ts_daemon_start()
 # Parse a command line with tree-sitter.
 # $1: cursor offset (byte position)
 # $2: command line string
+# bash-ide parse-func-sig
 bu_ts_parse()
 {
     local -r cursor_offset=$1
@@ -117,6 +119,7 @@ bu_ts_parse()
 }
 
 # Stop the daemon
+# bash-ide parse-func-sig
 bu_ts_daemon_stop()
 {
     if [[ -n "$BU_TS_COPROC_PID" ]]; then

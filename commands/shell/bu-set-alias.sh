@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+# !/usr/bin/env bash
 # Pipeline: transform
 # Requires-All: name
 # Fields: name definition set error
@@ -6,6 +6,7 @@
 # Synopsis: Register a new command alias
 # Help-Topic: aliases
 # Completion helper: defined alias names.
+# bash-ide parse-func-sig
 __bu_bu_set_alias_complete_names()
 {
     BU_RET=()

@@ -14,14 +14,13 @@
 #   - Safe under `set -e` and `set -u` (embedder activates run with both).
 # ─────────────────────────────────────────────────────────────────────────────
 
-# *Description*:
 # Emit a padded INFO/WARN/ERR line to stderr.  Stand-in for bu_log_*, which is
 # unavailable before bu_entrypoint.sh.  The 7-char padding matches the core
 # logger's `printf -v log_prefix '%-7s'` so activate output lines up.
 #
-# *Params*:
-# - $1: Log level (INFO, WARN, ERR)
-# - ...: Message
+# @arg $1 {string} level Log level (INFO, WARN, ERR)
+# @arg $@ {string} args... Message
+# bash-ide parse-func-sig
 __bu_module_require_log()
 {
     local level=$1
@@ -29,16 +28,15 @@ __bu_module_require_log()
     printf '%-7s %s\n' "$level" "$*" >&2
 }
 
-# *Description*:
 # Test whether NAME is already registered in BU_MODULE_LIST.  The match is
 # anchored on the entry boundary (start-of-list or after ';') so a name that is
 # a suffix of another ("lib" vs "mylib") never false-positives.
 #
-# *Params*:
-# - $1: Module name
+# @arg $1 {string} name Module name
 #
-# *Returns*:
+# @returns
 # - 0 if registered, 1 otherwise
+# bash-ide parse-func-sig
 __bu_module_require_registered()
 {
     local -r name=$1
@@ -51,15 +49,14 @@ __bu_module_require_registered()
 # re-sourcing this file mid-require.
 declare -p __BU_MODULE_REQUIRE_STACK &>/dev/null || __BU_MODULE_REQUIRE_STACK=()
 
-# *Description*:
 # Record that module PARENT requires module DEP in BU_MODULE_DEPS, an exported
 # "parent>dep;..." list. bu_entrypoint.sh orders modules (config files and
 # preinit callbacks) so each comes after the modules it requires. An edge
 # already recorded is not added again, so re-activation leaves the list as is.
 #
-# *Params*:
-# - $1: Requiring module (empty: nothing to record)
-# - $2: Required module
+# @arg $1 {string} parent Requiring module (empty: nothing to record)
+# @arg $2 {string} dep Required module
+# bash-ide parse-func-sig
 __bu_module_require_add_dep()
 {
     local -r parent=$1
@@ -73,7 +70,6 @@ __bu_module_require_add_dep()
     return 0
 }
 
-# *Description*:
 # Register a library module by sourcing its *_bu_module.sh script (which
 # appends a `name:version:preinit_path;` entry to BU_MODULE_LIST).
 #
@@ -94,15 +90,14 @@ __bu_module_require_add_dep()
 #      then verify NAME actually appeared in BU_MODULE_LIST — a mismatch is a
 #      WARN, failing only under --required.
 #
-# *Params*:
-# - $1: Module name
-# - --dir DIR: directory containing the module's *_bu_module.sh
-# - --module-file FILE: explicit module script path (overrides the glob)
-# - --git-url URL: clone source if --dir is absent
-# - --branch BRANCH: branch to clone (defaults to the repo's default branch)
-# - --required: fail (return 1) instead of skipping when the module is missing
+# @arg $1 string Module name
+# @option --dir DIR: directory containing the module's *_bu_module.sh
+# @option --module-file FILE: explicit module script path (overrides the glob)
+# @option --git-url URL: clone source if --dir is absent
+# @option --branch BRANCH: branch to clone (defaults to the repo's default branch)
+# @option --required: fail (return 1) instead of skipping when the module is missing
 #
-# *Returns*:
+# @returns
 # - 0 on success (or when an optional module is skipped)
 # - 1 on usage errors, required-module failures, or ambiguous globs under
 #   --required

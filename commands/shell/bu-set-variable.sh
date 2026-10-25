@@ -1,10 +1,11 @@
-#!/usr/bin/env bash
+# !/usr/bin/env bash
 # Pipeline: transform
 # Requires-All: name
 # Fields: name type value set exported readonly error
 # Dispatch: source
 # Synopsis: Set a shell or environment variable
 # Completion helper: currently set variable names.
+# bash-ide parse-func-sig
 __bu_bu_set_variable_complete_names()
 {
     BU_RET=()

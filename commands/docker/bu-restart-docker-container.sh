@@ -1,10 +1,11 @@
-#!/usr/bin/env bash
+# !/usr/bin/env bash
 # Pipeline: transform
 # Requires-Any: Names ID name id
 # Fields: container action restarted error
 # Dispatch: source
 # Synopsis: Restart a Docker container
 # Completion helper: all container names (including stopped) from docker ps -a.
+# bash-ide parse-func-sig
 __bu_bu_restart_docker_container_complete_containers()
 {
     BU_RET=()

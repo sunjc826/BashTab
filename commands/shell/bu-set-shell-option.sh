@@ -180,6 +180,7 @@ bu_scope_pop_function
 }
 
 # Completion helper: valid set -o option names.
+# bash-ide parse-func-sig
 __bu_bu_set_shell_option_complete_names()
 {
     BU_RET=()

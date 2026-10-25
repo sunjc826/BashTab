@@ -3,28 +3,24 @@
 # bash-ide source=./bu_core_cli.sh
 
 
-# *Description*:
 # Register a user-defined key binding for the shell
 #
-# *Params*:
-# - `$1`: Key binding (e.g. `\ee`, `\eg`)
-# - `$2`: Command or function name to bind to the key
-# - `$3` (optional): Human-readable description shown in `bu` help
+# @arg $1 {string} key Key binding (e.g. `\ee`, `\eg`)
+# @arg $2 {string} binding Command or function name to bind to the key
+# @arg $3 string Human-readable description shown in `bu` help
 #
-# *Returns*: None
-#
-# *Examples*:
-# ```bash
-# bu_preinit_register_user_defined_key_binding '\em' my_custom_command
-# bu_preinit_register_user_defined_key_binding '\em' my_custom_command "My description"
-# ```
-#
-# *Notes*:
+# @notes
 # - This adds the binding to the `${BU_KEY_BINDINGS[@]}` associative array, which is later passed to `bind -x`
 # - An optional third argument sets a human-readable description shown in `bu` help
 # - When BU_CURRENT_MODULE is non-empty (i.e. registered from a module preinit
 #   callback), the owning module is stamped in BU_KEY_BINDING_MODULES so the
 #   help table can attribute the binding.
+#
+# @example
+# ```bash
+# bu_preinit_register_user_defined_key_binding '\em' my_custom_command
+# bu_preinit_register_user_defined_key_binding '\em' my_custom_command "My description"
+# ```
 bu_preinit_register_user_defined_key_binding()
 {
     local -r key=$1
@@ -40,25 +36,24 @@ bu_preinit_register_user_defined_key_binding()
     fi
 }
 
-# *Description*:
 # Register a command-line transform (a `match -> replace` rewrite rule over
 # READLINE_LINE).  See docs/line_transforms.md.
 #
-# *Params*:
-# - `$1`: transform name
-# - `--match <template>`: match template (required)
-# - `--replace <template>`: replace template (required)
-# - `--description <text>`: human-readable description
+# @arg $1 {string} name transform name
+# @option --match <template>: match template (required)
+# @option --replace <template>: replace template (required)
+# @option --description <text>: human-readable description
 #
-# *Returns*:
+# @returns
 # - 0 on success, 1 on invalid rule or missing arguments
 #
-# *Notes*:
+# @notes
 # - The rule is validated against the grammar; a matching auto-inverse is
 #   derived and registered as `unwrap-<name>` (or `<name>-inverse`) when the
 #   swapped rule is itself valid.
 # - The owning module is stamped in BU_LINE_TRANSFORM_PROPERTIES so `bu
 #   get-transform` can attribute the entry.
+# bash-ide parse-func-sig
 bu_preinit_register_line_transform()
 {
     local -r name=$1
@@ -120,22 +115,19 @@ bu_preinit_register_line_transform()
     return 0
 }
 
-# *Description*:
 # Register a user-defined completion function for a command
 #
-# *Params*:
-# - `$1`: Command name to register completion for
-# - `$2`: Completion function name to associate with the command
+# @arg $1 {string} completion_command Command name to register completion for
+# @arg $2 {string} completion_func Completion function name to associate with the command
 #
-# *Returns*: None
+# @notes
+# - This adds the mapping to the `BU_AUTOCOMPLETE_COMPLETION_FUNCS` associative array, which is later passed to `complete -F`
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_preinit_register_user_defined_completion_func mycmd my_completion_func
 # ```
-#
-# *Notes*:
-# - This adds the mapping to the `BU_AUTOCOMPLETE_COMPLETION_FUNCS` associative array, which is later passed to `complete -F`
+# bash-ide parse-func-sig
 bu_preinit_register_user_defined_completion_func()
 {
     local completion_command=$1
@@ -143,32 +135,31 @@ bu_preinit_register_user_defined_completion_func()
     BU_AUTOCOMPLETE_COMPLETION_FUNCS[$completion_command]=$completion_func
 }
 
-# *Description*:
 # Register a directory containing user-defined subcommands
 #
-# *Params*:
-# - `$1`: Directory path containing subcommand scripts
-# - `...` (optional): Conversion function to convert file names to command names.
+# @arg $1 {string} dir Directory path containing subcommand scripts
+# @arg $@ {string} args... Conversion function to convert file names to command names.
 #   The callback receives the file path (relative to the search dir) and
 #   returns one of three codes:
 #     0 — use BU_RET as the command name
 #     1 — keep the default name (file name without .sh extension)
 #     2 — REJECT: skip this file entirely, do not register it
 #
-# *Returns*:
+# @returns
 # - Exit code 0 on success, 1 if directory does not exist
 #
-# *Examples*:
-# ```bash
-# bu_preinit_register_user_defined_subcommand_dir /path/to/commands bu_convert_file_to_command_namespace prefix
-# ```
-#
-# *Notes*:
+# @notes
 # - The directory is added to `BU_COMMAND_SEARCH_DIRS` for dynamic command discovery. New commands can be added by re-sourcing the init script.
 # - If `<dir>/.bashtabignore` exists, it is read as glob patterns (one per
 #   line, # comments and blank lines ignored). Files whose path-relative-to-dir
 #   or basename match any pattern are skipped.
 # - If no conversion function is provided, file names are used as-is (after removing .sh extension)
+#
+# @example
+# ```bash
+# bu_preinit_register_user_defined_subcommand_dir /path/to/commands bu_convert_file_to_command_namespace prefix
+# ```
+# bash-ide parse-func-sig
 bu_preinit_register_user_defined_subcommand_dir()
 {
     local dir=$1
@@ -195,15 +186,14 @@ bu_preinit_register_user_defined_subcommand_dir()
     fi
 }
 
-# *Description*:
 # Stamp the owning module onto a registered command.  When the command's
 # namespace is empty (no filename-converter namespace), default it to the
 # module name and add the name to the namespace set, so `:<module>:`
 # namespace-qualified dispatch works for converter-less module commands.
 #
-# *Params*:
-# - `$1`: command name
-# - `$2`: owning module name
+# @arg $1 {string} command command name
+# @arg $2 {string} module owning module name
+# bash-ide parse-func-sig
 __bu_stamp_command_module()
 {
     local command=$1
@@ -216,17 +206,14 @@ __bu_stamp_command_module()
     fi
 }
 
-# *Description*:
 # Resolve the precedence rank for a module name.  Lower rank wins the bare
 # command name.  Rank 0 = no module (interactive/session registration, beats
 # everything); unranked modules default to 500; the framework ("bu") is
 # pinned at 900 via BU_MODULE_RANK's declaration.
 #
-# *Params*:
-# - `$1`: module name (may be empty)
-#
-# *Returns*:
-# - BU_RET: numeric rank
+# @arg $1 {string} m module name (may be empty)
+# @set BU_RET numeric rank
+# bash-ide parse-func-sig
 __bu_module_rank()
 {
     local -r m=$1
@@ -239,7 +226,6 @@ __bu_module_rank()
     return 0
 }
 
-# *Description*:
 # Single write funnel for the command registry.  Every definition write goes
 # through here so that registering a definition always settles its dispatch
 # type — the (BU_COMMANDS, BU_COMMAND_PROPERTIES[,type]) pair can never
@@ -252,20 +238,18 @@ __bu_module_rank()
 # dispatchable via the qualified spelling.  Same-module re-registration is an
 # ordinary overwrite (a rescan), and string-identical definitions never warn.
 #
-# *Params*:
-# - `$1`: command name
-# - `$2`: definition (script path | function name | alias spec string)
-# - `--type T`: write this exact dispatch type (caller already knows it —
+# @arg $1 {string} name command name
+# @arg $2 {string} definition definition (script path | function name | alias spec string)
+# @option --type T: write this exact dispatch type (caller already knows it —
 #   alias registration passes `alias`; the function/file helpers pass an
 #   explicit type argument when one was given).
-# - `--settle-from-file PATH`: definition is a script file — write the type
+# @option --settle-from-file PATH: definition is a script file — write the type
 #   from the file's `# Dispatch:` header, else UNSET any cached type so the
 #   lazy derivation runs fresh on next dispatch.
-# - `--module M`: stamp the owning module (defaults to `BU_CURRENT_MODULE`;
+# @option --module M: stamp the owning module (defaults to `BU_CURRENT_MODULE`;
 #   an explicitly-passed empty module suppresses stamping rather than falling
 #   back to the default).
-#
-# *Returns*: None
+# bash-ide parse-func-sig
 __bu_command_register()
 {
     local -r name=$1
@@ -412,25 +396,21 @@ __bu_command_register()
 }
 
 
-# *Description*:
 # Register a single user-defined subcommand file
 #
-# *Params*:
-# - `$1`: File path to the subcommand script
-# - `$2` (optional): Command name to register (default: derived from file name)
-# - `$3` (optional): Type of the command (e.g. `function`, `execute`, `source`)
+# @arg $1 {string} file File path to the subcommand script
+# @arg $2 {string} [command] Command name to register (default: derived from file name)
+# @arg $3 {string} [type] Type of the command (e.g. `function`, `execute`, `source`)
 #
-# *Returns*: None
+# @notes
+# - If no command name is provided, it is derived from the file name (with .sh extension removed)
+# - The command is added to the `BU_COMMANDS` associative array
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_preinit_register_user_defined_subcommand_file /path/to/my-cmd.sh my-cmd execute
 # bu_preinit_register_user_defined_subcommand_file /path/to/my-cmd.sh
 # ```
-#
-# *Notes*:
-# - If no command name is provided, it is derived from the file name (with .sh extension removed)
-# - The command is added to the `BU_COMMANDS` associative array
 bu_preinit_register_user_defined_subcommand_file()
 {
     local -r file=$1
@@ -473,25 +453,21 @@ bu_preinit_register_user_defined_subcommand_file()
     fi
 }
 
-# *Description*:
 # Register a user-defined subcommand function
 #
-# *Params*:
-# - `$1`: Function name implementing the subcommand
-# - `$2` (optional): Command name to register (default: same as function name)
-# - `$3` (optional): Type of the command (e.g. `function`, `execute`, `source`)
+# @arg $1 {string} fn Function name implementing the subcommand
+# @arg $2 {string} [command] Command name to register (default: same as function name)
+# @arg $3 {string} [type] Type of the command (e.g. `function`, `execute`, `source`)
 #
-# *Returns*: None
+# @notes
+# - If no command name is provided, the function name is used as the command name
+# - The command is added to the `BU_COMMANDS` associative array
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_preinit_register_user_defined_subcommand_function my_cmd_func my-cmd function
 # bu_preinit_register_user_defined_subcommand_function my_cmd_func
 # ```
-#
-# *Notes*:
-# - If no command name is provided, the function name is used as the command name
-# - The command is added to the `BU_COMMANDS` associative array
 bu_preinit_register_user_defined_subcommand_function()
 {
     local -r fn=$1
@@ -566,6 +542,7 @@ bu_preinit_register_user_defined_subcommand_function()
 # - Multi-word verbs are matched longest-first as a `verb-` prefix
 # - A name that is exactly a multi-word verb (no noun) is not special-cased;
 #   it falls back to single-word splitting
+# bash-ide parse-func-sig
 __bu_preinit_split_verb()
 {
     local -r no_namespace=$1
@@ -588,6 +565,7 @@ __bu_preinit_split_verb()
     BU_RET_REST=${no_namespace#*-}
 }
 
+# bash-ide parse-func-sig
 bu_convert_file_to_command_prefix()
 {
     local -r delimiter=$1
@@ -610,25 +588,22 @@ bu_convert_file_to_command_prefix()
     BU_RET=$command
 }
 
-# *Description*:
 # Convert a file name to a command name using PowerShell style naming convention
 #
-# *Params*:
-# - `$1`: File path to convert
+# @arg $1 {string} file_path File path to convert
+# @set BU_RET The derived command name in format `verb-noun`
 #
-# *Returns*:
-# - `$BU_RET`: The derived command name in format `verb-noun`
-#
-# *Examples*:
-# ```bash
-# bu_convert_file_to_command_powershell /path/to/get-my-process-status.sh  # $BU_RET=get-process-status
-# ```
-#
-# *Notes*:
+# @notes
 # - This parses the file name (without .sh extension) in PowerShell style: `verb-namespace-noun`
 # - Extracts the verb and noun components, discarding the namespace
 # - Updates the global `BU_COMMAND_VERBS` and `BU_COMMAND_NOUNS` sets
 # - Stores verb/noun properties in `BU_COMMAND_PROPERTIES`
+#
+# @example
+# ```bash
+# bu_convert_file_to_command_powershell /path/to/get-my-process-status.sh  # $BU_RET=get-process-status
+# ```
+# bash-ide parse-func-sig
 bu_convert_file_to_command_powershell()
 {
     local -r file_path=$1
@@ -649,27 +624,24 @@ bu_convert_file_to_command_powershell()
     BU_RET=$command
 }
 
-# *Description*:
 # Convert a file name to a command name using a specified naming style
 #
-# *Params*:
-# - `$1`: Naming style (one of `none`, `prefix`, `powershell`, `prefix-keep`, `powershell-keep`)
-# - `$2`: File path to convert
+# @arg $1 {string} style Naming style (one of `none`, `prefix`, `powershell`, `prefix-keep`, `powershell-keep`)
+# @arg $2 {string} file_path File path to convert
+# @set BU_RET The derived command name
 #
-# *Returns*:
-# - `$BU_RET`: The derived command name
+# @notes
+# - `none`, `prefix-keep`, and `powershell-keep` styles preserve the file name (without .sh extension)
+# - `prefix` style delegates to `bu_convert_file_to_command_prefix` with `-` as delimiter
+# - `powershell` style delegates to `bu_convert_file_to_command_powershell`
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_convert_file_to_command_namespace prefix /path/to/my-get-status.sh  # $BU_RET=get-status
 # bu_convert_file_to_command_namespace powershell /path/to/get-my-status.sh  # $BU_RET=get-status
 # bu_convert_file_to_command_namespace none /path/to/mycmd.sh  # $BU_RET=mycmd
 # ```
-#
-# *Notes*:
-# - `none`, `prefix-keep`, and `powershell-keep` styles preserve the file name (without .sh extension)
-# - `prefix` style delegates to `bu_convert_file_to_command_prefix` with `-` as delimiter
-# - `powershell` style delegates to `bu_convert_file_to_command_powershell`
+# bash-ide parse-func-sig
 bu_convert_file_to_command_namespace()
 {
     local -r style=$1

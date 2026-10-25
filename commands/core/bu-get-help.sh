@@ -7,6 +7,7 @@
 
 # Render one topic, prefixing a "Module:" line when the topic is owned by a
 # module (core/user-local topics have no module).
+# bash-ide parse-func-sig
 __bu_bu_get_help_render_one()
 {
     local file=$1

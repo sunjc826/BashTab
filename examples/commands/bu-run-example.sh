@@ -48,6 +48,7 @@ local options_finished=false
 local autocompletion=()
 local shift_by=
 
+# bash-ide parse-func-sig
 function __bu_example_print_fruits()
 {
     echo apple
@@ -56,6 +57,7 @@ function __bu_example_print_fruits()
     echo watermelon
 }
 
+# bash-ide parse-func-sig
 function __bu_example_get_vegetables()
 {
     BU_RET=(
@@ -64,6 +66,7 @@ function __bu_example_get_vegetables()
     )
 }
 
+# bash-ide parse-func-sig
 function __bu_example_get_meat()
 {
     local meat_type=$1

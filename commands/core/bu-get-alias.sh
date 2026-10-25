@@ -126,6 +126,7 @@ return "$exit_code"
 }
 
 # Completion helper: names of the CLI's registered aliases.
+# bash-ide parse-func-sig
 __bu_bu_get_alias_complete_names()
 {
     BU_RET=()
@@ -137,6 +138,7 @@ __bu_bu_get_alias_complete_names()
 }
 
 # Completion helper: distinct root commands of the CLI's registered aliases.
+# bash-ide parse-func-sig
 __bu_bu_get_alias_complete_roots()
 {
     BU_RET=()

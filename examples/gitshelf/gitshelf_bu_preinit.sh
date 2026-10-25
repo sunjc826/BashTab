@@ -30,6 +30,7 @@ export GITSHELF_DIR
 #   0 — use BU_RET as the command name
 #   1 — keep the default name (file name without .sh)
 #   2 — REJECT: skip this file entirely
+# bash-ide parse-func-sig
 __gitshelf_convert_file_to_command()
 {
     local -r file_path=$1
@@ -84,6 +85,7 @@ export GITSHELF_CONFIG_FILE
 # execute-type commands the override must resolve in a fresh process, so
 # prefer a PATH-resolvable command (or a function redefined by the host's own
 # preinit) rather than a shell-local function.
+# bash-ide parse-func-sig
 __gitshelf_default_resolve_path()
 {
     local -r p=$1

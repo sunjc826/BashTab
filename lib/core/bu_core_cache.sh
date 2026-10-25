@@ -52,6 +52,7 @@ declare -g __BU_PROMPT_MODULE_DISPLAYED=
 # PROMPT_COMMAND rebuilds PS1 from scratch each time).
 #
 # Chains to the original PROMPT_COMMAND after prepending.
+# bash-ide parse-func-sig
 __bu_prompt_command_hook()
 {
     local indicator="[\[${BU_TPUT_GREEN}\]${BU_TOP_LEVEL_MODULE}\[${BU_TPUT_RESET}\]] "
@@ -77,6 +78,7 @@ __bu_prompt_command_hook()
 # with dynamic prompts that are rebuilt on every display.
 #
 # Params: None
+# bash-ide parse-func-sig
 __bu_prompt_show_module()
 {
     # `return 0`, not `return`: a bare return propagates the failed [[ ]] status
@@ -102,6 +104,7 @@ __bu_prompt_show_module()
 # PROMPT_COMMAND.
 #
 # Params: None
+# bash-ide parse-func-sig
 __bu_prompt_hide_module()
 {
     local indicator="[\[${BU_TPUT_GREEN}\]${BU_TOP_LEVEL_MODULE}\[${BU_TPUT_RESET}\]] "
@@ -116,6 +119,7 @@ __bu_prompt_hide_module()
 # - $1: top-level module key
 #
 # Returns: BU_RET = cache file path
+# bash-ide parse-func-sig
 __bu_command_cache_file()
 {
     BU_RET=$BU_CACHE_DIR/commands-$1.cache
@@ -130,6 +134,7 @@ __bu_command_cache_file()
 # scan (PATH setup still runs).
 #
 # Returns: always 0 (cache miss is normal; never abort under set -e)
+# bash-ide parse-func-sig
 __bu_try_load_command_cache()
 {
     if ! "$BU_COMMAND_CACHE_ENABLED"; then
@@ -184,6 +189,7 @@ __bu_try_load_command_cache()
 #
 # Params:
 # - $1: top-level module key
+# bash-ide parse-func-sig
 __bu_save_command_cache()
 {
     local key=$1
@@ -210,7 +216,6 @@ __bu_save_command_cache()
     bu_log_info "Command cache saved to ${cache_file##*/}"
 }
 
-# *Description*:
 # Mark module loading as complete and cache the command registry.
 #
 # Called by the top-level activation script after sourcing bu_entrypoint.sh
@@ -222,16 +227,17 @@ __bu_save_command_cache()
 #
 # No-op if the command cache was already loaded from disk during init.
 #
-# *Params*: None
+# @noargs
 #
-# *Returns*: 0 on success, 1 if BU_TOP_LEVEL_MODULE is not set
+# @returns 0 on success, 1 if BU_TOP_LEVEL_MODULE is not set
 #
-# *Examples*:
+# @example
 # ```bash
 # export BU_TOP_LEVEL_MODULE="myproject"
 # source /path/to/bash-tab/bu_entrypoint.sh
 # bu_mark_load_complete
 # ```
+# bash-ide parse-func-sig
 bu_mark_load_complete()
 {
     if ! "$BU_COMMAND_CACHE_ENABLED"; then
@@ -265,6 +271,7 @@ bu_mark_load_complete()
 # - $1: key to invalidate, or "--all" to invalidate all command caches
 #
 # Returns: 0 on success
+# bash-ide parse-func-sig
 __bu_invalidate_command_cache()
 {
     local key=$1
@@ -296,6 +303,7 @@ __bu_invalidate_command_cache()
 # List cached command registries with their project keys and timestamps.
 #
 # Returns: BU_RET = array of "key  date  size" lines
+# bash-ide parse-func-sig
 __bu_command_cache_list()
 {
     BU_RET=()

@@ -6,23 +6,22 @@
 #   bu get-repo               # fleet dashboard
 #   bu get-pull-request myrepo --state open
 
-# *Description*:
 # Register a repo: delegates to bu_location_register (kind dir, tagged
 # "repo") and stores git extras in the same property table.
 #
-# *Params*:
-# - `$1`: name
-# - `--path`/`--resolver`/`--alias`/`--description`/`--on-enter`: forwarded
-# - `--param-*`     forwarded; any explicit option suppresses default worktrees
-# - `--tags CSV`    extra tags appended after "repo"
-# - `--remote NAME` (default origin)
-# - `--gh-host HOST`
-# - `--gh-slug OWNER/REPO`
-# - `--default-branch BR`
+# @arg $1 {string} name name
+# @option --path/--resolver/--alias/--description/--on-enter: forwarded
+# @option --param-*: forwarded; any explicit option suppresses default worktrees
+# @option --tags CSV: extra tags appended after "repo"
+# @option --remote NAME: (default origin)
+# @option --gh-host HOST
+# @option --gh-slug OWNER/REPO
+# @option --default-branch BR
+# @set BU_RET storage key
 #
-# *Returns*:
-# - BU_RET: storage key
+# @returns
 # - 0 on success, 1 on error
+# bash-ide parse-func-sig
 bu_repo_register()
 {
     local name=$1
@@ -75,8 +74,8 @@ bu_repo_register()
     return 0
 }
 
-# *Description*:
 # Names of registered repos (newline on stdout).
+# bash-ide parse-func-sig
 bu_repo_names()
 {
     bu_location_names --tag repo --no-stubs
@@ -162,15 +161,14 @@ __bu_repo_worktree_resolve()
     return 1
 }
 
-# *Description*:
 # Resolve a repo location and verify it is a git worktree.
 #
-# *Params*:
-# - `$1`: name or alias
+# @arg $1 {string} name name or alias
+# @set BU_RET repo path
 #
-# *Returns*:
-# - BU_RET: repo path
+# @returns
 # - 0 on success, 1 if missing or not a worktree
+# bash-ide parse-func-sig
 bu_repo_resolve()
 {
     local name=$1
@@ -184,16 +182,15 @@ bu_repo_resolve()
     return 0
 }
 
-# *Description*:
 # Parse a git remote URL into owner/repo and host.
 #
-# *Params*:
-# - `$1`: remote URL (ssh://, scp-like, or http(s))
+# @arg $1 {string} url remote URL (ssh://, scp-like, or http(s))
+# @set BU_RET owner/repo
+# @set BU_RET_MAP[host] host
 #
-# *Returns*:
-# - BU_RET: owner/repo
-# - BU_RET_MAP[host]: host
+# @returns
 # - 0 on success, 1 if unparseable
+# bash-ide parse-func-sig
 bu_repo_parse_remote_url()
 {
     local url=$1
@@ -260,16 +257,15 @@ bu_repo_parse_remote_url()
     return 1
 }
 
-# *Description*:
 # Resolve a repo's GitHub slug (OWNER/REPO) and host.
 #
-# *Params*:
-# - `$1`: name or alias
+# @arg $1 {string} name name or alias
+# @set BU_RET owner/repo
+# @set BU_RET_MAP[host] effective host (registered --gh-host beats derived)
 #
-# *Returns*:
-# - BU_RET: owner/repo
-# - BU_RET_MAP[host]: effective host (registered --gh-host beats derived)
+# @returns
 # - 0 on success, 1 if no slug/remote is available
+# bash-ide parse-func-sig
 bu_repo_resolve_slug()
 {
     local name=$1

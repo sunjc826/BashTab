@@ -133,6 +133,7 @@ return "$exit_code"
 }
 
 # Completion helper: currently set variable names.
+# bash-ide parse-func-sig
 __bu_bu_get_variable_complete_names()
 {
     BU_RET=()

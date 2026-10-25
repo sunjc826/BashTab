@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+# !/usr/bin/env bash
 # Pipeline: transform
 # Requires-All: name
 # Fields: name removed error
@@ -6,6 +6,7 @@
 # Synopsis: Remove a registered command alias
 # Help-Topic: aliases
 # Completion helper: defined alias names.
+# bash-ide parse-func-sig
 __bu_bu_remove_alias_complete_names()
 {
     BU_RET=()

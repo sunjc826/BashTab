@@ -3,6 +3,7 @@ case "${BASH_SOURCE}" in
 *) pushd . &>/dev/null ;; # This seems like duplicate work but we need to match the popd later
 esac
 
+# bash-ide parse-func-sig
 __bu_exit_handler_simple()
 {
     local exit_code=$?

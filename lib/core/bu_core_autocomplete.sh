@@ -7,21 +7,17 @@
 # has_name: String
 # completion_options: AssociativeArray 
 # to be defined
-# *Description*:
 # Compute fzf dropdown positioning to fit within the terminal.
 #
-# *Params*:
-# - `$1`: Terminal columns (COLUMNS)
-# - `$2`: Anchor column — the column where the dropdown should start
+# @arg $1 string Terminal columns (COLUMNS)
+# @arg $2 string Anchor column — the column where the dropdown should start
 #          (typically the column of the completing word's first character)
-# - `$3`: Completing word length (characters of text being replaced)
-# - `$4`: Base fzf text width (completions + padding, min ~60)
-# - `$5`: Preview window width (0 if no preview, typically 40)
-#
-# *Sets*:
-# - `${BU_RET[0]}`: left_margin (fzf --margin 0,right,0,left part)
-# - `${BU_RET[1]}`: right_margin
-# - `${BU_RET[2]}`: box_length (chars available inside borders for text)
+# @arg $3 string Completing word length (characters of text being replaced)
+# @arg $4 string Base fzf text width (completions + padding, min ~60)
+# @arg $5 string Preview window width (0 if no preview, typically 40)
+# @set BU_RET[0] left_margin (fzf --margin 0,right,0,left part)
+# @set BU_RET[1] right_margin
+# @set BU_RET[2] box_length (chars available inside borders for text)
 __bu_fzf_compute_dimensions()
 {
     local columns=$1
@@ -53,7 +49,6 @@ __bu_fzf_compute_dimensions()
     BU_RET=("$left_pos" "$right_margin" "$box_length")
 }
 
-# *Description*:
 # Strip terminal escapes from stdin so that `${#line}` is the display width.
 # BU_TPUT_RESET (`tput sgr0`) is not plain CSI: it is \e(B\e[m under xterm
 # terminfo and \e[m\x0f under screen/tmux terminfo on macOS, so besides CSI
@@ -63,12 +58,9 @@ __bu_fzf_compute_dimensions()
 # OSC body excludes ESC too: a greedy [^\x07]* ran from an ST-terminated OSC to
 # the last ST/BEL on the line, swallowing the visible text in between).
 #
-# *Params*:
-# - `$@`: Extra sed arguments applied first (e.g. `-e 's/\\n/ /g'`)
-# - stdin: Lines to strip
-#
-# *Returns*:
-# - stdout: The lines without escapes
+# @arg $@ {string} args... Extra sed arguments applied first (e.g. `-e 's/\\n/ /g'`)
+# @stdin Lines to strip
+# @stdout The lines without escapes
 __bu_autocomplete_strip_ansi()
 {
     local -a legacy_exprs=()
@@ -208,19 +200,15 @@ __bu_autocomplete_quote_prefix()
     BU_RET=("$prefix" "$rest")
 }
 
-# *Description*:
 # Split a raw command-line word typed at a `--glob` parameter into the
 # pattern the command will receive and whether bash will pathname-expand it
 # first. A quoted word ('BU_*', "BU_*", also still open) and an escaped one
 # (BU_\*) reach the command intact; an unquoted wildcard is matched against
 # files in the working directory before the command runs.
 #
-# *Params*:
-# - `$1`: Raw word, quotes and backslashes included
-#
-# *Returns*:
-# - `BU_RET[0]`: The word after quote removal
-# - `BU_RET[1]`: `true` if it holds an unquoted, unescaped wildcard
+# @arg $1 string Raw word, quotes and backslashes included
+# @set BU_RET[0] The word after quote removal
+# @set BU_RET[1] `true` if it holds an unquoted, unescaped wildcard
 __bu_autocomplete_glob_word()
 {
     local -r raw=$1
@@ -251,7 +239,6 @@ __bu_autocomplete_glob_word()
     BU_RET=("$pattern" "$is_exposed")
 }
 
-# *Description*:
 # Replace the candidates of a `--glob` parameter, whose word is a pattern,
 # by a hint listing the candidates the pattern matches. The hint is shown
 # without touching the word (see the hint handling in
@@ -259,16 +246,13 @@ __bu_autocomplete_glob_word()
 # the command line. If bash would expand the pattern against files here,
 # the hint says so and shows the quoted form.
 #
-# *Params*:
-# - `$1`: Pattern (quotes removed)
-# - `$2`: Raw word as typed
-# - `$3`: `true` if the word is an unquoted wildcard
-# - `$4`: `true` if `COMPREPLY` carries ANSI colors
-#
-# *Returns*:
-# - `COMPREPLY`: emptied
-# - `BU_COMPREPLY_METADATA`: emptied
-# - `bu_autocomplete_hint`: the match summary, after any `--hint` text
+# @arg $1 string Pattern (quotes removed)
+# @arg $2 string Raw word as typed
+# @arg $3 string `true` if the word is an unquoted wildcard
+# @arg $4 string `true` if `COMPREPLY` carries ANSI colors
+# @set COMPREPLY emptied
+# @set BU_COMPREPLY_METADATA emptied
+# @set bu_autocomplete_hint the match summary, after any `--hint` text
 __bu_autocomplete_glob_hint()
 {
     local -r pattern=$1
@@ -337,17 +321,13 @@ __BU_AUTOCOMPLETE_WORKING_DIRECTORY=.
 # on arm bodies (`if bu_env_is_in_autocomplete && ...` took over 20s).
 __BU_AUTOCOMPLETE_OPTION_REGEX='[-\+[:alnum:]_/]+([[:space:]]*\|[[:space:]]*[-\+[:alnum:]_/]+)*[[:space:]]*'
 
-# *Description*:
 # Append the content of a file to an existing array variable, splitting by lines
 #
-# *Params*:
-# - `$1`: File to read
-# - `$2` (optional): Name of the array variable to append to (default: `BU_RET`)
+# @arg $1 string File to read
+# @arg $2 string Name of the array variable to append to (default: `BU_RET`)
+# @set BU_RET[@] or the array variable named in `$2`: Content of the file appended to the array
 #
-# *Returns*:
-# - `${BU_RET[@]}` or the array variable named in `$2`: Content of the file appended to the array
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_cat_arr_append /path/to/file # ${BU_RET[@]} has the file content appended
 # bu_cat_arr_append /path/to/file MY_ARR # ${MY_ARR[@]} has the file content appended
@@ -361,19 +341,15 @@ bu_cat_arr_append()
     eval "$ret"+=\( \"\${MAPFILE[@]}\" \)
 }
 
-# *Description*:
 # Parses out all the cases inside a case block. 
 #
-# *Params*
-# - `$1`: Function name or script path to parse
-# - `$2` (optional): Start indicator regex (default: `case .* in`)
-# - `$3` (optional): End indicator regex (default: `esac`)
-# - `$4` (optional): Start line number of the function/script (default: 1)
+# @arg $1 string Function name or script path to parse
+# @arg $2 string Start indicator regex (default: `case .* in`)
+# @arg $3 string End indicator regex (default: `esac`)
+# @arg $4 string Start line number of the function/script (default: 1)
+# @stdout List of options inside the case block, separated by newlines and spaces
 #
-# *Returns*:
-# - `stdout`: List of options inside the case block, separated by newlines and spaces
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_autocomplete_parse_case_block_options my_function
 # bu_autocomplete_parse_case_block_options /path/to/script.sh
@@ -447,21 +423,17 @@ bu_autocomplete_parse_case_block_options()
     ' | tr '|' ' '
 }
 
-# *Description*:
 # Cached version of `bu_autocomplete_parse_case_block_options`
 #
-# *Params*
-# - `$1`: Function name or script path to parse
-# - `$2` (optional): Start indicator regex (default: `case .* in`)
-# - `$3` (optional): End indicator regex (default: `esac`)
-# - `$4` (optional): Start line number of the function/script (default: 1)
-# - `$5`: Cache key
-# - `$6` (optional): Invalidate cache boolean (default: false)
+# @arg $1 string Function name or script path to parse
+# @arg $2 string Start indicator regex (default: `case .* in`)
+# @arg $3 string End indicator regex (default: `esac`)
+# @arg $4 string Start line number of the function/script (default: 1)
+# @arg $5 string Cache key
+# @arg $6 string Invalidate cache boolean (default: false)
+# @set BU_RET[@] List of options inside the case block
 #
-# *Returns*:
-# - `${BU_RET[@]}`: List of options inside the case block
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_autocomplete_parse_case_block_options_cached my_function '' '' '' my_cache_key false # ${BU_RET[@]} has the options
 # bu_autocomplete_parse_case_block_options_cached /path/to/script.sh '' '' '' my_cache_key false # ${BU_RET[@]} has the options
@@ -1138,7 +1110,6 @@ bu_parse_nested_multiselect()
     : $((shift_by += saved_shift_by))
 }
 
-# *Description*:
 # Repeatable-subcommand parse, stay-in-multiselect variant.  Identical to
 # `bu_parse_nested_multiselect` except it folds the nested shift counter back
 # like `bu_parse_nested` (`shift_by = saved_shift_by + __bu_g_shift_by`),
@@ -1172,7 +1143,6 @@ bu_parse_nested_multiselect_stay()
     : $((shift_by += __bu_g_shift_by))
 }
 
-# *Description*:
 # Compose-mode parse: like `bu_parse_nested` but APPENDS `--options-of <impl>`
 # to the accumulated `autocompletion` array instead of replacing it.  Sets an
 # inject flag so that `bu_parse_multiselect` and `bu_parse_positional` called
@@ -1186,14 +1156,13 @@ bu_parse_nested_multiselect_stay()
 #         bu_parse_inject resolver_a "$@" || bu_parse_inject resolver_b "$@"
 #         ;;
 #
-# *Params*:
-# - `$1`: Impl function name
-# - `$@`: Remaining arguments (shifted by `shift_by - 1` before calling impl)
-#
-# *Returns*:
-# - The impl's exit code (0 / 1 / 124).
-# - `autocompletion`: Augmented with `--options-of <impl>` plus whatever the
+# @arg $1 string Impl function name
+# @arg $@ {string} args... Remaining arguments (shifted by `shift_by - 1` before calling impl)
+# @set autocompletion Augmented with `--options-of <impl>` plus whatever the
 #   impl's own parse calls contribute.
+#
+# @returns
+# - The impl's exit code (0 / 1 / 124).
 bu_parse_inject()
 {
     local -r inject_impl=$1
@@ -1263,17 +1232,15 @@ bu_parse_error_argn()
 }
 
 
-# *Description*:
 # Gets the completion function name for a given command
 #
-# *Params*:
-# - `$1`: Command to get the completion function for
-#
-# *Returns*:
-# - `$BU_RET`: 
+# @arg $1 string Command to get the completion function for
+# @set BU_RET
 #   - Name of the completion function if exit code = 0
 #   - Empty if exit code = 1
 #   - The completion spec if exit code = 2
+#
+# @returns
 # - Exit code:
 #   - 0 if completion func is found
 #   - 1 if no completion found
@@ -1737,14 +1704,10 @@ bu_autocomplete_get_autocompletions()
     return "$ret"
 }
 
-# *Description*:
 # Adds autocompletions to the current `${COMPREPLY[@]}` array
 #
-# *Params*:
-# - All parameters are passed to `bu_autocomplete_get_autocompletions`
-#
-# *Returns*:
-# - `${COMPREPLY[@]}`: Original contents plus new autocompletions
+# @arg $@ {string} args... All parameters are passed to `bu_autocomplete_get_autocompletions`
+# @set COMPREPLY[@] Original contents plus new autocompletions
 bu_autocomplete_add_autocompletions()
 {
     local saved_compreply=("${COMPREPLY[@]}")
@@ -1752,28 +1715,20 @@ bu_autocomplete_add_autocompletions()
     COMPREPLY+=("${saved_compreply[@]}")
 }
 
-# *Description*:
 # Prints autocompletions to stdout
 #
-# *Params*:
-# - All parameters are passed to `bu_autocomplete_get_autocompletions`
-#
-# *Returns*:
-# - `stdout`: List of autocompletions, one per line
+# @arg $@ {string} args... All parameters are passed to `bu_autocomplete_get_autocompletions`
+# @stdout List of autocompletions, one per line
 bu_autocomplete_print_autocompletions()
 {
     bu_autocomplete_get_autocompletions "$@"
     printf "%s\n" "${COMPREPLY[@]}"
 }
 
-# *Description*:
 # Wrapper around `compgen` that captures output into `${COMPREPLY[@]}`
 #
-# *Params*:
-# - `...`: All parameters are passed to `compgen`
-#
-# *Returns*:
-# - `${COMPREPLY[@]}`: Output of `compgen`
+# @arg $@ {string} args... All parameters are passed to `compgen`
+# @set COMPREPLY[@] Output of `compgen`
 bu_compgen()
 {
     # Some modern versions of bash support a target variable, but we don't assume this
@@ -1833,7 +1788,6 @@ BU_AUTOCOMPLETE_EXIT_CODE_RETRY=124
 # *Returns*
 # - `${COMPREPLY[@]}`: An array of completions that doesn't necessarily match on cur_word prefix.
 
-# *Description*:
 # Map raw option synopsis to a compact, color-coded tag.
 #   _FLAG         → {green}flag{reset}
 #   *_FILTER      → {blue}shortname{reset}  (enum positional)
@@ -1864,16 +1818,14 @@ __bu_synopsis_color()
     printf '%s%s%s' "$tag_color" "$short" "$BU_TPUT_RESET"
 }
 
-# *Description*:
 # Normalize an option token for alias comparison: strip leading `-`/`+`
 # characters and lowercase the remainder.
 # `--select`, `select` and `SELECT` all normalize to `select`.
 #
-# *Params*:
-# - `$1`: Name of the output variable (nameref)
-# - `$2`: Option token to normalize
+# @arg $1 string Name of the output variable (nameref)
+# @arg $2 string Option token to normalize
 #
-# *Returns*:
+# @returns
 # - `$$1`: Normalized token
 __bu_autocomplete_normalize_option()
 {
@@ -2366,20 +2318,16 @@ __bu_autocomplete_completion_func_master_helper()
     return "$exit_code"
 }
 
-# *Description*:
 # Implementation of the master command completion function for sourcing scripts.
 # Does not use any of the global COMP_ variables, instead takes all necessary parameters to be more self-contained.
 #
-# *Params*
-# - `$1`: Completion command path
-# - `$2`: Current word being completed
-# - `$3`: Previous word
-# - `$4`: Current word index
-# - `$5`: Tail being completed
-# - `...`: All words in the command line
-#
-# *Returns*
-# - `${COMPREPLY[@]}`: List of autocompletions
+# @arg $1 string Completion command path
+# @arg $2 string Current word being completed
+# @arg $3 string Previous word
+# @arg $4 string Current word index
+# @arg $5 string Tail being completed
+# @arg $@ {string} args... All words in the command line
+# @set COMPREPLY[@] List of autocompletions
 __bu_autocomplete_completion_func_master_impl()
 {
     local completion_command_path=$1
@@ -2557,16 +2505,12 @@ __bu_autocomplete_completion_func_cli_resolve_alias()
     esac
 }
 
-# *Description*:
 # Completion function for the master command `bu`
 #
-# *Params*:
-# - `$1`: Completion command (should be `bu`)
-# - `$2`: Current word being completed
-# - `$3`: Previous word
-#
-# *Returns*:
-# - `${COMPREPLY[@]}`: List of autocompletions
+# @arg $1 string Completion command (should be `bu`)
+# @arg $2 string Current word being completed
+# @arg $3 string Previous word
+# @set COMPREPLY[@] List of autocompletions
 __bu_autocomplete_completion_func_cli()
 {
     # Complete deferred command scan on first completion.
@@ -2890,16 +2834,12 @@ __bu_autocomplete_completion_func_script()
     __bu_autocomplete_completion_func_master_impl "$completion_command" "$cur_word" "$prev_word" "$COMP_CWORD" "" "${COMP_WORDS[@]}"
 }
 
-# *Description*:
 # Completion function that retrieves autocompletions from a cached file
 #
-# *Params*:
-# - `$1`: Completion command
-# - `$2`: Current word being completed
-# - `$3`: Previous word
-#
-# *Returns*:
-# - `${COMPREPLY[@]}`: List of autocompletions
+# @arg $1 string Completion command
+# @arg $2 string Current word being completed
+# @arg $3 string Previous word
+# @set COMPREPLY[@] List of autocompletions
 __bu_autocomplete_completion_func_cached()
 {
     local completion_command=$1
@@ -2913,25 +2853,24 @@ __bu_autocomplete_completion_func_cached()
     bu_compgen -W "$BU_RET" -- "$cur_word"
 }
 
-# *Description*:
 # Check whether bash-completion is loaded, i.e. whether `__bu_autocomplete_completion_func_default`
 # has a fallback (`_completion_loader` or `_minimal`) for commands without their own compspec.
 #
-# *Returns*:
+# @returns
 # - Exit code 0 if bash-completion is loaded, 1 otherwise
 __bu_autocomplete_bash_completion_is_loaded()
 {
     bu_symbol_is_function _completion_loader || bu_symbol_is_function _minimal
 }
 
-# *Description*:
 # Find bash-completion's main script: the distro location on Linux, Homebrew's on macOS.
 #
-# *Returns*:
-# - Exit code 0 if found, 1 otherwise
-# - `$BU_RET`: Path to the script
+# @set BU_RET Path to the script
 #
-# *Notes*:
+# @returns
+# - Exit code 0 if found, 1 otherwise
+#
+# @notes
 # - Homebrew's etc/profile.d/bash_completion.sh is skipped on purpose: it only loads
 #   when PS1 is set, so it does nothing in the `bash -c` that fzf reloads run in.
 __bu_autocomplete_find_bash_completion()
@@ -2954,11 +2893,9 @@ __bu_autocomplete_find_bash_completion()
 # Used by __bu_fzf_print_autocompletion before bu_entrypoint.sh is sourced
 export -f __bu_autocomplete_find_bash_completion
 
-# *Description*:
 # Explain how to get bash-completion loaded on this OS.
 #
-# *Returns*:
-# - `$BU_RET`: Hint message
+# @set BU_RET Hint message
 __bu_autocomplete_bash_completion_hint()
 {
     if __bu_autocomplete_find_bash_completion
@@ -2975,14 +2912,13 @@ __bu_autocomplete_bash_completion_hint()
     fi
 }
 
-# *Description*:
 # Give Homebrew's g-prefixed GNU tools (gls, gcp, gsed, ...) the `--help`
 # parsing completion that bash-completion registers for their unprefixed
 # names. bash-completion only knows the Linux names, so on macOS gls would
 # otherwise complete filenames only, while ls gets a parser that BSD ls,
 # lacking `--help`, can't feed.
 #
-# *Notes*:
+# @notes
 # - Homebrew links `opt/<formula>/libexec/gnubin/NAME` to `bin/gNAME`.
 # - Compspecs already registered for a gNAME are left alone.
 __bu_autocomplete_register_gnu_g_tools()
@@ -3011,20 +2947,18 @@ __bu_autocomplete_register_gnu_g_tools()
     done
 }
 
-# *Description*:
 # Completion function for the default case when no specific completion function is found.
 #
-# *Params*:
-# - `$1`: Completion command
-# - `$2`: Current word being completed (unused)
-# - `$3`: Previous word (unused)
+# @arg $1 string Completion command
+# @arg $2 string Current word being completed (unused)
+# @arg $3 string Previous word (unused)
+# @set COMPREPLY[@] List of autocompletions
 #
-# *Returns*:
+# @returns
 # - Exit code:
 #   - 0: Autocomplete worked successfully
 #   - 124: Autocomplete should be retried
 #   - 1 or any other code: Autocomplete failed
-# - `${COMPREPLY[@]}`: List of autocompletions
 __bu_autocomplete_completion_func_default()
 {
     local completion_command=$1
@@ -3082,7 +3016,6 @@ __bu_autocomplete_completion_func_default()
     return 124
 }
 
-# *Description*:
 # Completion func for the `source` builtin/function.
 __bu_autocomplete_completion_func_source()
 {
@@ -3802,16 +3735,15 @@ __bu_autocomplete_tab_parse_line()
     command_line_back_no_operator=${command_line_back_no_operator%%'|'*}
 }
 
-# *Description*:
 # Run the completion engine for a Tab backend on the words that
 # `__bu_autocomplete_tab_parse_line` left in the caller's `command_line`, and
 # read back the completion options the completion function set.
 #
-# *Params*: None
+# @noargs
+# @set COMPREPLY[@] , and the caller's `BU_COMPREPLY_METADATA`, `BU_COMPREPLY_HINT`
 #
-# *Returns*:
+# @returns
 # - Exit code: 0 with candidates, 1 when the engine failed, 2 when there are none
-# - `${COMPREPLY[@]}`, and the caller's `BU_COMPREPLY_METADATA`, `BU_COMPREPLY_HINT`
 # - The caller's `completion_func_has_ansi_colors`, `is_nospace`,
 #   `is_dynamic_nospace`, `is_filenames`
 __bu_autocomplete_tab_collect()
@@ -4295,13 +4227,10 @@ __bu_bind_fzf_autocomplete_impl()
     fi
 }
 
-# *Description*:
 # Binds fzf to the autocomplete of the current command line at the cursor position.
 # This is a readline binding function.
 #
-# *Params*: None
-#
-# *Returns*: None
+# @noargs
 __bu_bind_fzf_autocomplete()
 {
     __bu_bind_fzf_autocomplete_impl "${READLINE_LINE:0:$READLINE_POINT}" "${READLINE_LINE:$READLINE_POINT}" false false
@@ -4331,7 +4260,6 @@ __bu_bind_fzf_tab_autocomplete()
 # - readline:  `__bu_bind_readline_tab_prepare`, readline's own completion list
 #              with descriptions; needs no fzf.
 
-# *Description*:
 # Strip ANSI escape sequences (CSI such as SGR colours, OSC, the `ESC ( B`
 # charset reset of `tput sgr0`) and SI/SO bytes from every element of arrays,
 # in pure Bash: the `__bu_autocomplete_strip_ansi` filter costs a sed process.
@@ -4342,8 +4270,7 @@ __bu_bind_fzf_tab_autocomplete()
 # there is no ESC. (A `//` substitution with an extglob, which tries the
 # pattern at every position of every element, is 1.5-3x slower.)
 #
-# *Params*:
-# - `$@`: Names of the arrays to strip, modified in place. Elements must not
+# @arg $@ {string} args... Names of the arrays to strip, modified in place. Elements must not
 #   contain the US byte (\x1f), which separates them meanwhile.
 __bu_autocomplete_strip_ansi_arrays()
 {

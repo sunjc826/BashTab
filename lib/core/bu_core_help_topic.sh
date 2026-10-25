@@ -20,13 +20,12 @@
 declare -A -g BU_HELP_TOPIC_REGISTRY=()     # name -> topic script path
 declare -A -g BU_HELP_TOPIC_PROPERTIES=()   # [name,source] = registrant provenance
 
-# *Description*:
 # First BASH_SOURCE frame OUTSIDE the help-topic registry core file.
 # Used to record provenance ([name,source]) so a delegating wrapper records
 # the actual registrant (module preinit, local file).
 #
-# *Returns*:
-# - BU_RET: source file path
+# @set BU_RET source file path
+# bash-ide parse-func-sig
 __bu_help_topic_provenance()
 {
     local i file base
@@ -42,15 +41,11 @@ __bu_help_topic_provenance()
     return 0
 }
 
-# *Description*:
 # Extract a topic script's own `# Synopsis:` header (first ~30 lines).
 # Values are extracted verbatim (no variable/command substitution).
 #
-# *Params*:
-# - `$1`: topic script path
-#
-# *Returns*:
-# - BU_RET: synopsis text, or empty
+# @arg $1 {string} file topic script path
+# @set BU_RET synopsis text, or empty
 __bu_help_topic_synopsis()
 {
     BU_RET=
@@ -61,15 +56,11 @@ __bu_help_topic_synopsis()
     return 0
 }
 
-# *Description*:
 # Extract a command script's explicit `# Help-Topic:` header (first ~30
 # lines).  Empty when the script declares no topic back-reference.
 #
-# *Params*:
-# - `$1`: command script path
-#
-# *Returns*:
-# - BU_RET: declared topic name, or empty
+# @arg $1 {string} file command script path
+# @set BU_RET declared topic name, or empty
 __bu_help_topic_header()
 {
     BU_RET=
@@ -80,15 +71,14 @@ __bu_help_topic_header()
     return 0
 }
 
-# *Description*:
 # Register a named help topic backed by a script file.
 #
-# *Params*:
-# - `$1`: topic name
-# - `--file PATH`: readable topic script (its stdout is the help text)
+# @arg $1 {string} name topic name
+# @option --file PATH: readable topic script (its stdout is the help text)
 #
-# *Returns*:
+# @returns
 # - 0 on success, 1 on invalid registration
+# bash-ide parse-func-sig
 bu_help_topic_register()
 {
     local name=$1
@@ -125,16 +115,15 @@ bu_help_topic_register()
     return 0
 }
 
-# *Description*:
 # Register every `DIR/<topic>.help.sh` as topic `<topic>` — the idiomatic
 # one-liner for a module preinit.  A missing/empty dir is success (a module
 # may not ship topics yet).
 #
-# *Params*:
-# - `$1`: directory containing topic scripts
+# @arg $1 {string} dir directory containing topic scripts
 #
-# *Returns*:
+# @returns
 # - 0 on success (including missing/empty dir)
+# bash-ide parse-func-sig
 bu_help_topic_register_dir()
 {
     local dir=$1
@@ -154,15 +143,14 @@ bu_help_topic_register_dir()
     return 0
 }
 
-# *Description*:
 # Resolve a topic name to its backing script path.
 #
-# *Params*:
-# - `$1`: topic name
+# @arg $1 {string} name topic name
+# @set BU_RET topic script path
 #
-# *Returns*:
-# - BU_RET: topic script path
+# @returns
 # - 0 on success, 1 if unknown
+# bash-ide parse-func-sig
 bu_help_topic_resolve()
 {
     local name=$1
@@ -176,11 +164,10 @@ bu_help_topic_resolve()
     return 0
 }
 
-# *Description*:
 # List registered topic names, sorted (the completion feed).
 #
-# *Returns*:
-# - BU_RET: array of topic names
+# @set BU_RET array of topic names
+# bash-ide parse-func-sig
 bu_help_topic_names()
 {
     BU_RET=()
@@ -198,15 +185,14 @@ bu_help_topic_names()
     return 0
 }
 
-# *Description*:
 # Emit a command table for a list of command script files.  One row per file:
 # `  <cli-name> <command-name> <synopsis>`, sorted by row.  Command names are
 # derived from the filename (minus extension, underscores → dashes, and a
 # leading `bu-` namespace prefix stripped); synopses come from each file's
 # `# Synopsis:` header (first ~30 lines).
 #
-# *Params*:
-# - `$@`: command script paths
+# @arg $@ {string} args... command script paths
+# bash-ide parse-func-sig
 __bu_help_topic_commands_print()
 {
     local -a files=("$@")
@@ -231,13 +217,12 @@ __bu_help_topic_commands_print()
     return 0
 }
 
-# *Description*:
 # Print a command table for a suite directory.  For each `*.sh`/`*.py`
 # (skipping `__*`, `functions.*`, `overrides*`), emit one row.  Topic scripts
 # call this in a `$(...)` so the table can never drift from the commands.
 #
-# *Params*:
-# - `$1`: suite directory
+# @arg $1 {string} dir suite directory
+# bash-ide parse-func-sig
 bu_help_topic_commands()
 {
     local dir=$1
@@ -259,15 +244,14 @@ bu_help_topic_commands()
     return 0
 }
 
-# *Description*:
 # Like bu_help_topic_commands, but includes only files whose header carries
 # `# Help-Topic: TOPIC`.  For flat command dirs hosting many subsystems,
 # membership is declared per-file with the SAME header that drives the
 # `--help` back-reference (single source).
 #
-# *Params*:
-# - `$1`: topic name to filter by
-# - `$2...`: suite directories to scan
+# @arg $1 {string} topic topic name to filter by
+# @arg $@ {string} args... suite directories to scan
+# bash-ide parse-func-sig
 bu_help_topic_commands_tagged()
 {
     local topic=$1
@@ -296,17 +280,16 @@ bu_help_topic_commands_tagged()
     return 0
 }
 
-# *Description*:
 # Resolve the help topic for a command script.  An explicit `# Help-Topic:`
 # header wins; otherwise the script's parent directory name is used.  Fails
 # unless that name is actually registered.
 #
-# *Params*:
-# - `$1`: command script path
+# @arg $1 {string} script command script path
+# @set BU_RET topic name
 #
-# *Returns*:
-# - BU_RET: topic name
+# @returns
 # - 0 on success, 1 if no registered topic applies
+# bash-ide parse-func-sig
 bu_help_topic_for_script()
 {
     local script=$1
@@ -331,16 +314,15 @@ bu_help_topic_for_script()
     return 0
 }
 
-# *Description*:
 # Render a topic script.  Sources FILE in a subshell (so the topic cannot
 # mutate the caller) with BU_TPUT_BOLD/BU_TPUT_RESET set to the given values.
 # Callers blank them when stdout is not a terminal so piped topic text stays
 # clean and grep-able (no escapes).
 #
-# *Params*:
-# - `$1`: topic script path
-# - `$2`: value for BU_TPUT_BOLD
-# - `$3`: value for BU_TPUT_RESET
+# @arg $1 {string} file topic script path
+# @arg $2 {string} bold value for BU_TPUT_BOLD
+# @arg $3 {string} reset value for BU_TPUT_RESET
+# bash-ide parse-func-sig
 __bu_help_topic_render()
 {
     local file=$1

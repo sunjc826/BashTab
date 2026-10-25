@@ -1,26 +1,25 @@
 # bash-ide source=./bu_core_base.sh
 
-# *Description*:
 # Internal function to resolve tmux split mode into tmux command arguments
 #
-# *Params*:
-# - `$1`: Split mode (one of `none`, `vertical`, `horizontal`)
+# @arg $1 {string} split_mode Split mode (one of `none`, `vertical`, `horizontal`)
+# @set BU_RET[@] Array containing the tmux command with arguments to create a new pane/window
 #
-# *Returns*:
+# @returns
 # - Exit code 0 on success, 1 if split mode is invalid
-# - `${BU_RET[@]}`: Array containing the tmux command with arguments to create a new pane/window
 #
-# *Examples*:
-# ```bash
-# __bu_spawn_tmux_resolve_split_mode vertical
-# # $BU_RET contains: (tmux split-window -vd -t $TMUX_PANE -P -F '#{pane_id}' bash --init-file)
-# ```
-#
-# *Notes*:
+# @notes
 # - `none` creates a new window in a new tmux session
 # - `vertical` splits the current pane vertically
 # - `horizontal` splits the current pane horizontally
 # - Returns pane ID using stable format `#{pane_id}` instead of window index
+#
+# @example
+# ```bash
+# __bu_spawn_tmux_resolve_split_mode vertical
+# # $BU_RET contains: (tmux split-window -vd -t $TMUX_PANE -P -F '#{pane_id}' bash --init-file)
+# ```
+# bash-ide parse-func-sig
 __bu_spawn_tmux_resolve_split_mode()
 {
     local split_mode=$1
@@ -47,13 +46,9 @@ __bu_spawn_tmux_resolve_split_mode()
     BU_RET=(tmux "${tmux_args[@]}" bash --init-file)
 }
 
-# *Description*:
 # Stops the commands running in the given tmux panes
 #
-# *Params*:
-# - `...`: Tmux pane ids
-#
-# *Returns*: None
+# @arg $@ {string} args... Tmux pane ids
 bu_spawn_tmux_stop_commands()
 {
     # q: To exit tmux scroll mode
@@ -80,16 +75,15 @@ bu_spawn_tmux_stop_commands()
     done
 }
 
-# *Description*:
 # Waits for the commands associated with the ret file fds to finish, and checks their exit codes
 #
-# *Params*:
-# - `...`: ret file fds
+# @arg $@ {string} args... ret file fds
 #
-# *Returns*:
+# @returns
 # - Exit code:
 #   - 0: all commands returned 0
 #   - Non-zero: The exit code of the last command that returned a non-zero exit code
+# bash-ide parse-func-sig
 bu_spawn_tmux_join_commands()
 {
     bu_log_info "Joining fds[$*]"
@@ -158,6 +152,7 @@ bu_spawn_tmux_stop_join_commands()
 }
 
 BU_TMUX_PANES_FILE=$BU_PROC_TMP_DIR/tmux_panes.txt
+# bash-ide parse-func-sig
 bu_spawn_init()
 {
     if ! bu_env_is_in_tmux

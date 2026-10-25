@@ -1,25 +1,21 @@
 # bash-ide source=./bu_core_autocomplete.sh
 
 # MARK: Top-level CLI
-# *Description*:
 # Sorts keys alphabetically
-# *Params*:
-# - stdin: Keys (space or line separated)
-# *Returns*:
-# - stdout: Sorted keys (one per line)
+#
+# @stdin Keys (space or line separated)
+# @stdout Sorted keys (one per line)
+# bash-ide parse-func-sig
 __bu_cli_sort_keys()
 {
     tr ' ' '\n' | sort
 }
 
-# *Description*:
 # Gets the properties of a bu sub-command
 #
-# *Params*
-# - `$1`: bu sub-command
-#
-# *Returns*
-# - `$BU_RET`: Properties of the command. One of `function`, `source`, `execute`, or `no-default-found`.
+# @arg $1 {string} bu_command bu sub-command
+# @set BU_RET Properties of the command. One of `function`, `source`, `execute`, or `no-default-found`.
+# bash-ide parse-func-sig
 __bu_cli_command_type()
 {
     local bu_command=$1
@@ -61,17 +57,15 @@ __bu_cli_command_type()
     BU_RET=$properties
 }
 
-# *Description*:
 # Format a command name with verb and noun colorized separately.
 # When the command has parsed verb/noun properties, the verb is colored blue,
 # the noun green, and the dash grey.  Otherwise the name is bold as-is.
 # Output is a %b-ready string already padded to COLWIDTH visible characters.
 #
-# *Params*:
-# - `$1`: command key
-# - `$2`: column width (default 30)
-#
-# *Returns*: stdout: padded, colorized command name
+# @arg $1 {string} key command key
+# @arg $2 {string} [colw=30] column width (default 30)
+# @stdout padded, colorized command name
+# bash-ide parse-func-sig
 __bu_cli_colorize_command_name()
 {
     local -r key=$1
@@ -97,14 +91,12 @@ __bu_cli_colorize_command_name()
     printf '%s%*s' "$display" "$padding" ''
 }
 
-# *Description*:
 # Convert a readline key-binding escape sequence to a human-readable
 # label (e.g. `\C-x` → `Ctrl-X`, `\ea` → `Alt-A`).
 #
-# *Params*:
-# - `$1`: Raw key sequence as stored in BU_KEY_BINDINGS
-#
-# *Returns*: stdout: colored human-readable label
+# @arg $1 {string} raw Raw key sequence as stored in BU_KEY_BINDINGS
+# @stdout colored human-readable label
+# bash-ide parse-func-sig
 __bu_cli_format_keybinding()
 {
     local -r raw=$1
@@ -128,14 +120,12 @@ __bu_cli_format_keybinding()
     fi
 }
 
-# *Description*:
 # Render the environment diagnostics section for the top-level help.
 # Shows platform, bash version, key capability status, and a summary
 # of any commands that are unavailable due to missing dependencies.
 #
-# *Params*: None
-#
-# *Returns*: None
+# @noargs
+# bash-ide parse-func-sig
 __bu_cli_environment_section()
 {
     local -r dim="${BU_TPUT_GREY}"
@@ -237,12 +227,10 @@ __bu_cli_environment_section()
     echo
 }
 
-# *Description*:
 # Displays help information for the master command
 #
-# *Params*: None
-#
-# *Returns*: None
+# @noargs
+# bash-ide parse-func-sig
 __bu_cli_help()
 {
     # Render the page as one uninterrupted document: shadow the pager setting
@@ -322,6 +310,7 @@ __bu_cli_help()
 
     # Helper: emit tab-separated rows from a command array, then pipe
     # through bu_out_from_tsv -> bu_format_table for auto-width rendering.
+    # bash-ide parse-func-sig
     __bu_cli_emit_command_table()
     {
         local -n _arr=$1
@@ -383,14 +372,10 @@ __bu_cli_help()
     fi
 } >&2
 
-# *Description*:
 # Generates automatic help documentation for a CLI script
 #
-# *Params*:
-# - `--description <description>`: Description of the script
-# - `--example <purpose> <command-line>`: Example command line and its purpose. Can be specified multiple times.
-#
-# *Returns*: None
+# @option --description <description>: Description of the script
+# @option --example <purpose> <command-line>: Example command line and its purpose. Can be specified multiple times.
 bu_autohelp()
 {
     set +e
@@ -671,6 +656,7 @@ eval "$BU_CLI_COMMAND_NAME"'() {
 # Always define bu
 if [[ "$BU_CLI_COMMAND_NAME" != bu ]]
 then
+    # bash-ide parse-func-sig
     bu() {
         local -A __bu_cli_caller_opts=()
         __bu_cli_shell_opts_enter
@@ -682,9 +668,9 @@ fi
 # The `set -o` options the CLI wrapper resets for the duration of a command.
 declare -g -a BU_CLI_RESET_SHELL_OPTIONS=(errexit nounset pipefail)
 
-# *Description*:
 # Save the caller's errexit/nounset/pipefail into the wrapper's
 # `__bu_cli_caller_opts` and turn them off. Always returns 0.
+# bash-ide parse-func-sig
 __bu_cli_shell_opts_enter()
 {
     local opt
@@ -701,14 +687,12 @@ __bu_cli_shell_opts_enter()
     return 0
 }
 
-# *Description*:
 # Restore the options saved by __bu_cli_shell_opts_enter (including any
 # change a command made through bu_cli_set_caller_shell_option)
 #
-# *Params*:
-# - `$1`: Exit status of the command
+# @arg $1 string Exit status of the command
 #
-# *Returns*:
+# @returns
 # - `$1`, unchanged
 __bu_cli_shell_opts_leave()
 {
@@ -725,17 +709,13 @@ __bu_cli_shell_opts_leave()
     return "$1"
 }
 
-# *Description*:
 # Read a `set -o` option as the caller of the `bu` command sees it. Inside a
 # command, errexit/nounset/pipefail are always off (the CLI wrapper resets
 # them), so commands reporting the caller's shell state read them here.
 # Outside the wrapper this is the live value.
 #
-# *Params*:
-# - `$1`: Option name (as listed by `set -o`)
-#
-# *Returns*:
-# - `BU_RET`: on or off
+# @arg $1 string Option name (as listed by `set -o`)
+# @set BU_RET on or off
 bu_cli_get_caller_shell_option()
 {
     if [[ -n "${__bu_cli_caller_opts[$1]+set}" ]]
@@ -750,18 +730,17 @@ bu_cli_get_caller_shell_option()
     return 0
 }
 
-# *Description*:
 # Set a `set -o` option in the shell of the `bu` command's caller. For the
 # options the CLI wrapper resets, the change is recorded so the wrapper
 # applies it on return instead of restoring the old value; every other
 # option is set directly.
 #
-# *Params*:
-# - `$1`: Option name (as listed by `set -o`)
-# - `$2`: on or off
+# @arg $1 {string} opt Option name (as listed by `set -o`)
+# @arg $2 {string} value on or off
 #
-# *Returns*:
+# @returns
 # - Exit code of `set`: non-zero for an unknown option
+# bash-ide parse-func-sig
 bu_cli_set_caller_shell_option()
 {
     local -r opt=$1
@@ -779,20 +758,19 @@ bu_cli_set_caller_shell_option()
     fi
 }
 
-# *Description*:
 # Row action for `bu show-command`, run inside bu view-table (its own
 # process) with the cursor record in BU_TV_RECORD. The last line printed
 # becomes the viewer's status message.
 #
-# *Params*:
-# - `$1`: `help` (page `bu NAME --help`), `preview` (print it, for the
+# @arg $1 {string} mode `help` (page `bu NAME --help`), `preview` (print it, for the
 #   preview pane), `open` (open the script, or where
 #   the function is defined, in $VISUAL / $EDITOR), `use` (queue NAME in
 #   BU_SHOW_COMMAND_QUEUE and quit the viewer), `all` (toggle the
 #   collision-parked commands on the next reload)
 #
-# *Returns*:
+# @returns
 # - Non-zero shows as a failure on the status line
+# bash-ide parse-func-sig
 __bu_cli_show_command_action()
 {
     local -r mode=$1

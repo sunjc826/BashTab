@@ -1,10 +1,11 @@
-#!/usr/bin/env bash
+# !/usr/bin/env bash
 # Pipeline: transform
 # Requires-Any: Names ID name id
 # Fields: container action removed error
 # Dispatch: source
 # Synopsis: Remove a Docker container
 # Completion helper: all container names from docker ps -a.
+# bash-ide parse-func-sig
 __bu_bu_remove_docker_container_complete_containers()
 {
     BU_RET=()

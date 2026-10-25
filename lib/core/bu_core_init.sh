@@ -4,6 +4,7 @@
 # bash-ide source=../../config/bu_config_static.sh
 
 # MARK: Initialization logic
+# bash-ide parse-func-sig
 __bu_init_env()
 {
     bu_env_append_path "$BU_LIB_BIN_DIR"
@@ -62,6 +63,7 @@ __bu_bind_x_run()
     : "$(stty "$__bu_bx_pre" </dev/tty 2>/dev/null)"
 }
 
+# bash-ide parse-func-sig
 __bu_init_keybindings()
 {
     if [[ $- == *i* ]]
@@ -89,6 +91,7 @@ __bu_init_keybindings()
 
 BU_DEFAULT_EDITOR=${VISUAL:-}
 BU_DEFAULT_TERMINAL_EDITOR=${EDITOR:-}
+# bash-ide parse-func-sig
 __bu_init_editor()
 {
     if [[ -n "$BU_DEFAULT_EDITOR" || -n "$BU_DEFAULT_TERMINAL_EDITOR" ]]
@@ -131,6 +134,7 @@ __bu_init_editor()
 # Though note that the code CLI binary in /mnt/c and 
 # the vscode server code CLI binary in ~/.vscode-server
 # are 2 different binaries, though with similar options.
+# bash-ide parse-func-sig
 __bu_init_remote_vscode()
 {
     # Check if this is a vscode server environment
@@ -205,6 +209,7 @@ __bu_init_remote_vscode()
     fi
 }
 
+# bash-ide parse-func-sig
 __bu_init_tmux()
 {
     if ! bu_env_is_in_tmux
@@ -217,6 +222,7 @@ __bu_init_tmux()
     tmux set-option window-status-current-format '#I:#{?@bu_use_window_name,#{window_name},#{b:pane_current_path}}#F'
 }
 
+# bash-ide parse-func-sig
 __bu_init_autocomplete()
 {
     # Keep NAME@VALUE together for programmable completion (like bash-completion).
@@ -262,6 +268,7 @@ __bu_init_autocomplete()
     fi
 }
 
+# bash-ide parse-func-sig
 bu_init()
 {
     __bu_init_env

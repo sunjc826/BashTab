@@ -245,6 +245,7 @@ fi
 #   _mb_inside   – content between opener and closer (the old block body)
 #   _mb_after    – content after the closer (may be empty)
 #   _mb_ok       – true if markers are valid (0/0 or 1/1), false on degeneracy
+# bash-ide parse-func-sig
 __bu_set_config_parse_block()
 {
     local content
@@ -319,6 +320,7 @@ __bu_set_config_parse_block()
 
 # Read managed pairs from the inside block content.
 # Sets _mb_pairs as an associative array: NAME → value
+# bash-ide parse-func-sig
 __bu_set_config_read_pairs()
 {
     local inside=$1
@@ -334,6 +336,7 @@ __bu_set_config_read_pairs()
 
 # Build the new file content and write atomically.
 # Args: the new managed block body (one NAME=value per line, sorted).
+# bash-ide parse-func-sig
 __bu_set_config_write_block()
 {
     local new_body=$1
@@ -369,6 +372,7 @@ __bu_set_config_write_block()
 # and emit an advisory warning. Never blocks the write.
 # Position-aware: after-block lines override the managed value;
 # before-block lines lose to it.
+# bash-ide parse-func-sig
 __bu_set_config_warn_outside_assignments()
 {
     local name=$1

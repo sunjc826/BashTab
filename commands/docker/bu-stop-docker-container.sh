@@ -1,10 +1,11 @@
-#!/usr/bin/env bash
+# !/usr/bin/env bash
 # Pipeline: transform
 # Requires-Any: Names ID name id
 # Fields: container action stopped error
 # Dispatch: source
 # Synopsis: Stop a running Docker container
 # Completion helper: running container names from docker ps.
+# bash-ide parse-func-sig
 __bu_bu_stop_docker_container_complete_containers()
 {
     BU_RET=()

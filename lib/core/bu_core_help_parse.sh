@@ -26,20 +26,19 @@ bu_mkdir "$__BU_HELP_PARSE_CACHE_DIR"
 # runs its declare) write to an associative array, not an indexed one.
 declare -A -g __BU_HELP_PARSE_CACHE_MAP=()
 
-# *Description*:
 # Register a parse strategy for a command.  Modules and preinit scripts
 # should call this to declare how a particular command's help should be
 # parsed.
 #
-# *Params*:
-# - `$1`: Command name (e.g. "git", "docker")
-# - `$2`: Strategy: gnu, usage, or man
+# @arg $1 {string} cmd Command name (e.g. "git", "docker")
+# @arg $2 {string} strategy Strategy: gnu, usage, or man
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_register_help_strategy git usage
 # bu_register_help_strategy find man
 # ```
+# bash-ide parse-func-sig
 bu_register_help_strategy()
 {
     local -r cmd=$1
@@ -54,14 +53,11 @@ bu_register_help_strategy()
     __BU_HELP_PARSE_STRATEGY[$cmd]=$strategy
 }
 
-# *Description*:
 # Normalize a command name into a cache key (path → basename, slashes → dashes).
 #
-# *Params*:
-# - `$1`: Command name (e.g. "git", "docker-compose", "/usr/bin/tar")
-#
-# *Returns*:
-# - stdout: Cache-safe key
+# @arg $1 {string} key Command name (e.g. "git", "docker-compose", "/usr/bin/tar")
+# @stdout Cache-safe key
+# bash-ide parse-func-sig
 __bu_help_parse_cache_key()
 {
     local key=$1
@@ -74,6 +70,7 @@ __bu_help_parse_cache_key()
 # Strategy: gnu — parse "  -o, --option  DESC" lines from --help
 # ═══════════════════════════════════════════════════════════════════════
 
+# bash-ide parse-func-sig
 __bu_help_parse_gnu()
 {
     local -r cmd=$1
@@ -183,6 +180,7 @@ __bu_help_parse_gnu()
 # No descriptions are available; options get an empty-string value.
 # ═══════════════════════════════════════════════════════════════════════
 
+# bash-ide parse-func-sig
 __bu_help_parse_usage()
 {
     local -r cmd=$1
@@ -304,6 +302,7 @@ __bu_help_parse_usage()
 # Root for Fig spec lookups, captured at source time
 __BU_HELP_PARSE_FIG_ROOT=$(realpath -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." 2>/dev/null)
 
+# bash-ide parse-func-sig
 __bu_help_parse_fig()
 {
     local -r cmd=$1
@@ -362,6 +361,7 @@ __bu_help_parse_fig()
 # Strategy: man — parse "man <cmd>" OPTIONS section (stub / future)
 # ═══════════════════════════════════════════════════════════════════════
 
+# bash-ide parse-func-sig
 __bu_help_parse_man()
 {
     local -r cmd=$1
@@ -374,17 +374,14 @@ __bu_help_parse_man()
 # Dispatcher + caching layer
 # ═══════════════════════════════════════════════════════════════════════
 
-# *Description*:
 # Resolve the effective strategy for a command.  Checks:
 # 1. Explicit registration (__BU_HELP_PARSE_STRATEGY)
 # 2. Fig spec existence (if spec file exists, use fig)
 # 3. Default to gnu (with usage fallback)
 #
-# *Params*:
-# - `$1`: Command name
-#
-# *Returns*:
-# - stdout: Strategy name (fig, gnu, usage, or man), or empty
+# @arg $1 {string} cmd Command name
+# @stdout Strategy name (fig, gnu, usage, or man), or empty
+# bash-ide parse-func-sig
 __bu_help_parse_resolve_strategy()
 {
     local -r cmd=$1
@@ -410,15 +407,14 @@ __bu_help_parse_resolve_strategy()
     return 1
 }
 
-# *Description*:
 # Compute the cache hash for a command + strategy combination.  We hash the
 # strategy name together with the command's help output so that switching
 # strategies for a command invalidates the old cache.
 #
-# *Params*:
-# - `$1`: Command to run
-# - `$2`: Strategy name (gnu, usage, man)
-# - nameref `$3`: Output variable for the hash (empty on failure)
+# @arg $1 {string} cmd Command to run
+# @arg $2 {string} strategy Strategy name (gnu, usage, man)
+# @arg $3 {var} _out Output variable for the hash (empty on failure)
+# bash-ide parse-func-sig
 __bu_help_parse_hash()
 {
     local -r cmd=$1
@@ -455,14 +451,12 @@ __bu_help_parse_hash()
     [[ -n "$_out" ]]
 }
 
-# *Description*:
 # Run the appropriate strategy for a command and populate the global
 # associative array __BU_HELP_PARSE_CACHE_MAP.
 #
-# *Params*:
-# - `$1`: Command to run (e.g. "grep", "git")
+# @arg $1 {string} cmd Command to run (e.g. "grep", "git")
 #
-# *Returns*:
+# @returns
 # - 0 on success, 1 if no strategy produced results
 # - Populates __BU_HELP_PARSE_CACHE_MAP assoc: option token → description
 __bu_help_parse_run()
@@ -552,15 +546,13 @@ __bu_help_parse_run()
     return 0
 }
 
-# *Description*:
 # Get option descriptions for a command.  Runs --help / man on first call
 # and caches the result; subsequent calls return instantly from cache.
 #
-# *Params*:
-# - `$1`: Command name or path (e.g. "grep", "/usr/bin/tar", "git")
-# - `$2`: Name of an associative array to populate (nameref)
+# @arg $1 {string} cmd Command name or path (e.g. "grep", "/usr/bin/tar", "git")
+# @arg $2 {var} _out Name of an associative array to populate (nameref)
 #
-# *Returns*:
+# @returns
 # - 0 on success (array may be empty if no options found)
 # - 1 if no strategy produced results or command not found
 # - Populates the nameref array: option token → description
@@ -584,23 +576,22 @@ __bu_help_parse_get()
     return 0
 }
 
-# *Description*:
 # Enrich BU_COMPREPLY_METADATA with option descriptions for external
 # commands, using Fig specs when available or --help parsing as fallback.
 # Called during fzf autocomplete binding after completions are generated.
 #
-# *Params*:
-# - nameref `$1`: COMPREPLY array of completion candidates
-# - nameref `$2`: BU_COMPREPLY_METADATA array to enrich
-# - `$3 ...`: Full command-line tokens (e.g. "git" "commit" "-m")
+# @arg $1 {var} _comps COMPREPLY array of completion candidates
+# @arg $2 {var} _meta BU_COMPREPLY_METADATA array to enrich
+# @arg $@ {string} args... Full command-line tokens (e.g. "git" "commit" "-m")
 #
-# *Returns*:
+# @returns
 # - Sets BU_RET to "true" if preview should be shown, "false" otherwise
 #
-# *Notes*:
+# @notes
 # - The first token ($3) is the command name.  Remaining tokens before the
 #   cursor (typically all but the last) are used to resolve the subcommand
 #   path for Fig specs.
+# bash-ide parse-func-sig
 __bu_help_enrich_preview()
 {
     local -n _comps=$1

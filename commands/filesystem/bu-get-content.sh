@@ -118,6 +118,7 @@ then
 fi
 
 # Emit one file's lines as TSV: path <TAB> line_number <TAB> line
+# bash-ide parse-func-sig
 __bu_get_content_file_tsv()
 {
     local path=$1

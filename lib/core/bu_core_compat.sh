@@ -8,6 +8,7 @@
 
 bu_env_prepend_path "$BU_SHIMS_DIR"
 
+# bash-ide parse-func-sig
 function __bu_compat_shim_install()
 {
     local shim_name=$1
@@ -43,6 +44,7 @@ function __bu_compat_shim_install()
     bu_log_info "Symlinking $shim_location -> $binary_fullpath"
 }
 
+# bash-ide parse-func-sig
 function __bu_compat_macos()
 {
     # https://formulae.brew.sh/formula/findutils
@@ -57,6 +59,7 @@ function __bu_compat_macos()
 # on nested quantifiers, turning 1ms awk calls into 15s; keep regexes such as
 # __BU_AUTOCOMPLETE_OPTION_REGEX unambiguous so mawk-only systems stay usable)
 # BSD awk also doesn't support certain features
+# bash-ide parse-func-sig
 function __bu_compat_gawk()
 {
     if command -v gawk &>/dev/null; then

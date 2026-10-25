@@ -29,17 +29,16 @@ BU_BUILTIN_COMMANDS_DIR=$BU_DIR/commands
 # 3. Non-empty: Same as above
 BU_NULL=BU_NULL
 
-# *Description*:
 # Log a message with a given log level prefix
 #
-# *Params*:
-# - `$1`: log level prefix (e.g., DEBUG, INFO, WARN, ERR)
-# - `...`: message to log
+# @arg $1 {string} log_prefix log level prefix (e.g., DEBUG, INFO, WARN, ERR)
+# @arg $@ {string} args... message to log
 #
-# *Examples*:
+# @example
 # ```bash
 # __bu_basic_log INFO "This is an info message"
 # ```
+# bash-ide parse-func-sig
 __bu_basic_log()
 {
     local log_prefix=$1
@@ -48,11 +47,10 @@ __bu_basic_log()
     printf '%s %s\n' "$log_prefix" "$*" >&2
 }
 
-# *Description*:
 # Log a debug message
 #
-# *Params*:
-# - `...`: message to log
+# @arg $@ {string} args... message to log
+# bash-ide parse-func-sig
 bu_basic_log_debug()
 {
     # Bootstrap debug logs (e.g. "sourcing(--__bu-once) ...") fire before the
@@ -62,45 +60,41 @@ bu_basic_log_debug()
     __bu_basic_log DEBUG "$*"
 }
 
-# *Description*:
 # Log an info message
 #
-# *Params*:
-# - `...`: message to log
+# @arg $@ {string} args... message to log
+# bash-ide parse-func-sig
 bu_basic_log_info()
 {
     __bu_basic_log INFO "$*"
 }
 
-# *Description*:
 # Log a warning message
 #
-# *Params*:
-# - `...`: message to log
+# @arg $@ {string} args... message to log
+# bash-ide parse-func-sig
 bu_basic_log_warn()
 {
     __bu_basic_log WARN "$*"
 }
 
-# *Description*:
 # Log an error message
 #
-# *Params*:
-# - `...`: message to log
+# @arg $@ {string} args... message to log
+# bash-ide parse-func-sig
 bu_basic_log_err()
 {
     __bu_basic_log ERR "$*"
 }
 
-# *Description*:
 # Check if a variable is BU_NULL
 #
-# *Params*:
-# - `$1`: variable to check
+# @arg $1 string variable to check
 #
-# *Returns*:
+# @returns
 # - Returns 0 (true) if the variable is BU_NULL, else returns 1 (false)
-# *Examples*:
+#
+# @example
 # ```bash
 # bu_is_null "$VAR"
 # ```
@@ -109,15 +103,14 @@ bu_is_null()
     [[ "$1" = BU_NULL ]]
 }
 
-# *Description*:
 # Check if a variable is BU_NULL or empty
 #
-# *Params*:
-# - `$1`: variable to check
+# @arg $1 string variable to check
 #
-# *Returns*:
+# @returns
 # - Returns 0 (true) if the variable is BU_NULL or empty, else returns 1 (false)
-# *Examples*:
+#
+# @example
 # ```bash
 # bu_is_null_or_empty "$VAR"
 # ```
@@ -126,15 +119,14 @@ bu_is_null_or_empty()
     [[ -z "$1" || "$1" = BU_NULL ]]
 }
 
-# *Description*:
 # Check if a variable is not BU_NULL
 #
-# *Params*:
-# - `$1`: variable to check
+# @arg $1 string variable to check
 #
-# *Returns*:
+# @returns
 # - Returns 0 (true) if the variable is not BU_NULL, else returns 1 (false)
-# *Examples*:
+#
+# @example
 # ```bash
 # bu_is_not_null "$VAR"
 # ```
@@ -143,15 +135,14 @@ bu_is_not_null()
     [[ "$1" != BU_NULL ]]
 }
 
-# *Description*:
 # Check if a variable is not BU_NULL and not empty
 #
-# *Params*:
-# - `$1`: variable to check
+# @arg $1 string variable to check
 #
-# *Returns*:
+# @returns
 # - Returns 0 (true) if the variable is not BU_NULL and not empty, else returns 1 (false)
-# *Examples*:
+#
+# @example
 # ```bash
 # bu_is_not_null_or_empty "$VAR"
 # ```
@@ -160,16 +151,12 @@ bu_is_not_null_or_empty()
     [[ -n "$1" && "$1" != BU_NULL ]]
 }
 
-# *Description*:
 # Get directory name of a filepath. Similar to `dirname` except that no process is spawned.
 #
-# *Params*:
-# - `$1`: a filepath
+# @arg $1 string a filepath
+# @set BU_RET directory name of the filepath
 #
-# *Returns*:
-# - `$BU_RET`: directory name of the filepath
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_dirname /a/b/c.txt # $BU_RET=/a/b
 # ```
@@ -181,6 +168,7 @@ bu_dirname()
     esac
 }
 
+# bash-ide parse-func-sig
 bu_pushd_current()
 {
     local bash_source=$1
@@ -188,16 +176,12 @@ bu_pushd_current()
     pushd "$BU_RET" &>/dev/null
 }
 
-# *Description*:
 # Get base name of a filepath. Similar to `basename` except that no process is spawned.
 #
-# *Params*:
-# - `$1`: a filepath
+# @arg $1 string a filepath
+# @set BU_RET base name of the filepath
 #
-# *Returns*:
-# - `$BU_RET`: base name of the filepath
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_basename /a/b/c.txt # $BU_RET=c.txt
 # ```
@@ -209,22 +193,19 @@ bu_basename()
     esac
 }
 
-# *Description*:
 # Split a string into an array by a given separator
 #
-# *Params*:
-# - `$1`: Separator
-# - `$2`: String to split
-# - `$3` (optional): Name of the array to store the result in (default: `BU_RET`)
+# @arg $1 {string} ifs Separator
+# @arg $2 {string} to_split String to split
+# @arg $3 {string} [ret=BU_RET] Name of the array to store the result in
+# @set BU_RET or the array named in `$3`: Array of split entries
 #
-# *Returns*:
-# - `$BU_RET` or the array named in `$3`: Array of split entries
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_str_split , "a,b,c" # ${BU_RET[@]}=(a b c)
 # bu_str_split , "a,b,c" MY_ARR # ${MY_ARR[@]}=(a b c)
 # ```
+# bash-ide parse-func-sig
 bu_str_split()
 {
     local ifs=$1
@@ -260,28 +241,27 @@ BU_SOURCE_IS_AUTOPUSHD=${BU_SOURCE_IS_AUTOPUSHD:-false}
 BU_SOURCE_IS_INLINE=${BU_SOURCE_IS_INLINE:-false}
 BU_SOURCE_INLINE_OUTPUT=${BU_SOURCE_INLINE_OUTPUT:-}
 
-# *Description*:
 # Define a custom source function that supports additional options
 #
-# *Params*:
-# - `$1`: filepath to source
-# - `--__bu-once` (Optional): Source the file only if it hasn't been sourced before
-# - `--__bu-no-pushd` (Optional): Don't automatically pushd into the directory of the sourced file
-# - `...`: additional arguments to pass to the sourced file
+# *Bug*:
+# Top level `declare` (without `-g`) in a script is broken because we are inside a function
 #
-# *Examples*:
+# @arg $1 string filepath to source
+# @arg $@ {string} args... additional arguments to pass to the sourced file
+# @option --__bu-once (Optional): Source the file only if it hasn't been sourced before
+# @option --__bu-no-pushd (Optional): Don't automatically pushd into the directory of the sourced file
+#
+# @example
 # ```bash
 # bu_def_source
 # source my_script.sh --__bu-once --__bu-no-pushd
 # ```
-#
-# *Bug*:
-# Top level `declare` (without `-g`) in a script is broken because we are inside a function
 bu_def_source()
 {
     # Set BU_SOURCE_IS_CUSTOM to indicate that we have defined a custom source function
     # Avoids the need to check whether "$(type -t source)" is "builtin" or "function"
     BU_SOURCE_IS_CUSTOM=true
+    # bash-ide parse-func-sig
     source()
     {
         local source_filepath=$1
@@ -446,18 +426,18 @@ bu_def_source()
     }
 }
 
-# *Description*:
 # Undefine the custom source function and restore the builtin source
+# bash-ide parse-func-sig
 bu_undef_source()
 {
     unset -f source
     BU_SOURCE_IS_CUSTOM=false
 }
 
-# *Description*:
 # If the custom source function is defined, use it to source the given file(s).
 # Otherwise, temporarily define the custom source function, use it to source the given file(s),
 # and then undefine the custom source function.
+# bash-ide parse-func-sig
 bu_source()
 {
     if "$BU_SOURCE_IS_CUSTOM"
@@ -472,13 +452,13 @@ bu_source()
     fi
 }
 
-# *Description*:
 # If the custom source function is defined, undefine it, use the builtin source to source the given file(s),
 # and then redefine the custom source function.
 # Otherwise, use the builtin source to source the given file(s).
 #
 # *Bug*:
 # Top level `declare` (without `-g`) in a script is broken because we are inside a function
+# bash-ide parse-func-sig
 bu_ext_source()
 {
     if "$BU_SOURCE_IS_CUSTOM"
@@ -493,8 +473,8 @@ bu_ext_source()
     fi
 }
 
-# *Description*:
 # Source multiple files using the custom source function, ensuring each file is sourced only once.
+# bash-ide parse-func-sig
 bu_source_multi_once()
 {
     if ! "$BU_SOURCE_IS_CUSTOM" && (($#))
@@ -511,8 +491,8 @@ bu_source_multi_once()
     fi
 }
 
-# *Description*:
 # Source multiple files.
+# bash-ide parse-func-sig
 bu_source_multi()
 {
     local filepath

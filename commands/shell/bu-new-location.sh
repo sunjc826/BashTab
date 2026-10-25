@@ -171,6 +171,7 @@ fi
 local _mb_before _mb_inside _mb_after _mb_ok _mb_oc _mb_cc
 local -A _lines=()
 
+# bash-ide parse-func-sig
 __bu_new_location_parse_block()
 {
     local content=
@@ -228,6 +229,7 @@ __bu_new_location_parse_block()
     fi
 }
 
+# bash-ide parse-func-sig
 __bu_new_location_read_lines()
 {
     local inside=$1
@@ -244,6 +246,7 @@ __bu_new_location_read_lines()
     done <<<"$inside"
 }
 
+# bash-ide parse-func-sig
 __bu_new_location_write_block()
 {
     mkdir -p "${file%/*}"

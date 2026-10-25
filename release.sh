@@ -28,15 +28,19 @@ set -euo pipefail
 
 : "${MAIN_BRANCH:=main}"
 
+# bash-ide parse-func-sig
 log()  { printf '%s\n' "$*" >&2; }
+# bash-ide parse-func-sig
 die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
+# bash-ide parse-func-sig
 usage() {
     awk 'NR==1{next} /^set -euo pipefail$/{exit} {sub(/^# ?/, ""); print}' "${BASH_SOURCE[0]}"
 }
 
 # Resolve the repository root. The release script lives at the repo root,
 # so its own directory *is* the root (mirrors bu_entrypoint.sh's convention).
+# bash-ide parse-func-sig
 repo_root() {
     local src=${BASH_SOURCE[0]}
     local dir
@@ -56,6 +60,7 @@ git_ref_exists() {
 #
 # Returns:
 # - stdout: the next tag, e.g. "v2026.08.15" or "v2026.08.15.2"
+# bash-ide parse-func-sig
 compute_next_tag() {
     local today base
     today=$(date -u +%Y.%m.%d)

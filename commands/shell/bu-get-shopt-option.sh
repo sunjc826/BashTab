@@ -180,6 +180,7 @@ bu_scope_pop_function
 }
 
 # Completion helper: valid shopt option names (shared with set-shopt-option).
+# bash-ide parse-func-sig
 __bu_bu_shopt_complete_names()
 {
     BU_RET=()

@@ -110,6 +110,7 @@ bu_scope_pop_function
 }
 
 # Completion helper: commands that have a registered completion spec.
+# bash-ide parse-func-sig
 __bu_bu_get_completion_complete_names()
 {
     BU_RET=()

@@ -1,10 +1,11 @@
-#!/usr/bin/env bash
+# !/usr/bin/env bash
 # Pipeline: transform
 # Requires-Any: unit name
 # Fields: unit action restarted error
 # Dispatch: source
 # Synopsis: Restart a system service
 # Completion helper: unit names from the live system (units + service unit files).
+# bash-ide parse-func-sig
 __bu_bu_restart_service_complete_units()
 {
     BU_RET=()

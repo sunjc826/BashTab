@@ -9,16 +9,12 @@
 # bash-ide source=./bu_core_autocomplete.sh
 # bash-ide source=./bu_core_cache.sh
 
-# *Description*:
 # Read an explicit `# Dispatch: <type>` declaration from a command script
 # header (first 8 lines).  Returns `source` or `execute` in BU_RET, or
 # empty when the script declares no dispatch intent.
 #
-# *Params*:
-# - `$1`: Path to the command script
-#
-# *Returns*:
-# - BU_RET: declared dispatch type, or empty
+# @arg $1 {string} file Path to the command script
+# @set BU_RET declared dispatch type, or empty
 __bu_command_dispatch_decl()
 {
     BU_RET=
@@ -38,7 +34,6 @@ __bu_command_dispatch_decl()
     return 0
 }
 
-# *Description*:
 # List the command candidates of a command search dir, decided from the file
 # name alone so no other file in it is opened: a BU_COMMAND_FILE_EXTENSIONS
 # extension, not a dotfile, not a `_*` helper (which includes the generated
@@ -47,11 +42,9 @@ __bu_command_dispatch_decl()
 # blank lines are ignored).  BU_COMMAND_SEARCH_DIR_RECURSIVE=false limits it
 # to the dir itself.
 #
-# *Params*:
-# - `$1`: Command search dir
-#
-# *Returns*:
-# - `BU_RET`: candidate paths, relative to the dir
+# @arg $1 {string} dir Command search dir
+# @set BU_RET candidate paths, relative to the dir
+# bash-ide parse-func-sig
 __bu_command_dir_candidates()
 {
     local -r dir=$1
@@ -99,6 +92,7 @@ __bu_command_dir_candidates()
     return 0
 }
 
+# bash-ide parse-func-sig
 __bu_init_env_commands()
 {
     # ── Recursion guard for --is-compatible probes ──
@@ -324,11 +318,11 @@ __bu_init_env_commands()
     fi
 }
 
-# *Description*:
 # Run the deferred command-registry scan if BU_COMMAND_SCAN_LAZY deferred it.
 # Called at the top of the CLI dispatcher and completion entry point so the
 # first by-name dispatch or completion transparently completes initialization.
 # Cheap no-op when the scan already ran.
+# bash-ide parse-func-sig
 bu_ensure_command_scan()
 {
     if [[ "${__BU_COMMAND_SCAN_PENDING:-false}" != true ]]; then

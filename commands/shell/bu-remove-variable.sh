@@ -1,10 +1,11 @@
-#!/usr/bin/env bash
+# !/usr/bin/env bash
 # Pipeline: transform
 # Requires-All: name
 # Fields: name removed error
 # Dispatch: source
 # Synopsis: Unset a shell variable
 # Completion helper: currently set variable names.
+# bash-ide parse-func-sig
 __bu_bu_remove_variable_complete_names()
 {
     BU_RET=()

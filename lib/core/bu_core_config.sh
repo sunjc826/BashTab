@@ -92,17 +92,16 @@ declare -a -g __BU_CONFIG_ENUM_HAND_KEPT_LINES=()
 declare -a -g __BU_CONFIG_VALIDATE_ROWS=()
 declare -a -g __BU_CONFIG_REFRESH_ROWS=()
 
-# *Description*:
 # Validate a setting name against the configured name prefixes.
 # Returns 0 if the name starts with one of the prefixes listed in
 # BU_CONFIG_NAME_PREFIXES and contains only uppercase letters, digits,
 # and underscores after the prefix.
 #
-# *Params*:
-# - `$1`: Setting name to validate
+# @arg $1 {string} name Setting name to validate
 #
-# *Returns*:
+# @returns
 # - 0 if the name is valid, 1 otherwise
+# bash-ide parse-func-sig
 bu_config_name_is_valid()
 {
     local -r name=$1
@@ -117,15 +116,14 @@ bu_config_name_is_valid()
     return 1
 }
 
-# *Description*:
 # Register a named persistence layer with a resolver function.
 # The resolver is called by bu_config_layer_file and should print
 # the layer's settings file path to stdout for the current context.
 #
-# *Params*:
-# - `$1`: Layer name (must be usable as a shell identifier)
-# - `$2`: Resolver function name (called with any extra args passed to
+# @arg $1 {string} name Layer name (must be usable as a shell identifier)
+# @arg $2 {string} resolver Resolver function name (called with any extra args passed to
 #   bu_config_layer_file)
+# bash-ide parse-func-sig
 bu_config_register_layer()
 {
     local name=$1
@@ -134,17 +132,16 @@ bu_config_register_layer()
     return 0
 }
 
-# *Description*:
 # Resolve a named layer to its settings file path.
 # The "local" layer (and empty name) resolve to the machine-local file.
 #
-# *Params*:
-# - `$1`: Layer name (`local` or a registered layer)
-# - `...`: Extra arguments forwarded to the layer's resolver function
+# @arg $1 {string} name Layer name (`local` or a registered layer)
+# @arg $@ {string} args... Extra arguments forwarded to the layer's resolver function
+# @set BU_RET the resolved file path
 #
-# *Returns*:
-# - `BU_RET`: the resolved file path
+# @returns
 # - Exit code: 0 on success, 1 if the layer name is unknown
+# bash-ide parse-func-sig
 bu_config_layer_file()
 {
     local name=$1
@@ -171,12 +168,10 @@ bu_config_layer_file()
     return 0
 }
 
-# *Description*:
 # Register a runtime setting with metadata.
 #
-# *Params*:
-# - `$1`: Setting name (must start with one of the configured prefixes)
-# - `...`: DSL specifiers, processed left to right:
+# @arg $1 string Setting name (must start with one of the configured prefixes)
+# @arg $@ {string} args... DSL specifiers, processed left to right:
 #   - `--default VALUE`: value restored by `bu set-config --unset`
 #   - `--bool`: value must be `true` or `false`
 #   - `--enum a b:2 c enum--`: allowed values; optional `name:mapped` form
@@ -202,7 +197,7 @@ bu_config_layer_file()
 #   - `--default-for VARIANT VALUE`: (repeatable) the default while the
 #     phase's variant is VARIANT, instead of --default
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_config_register BU_LOG_LVL --default 2 \
 #     --enum debug:0 info:1 warn:2 err:3 silence:99 enum-- \
@@ -415,14 +410,11 @@ bu_config_register()
     return 0
 }
 
-# *Description*:
 # List the names of the settings registered in a config phase.
 #
-# *Params*:
-# - `$1`: Phase name
-#
-# *Returns*:
-# - `BU_RET`: the setting names, sorted
+# @arg $1 {string} phase Phase name
+# @set BU_RET the setting names, sorted
+# bash-ide parse-func-sig
 __bu_config_phase_settings()
 {
     local -r phase=$1
@@ -449,25 +441,23 @@ __bu_config_phase_settings()
     return 0
 }
 
-# *Description*:
 # Open a config phase: settings registered until bu_config_phase_end belong
 # to it. Running a phase again (re-activation) first drops its previous
 # registrations, so settings that are no longer registered disappear, and
 # resets their values unless exported.
 #
-# *Params*:
-# - `$1`: Phase name (lowercase letters, digits, `_` and `-`)
-# - `--static` (optional): resolve once per shell; values are exported and
+# @arg $1 {string} phase Phase name (lowercase letters, digits, `_` and `-`)
+# @option --static (optional): resolve once per shell; values are exported and
 #   final. Beginning a static phase that is already final re-checks it
 #   instead: registrations are ignored and bu_config_phase_end restores any
 #   changed value.
-# - `--variant VARIANT` (optional): the active variant (e.g. a profile): its
+# @option --variant VARIANT (optional): the active variant (e.g. a profile): its
 #   settings file bu_config_local.PHASE.VARIANT.sh is sourced after the
 #   phase's shared one, and `--default-for VARIANT` defaults apply. Settings
 #   registered only for some variants come and go as the phase runs again.
-# - `--prefix PREFIX` (optional): every setting of the phase must start with
+# @option --prefix PREFIX (optional): every setting of the phase must start with
 #   PREFIX, so phases (e.g. profiles) cannot collide by accident
-# - `--settings-file [ORIGIN:]PATH` (optional, repeatable): one more settings
+# @option --settings-file [ORIGIN:]PATH (optional, repeatable): one more settings
 #   file of the phase, attributed as ORIGIN (default `local`; not one of the
 #   reserved `env`, `shell`, `default`, `callback`, `site`). Split at the
 #   first colon; a relative PATH is resolved against $PWD now. Files are
@@ -478,7 +468,8 @@ __bu_config_phase_settings()
 #   `--settings-file user:$HOME/.myapp.sh --settings-file local
 #   --settings-file profile:profiles/$P.sh`
 #
-# *Returns*: None (always 0; errors are logged)
+# @returns None (always 0; errors are logged)
+# bash-ide parse-func-sig
 bu_config_phase_begin()
 {
     local -r phase=$1
@@ -570,14 +561,13 @@ bu_config_phase_begin()
     return 0
 }
 
-# *Description*:
 # Drop a config phase's registrations, unsetting their values unless
 # exported (the user's).
 #
-# *Params*:
-# - `$1`: Phase name
+# @arg $1 {string} phase Phase name
 #
-# *Returns*: None (always 0)
+# @returns None (always 0)
+# bash-ide parse-func-sig
 __bu_config_phase_drop()
 {
     local -r phase=$1
@@ -605,14 +595,13 @@ __bu_config_phase_drop()
     return 0
 }
 
-# *Description*:
 # Unload a (non-static) config phase, e.g. to deactivate a profile: drop its
 # registrations and unset its values, except exported ones.
 #
-# *Params*:
-# - `$1`: Phase name
+# @arg $1 {string} phase Phase name
 #
-# *Returns*: None (always 0; errors are logged)
+# @returns None (always 0; errors are logged)
+# bash-ide parse-func-sig
 bu_config_phase_unload()
 {
     local -r phase=$1
@@ -628,20 +617,17 @@ bu_config_phase_unload()
     return 0
 }
 
-# *Description*:
 # List a config phase's built-in settings files, in order (later files win).
 # For each level, the checkout's file comes first, then the embedder's
 # BU_CONFIG_LOCAL_FILE counterpart. The main phase uses bu_config_local.sh
 # itself plus site/*.sh; another phase PHASE uses bu_config_local.PHASE.sh,
 # then, with an active variant, bu_config_local.PHASE.VARIANT.sh.
 #
-# *Params*:
-# - `$1`: Phase name
-# - `$2` (optional): `true` to include files that do not exist (site files
+# @arg $1 {string} phase Phase name
+# @arg $2 {string} [include_missing=false] `true` to include files that do not exist (site files
 #   are always only the existing ones)
-#
-# *Returns*:
-# - `BU_RET`: "ORIGIN:PATH" entries
+# @set BU_RET "ORIGIN:PATH" entries
+# bash-ide parse-func-sig
 __bu_config_phase_builtin_files()
 {
     local -r phase=$1
@@ -684,7 +670,6 @@ __bu_config_phase_builtin_files()
     return 0
 }
 
-# *Description*:
 # List the settings files a config phase reads, in the order
 # bu_config_phase_end sources them (later files win): its extra files
 # (`bu_config_phase_begin --settings-file`) with the built-in files expanded
@@ -692,11 +677,9 @@ __bu_config_phase_builtin_files()
 # do not exist are included (bu_config_phase_end skips them), so a doctor
 # command can show where the phase would read its settings from.
 #
-# *Params*:
-# - `$1`: Phase name
-#
-# *Returns*:
-# - `BU_RET`: "ORIGIN:PATH" entries
+# @arg $1 {string} phase Phase name
+# @set BU_RET "ORIGIN:PATH" entries
+# bash-ide parse-func-sig
 bu_config_phase_files()
 {
     local -r phase=$1
@@ -719,15 +702,11 @@ bu_config_phase_files()
     return 0
 }
 
-# *Description*:
 # The settings files a config phase sources (bu_config_phase_files), only
 # those that exist.
 #
-# *Params*:
-# - `$1`: Phase name
-#
-# *Returns*:
-# - `BU_RET`: "ORIGIN:PATH" entries for the files that exist
+# @arg $1 string Phase name
+# @set BU_RET "ORIGIN:PATH" entries for the files that exist
 __bu_config_phase_files()
 {
     local entry
@@ -741,18 +720,15 @@ __bu_config_phase_files()
     return 0
 }
 
-# *Description*:
 # Origin label of a file a config phase reads (bu_config_phase_files), for
 # `bu set-config`: "local" for its built-in files, ORIGIN for a file declared
 # with `bu_config_phase_begin --settings-file ORIGIN:PATH`.
 #
-# *Params*:
-# - `$1`: Phase name
-# - `$2`: Absolute path
-#
-# *Returns*:
-# - `BU_RET`: the file's ORIGIN, or empty if the phase does not read it
+# @arg $1 {string} phase Phase name
+# @arg $2 {string} file Absolute path
+# @set BU_RET the file's ORIGIN, or empty if the phase does not read it
 #   (the last entry wins if it is listed more than once)
+# bash-ide parse-func-sig
 __bu_config_phase_file_origin()
 {
     local -r phase=$1
@@ -767,7 +743,6 @@ __bu_config_phase_file_origin()
     return 0
 }
 
-# *Description*:
 # First half of resolving a config phase: save the phase's exported values,
 # reset its unexported ones (a static phase keeps them as the user's too), and
 # snapshot every registered setting so the
@@ -775,10 +750,10 @@ __bu_config_phase_file_origin()
 # bu_config_phase_end calls the three steps; the entrypoint calls them itself
 # to source the main phase's files at top level.
 #
-# *Params*:
-# - `$1`: Phase name (must be the open phase)
+# @arg $1 {string} phase Phase name (must be the open phase)
 #
-# *Returns*: None (always 0)
+# @returns None (always 0)
+# bash-ide parse-func-sig
 __bu_config_phase_prepare()
 {
     local -r phase=$1
@@ -812,6 +787,7 @@ __bu_config_phase_prepare()
 }
 
 # Snapshot every registered setting (scratch for __bu_config_phase_track)
+# bash-ide parse-func-sig
 __bu_config_snapshot()
 {
     local key name
@@ -825,16 +801,15 @@ __bu_config_snapshot()
     return 0
 }
 
-# *Description*:
 # After sourcing one settings file for the phase being resolved: attribute
 # the phase's settings it assigned to it, and revert (with a warning) any
 # assignment to a setting owned by another phase that has already finished.
 #
-# *Params*:
-# - `$1`: Absolute path of the file just sourced (empty for callbacks)
-# - `$2`: Origin to record (`local`, `site` or `callback`)
+# @arg $1 {string} file Absolute path of the file just sourced (empty for callbacks)
+# @arg $2 {string} origin Origin to record (`local`, `site` or `callback`)
 #
-# *Returns*: None (always 0)
+# @returns None (always 0)
+# bash-ide parse-func-sig
 __bu_config_phase_track()
 {
     local -r file=$1
@@ -886,16 +861,15 @@ __bu_config_phase_track()
     return 0
 }
 
-# *Description*:
 # Second half of resolving a config phase: restore the saved exported
 # values, then apply registered defaults by generating the phase's vars file
 # (one `NAME=${NAME:-default}` line per setting, documented for editors) and
 # sourcing it, and record the resulting values.
 #
-# *Params*:
-# - `$1`: Phase name (must be the open phase)
+# @arg $1 {string} phase Phase name (must be the open phase)
 #
-# *Returns*: None (always 0)
+# @returns None (always 0)
+# bash-ide parse-func-sig
 __bu_config_phase_complete()
 {
     local -r phase=$1
@@ -934,17 +908,14 @@ __bu_config_phase_complete()
     return 0
 }
 
-# *Description*:
 # Path of a config phase's generated vars file:
 # $BU_OUT_DIR/cache/config-vars/<top-level module>/<BashTab dir>/<phase>[.<variant>].sh
 # (the BashTab dir with every character outside [A-Za-z0-9._-] replaced by
 # `_`, so checkouts sharing a module name never share a file).
 #
-# *Params*:
-# - `$1`: Phase name
-#
-# *Returns*:
-# - `BU_RET`: the file path
+# @arg $1 {string} phase Phase name
+# @set BU_RET the file path
+# bash-ide parse-func-sig
 __bu_config_vars_file()
 {
     local -r phase=$1
@@ -953,16 +924,12 @@ __bu_config_vars_file()
     return 0
 }
 
-# *Description*:
 # Generate the vars file of a config phase from the registry, rewriting it
 # only when its content changes (so it stays stable for editors and the
 # usual activation needs no extra processes).
 #
-# *Params*:
-# - `$1`: Phase name
-#
-# *Returns*:
-# - `BU_RET`: the file path (__bu_config_vars_file), or empty if it could not
+# @arg $1 string Phase name
+# @set BU_RET the file path (__bu_config_vars_file), or empty if it could not
 #   be written
 __bu_config_write_vars_file()
 {
@@ -1019,17 +986,16 @@ __bu_config_write_vars_file()
     return 0
 }
 
-# *Description*:
 # Close and resolve a config phase: save exported values, source the phase's
 # settings files (bu_config_phase_files: its --settings-file files and its
 # built-in ones, in order, skipping missing files) with each assignment
 # attributed to its file's origin, restore the exported values, then apply
 # defaults. Call after the phase's settings are registered.
 #
-# *Params*:
-# - `$1`: Phase name (must be the open phase)
+# @arg $1 {string} phase Phase name (must be the open phase)
 #
-# *Returns*: None (always 0; errors are logged)
+# @returns None (always 0; errors are logged)
+# bash-ide parse-func-sig
 bu_config_phase_end()
 {
     local -r phase=$1
@@ -1057,14 +1023,13 @@ bu_config_phase_end()
     return 0
 }
 
-# *Description*:
 # Re-check a final static phase (re-activation): its values are final for
 # the shell, so any that changed since are restored, with a warning.
 #
-# *Params*:
-# - `$1`: Phase name
+# @arg $1 {string} phase Phase name
 #
-# *Returns*: None (always 0)
+# @returns None (always 0)
+# bash-ide parse-func-sig
 __bu_config_static_recheck()
 {
     local -r phase=$1
@@ -1085,14 +1050,14 @@ __bu_config_static_recheck()
     return 0
 }
 
-# *Description*:
 # Make the static phases resolvable again, for re-initializing a shell
 # (`bu import-environment --reset-source`): unset the static values BashTab
 # set, keeping the ones the user supplied, and forget that the phases ran.
 #
-# *Params*: None
+# @noargs
 #
-# *Returns*: None (always 0)
+# @returns None (always 0)
+# bash-ide parse-func-sig
 __bu_config_static_reset()
 {
     local phase name
@@ -1111,16 +1076,15 @@ __bu_config_static_reset()
     return 0
 }
 
-# *Description*:
 # Record a value `bu set-config` just applied in this shell, so provenance
 # follows it instead of reporting a change in the shell.
 #
-# *Params*:
-# - `$1`: Setting name
-# - `$2`: Origin: `local`, `layer`, or `default` (after --unset)
-# - `$3`: Settings file written (ignored for `default`)
+# @arg $1 {string} name Setting name
+# @arg $2 {string} origin Origin: `local`, `layer`, or `default` (after --unset)
+# @arg $3 {string} [file] Settings file written (ignored for `default`)
 #
-# *Returns*: None (always 0)
+# @returns None (always 0)
+# bash-ide parse-func-sig
 __bu_config_mark_applied()
 {
     local -r name=$1
@@ -1138,7 +1102,6 @@ __bu_config_mark_applied()
     return 0
 }
 
-# *Description*:
 # Row action of `bu edit-config`, run inside `bu view-table` (a separate
 # process) on the cursor record in BU_TV_RECORD: change the setting with
 # `bu set-config`, and queue the change in $BU_CONFIG_EDIT_QUEUE so
@@ -1146,14 +1109,14 @@ __bu_config_mark_applied()
 # static setting is stored for new shells only, so it is not queued). The
 # last line printed becomes the viewer's status message.
 #
-# *Params*:
-# - `$1`: `cycle` (next true/false or allowed value), `unset` (registered
+# @arg $1 {string} mode `cycle` (next true/false or allowed value), `unset` (registered
 #   default), `prompt` (type a value), `open` (open its location, as
 #   `bu get-config` reports it, in $VISUAL / $EDITOR: the settings file line
 #   that set it, or where a defaulted setting is registered)
 #
-# *Returns*:
+# @returns
 # - The `bu set-config` status (non-zero shows as a failure)
+# bash-ide parse-func-sig
 __bu_config_edit_action()
 {
     local -r mode=$1
@@ -1270,17 +1233,16 @@ __bu_config_apply_live()
     return 0
 }
 
-# *Description*:
 # Validate a value against a registered setting and map it to its stored form.
 # Unregistered settings (or registered ones without --bool/--enum) pass through.
 #
-# *Params*:
-# - `$1`: Setting name
-# - `$2`: Candidate value
+# @arg $1 {string} name Setting name
+# @arg $2 {string} value Candidate value
+# @set BU_RET the value to store (mapped form for name:mapped enum entries)
 #
-# *Returns*:
-# - `BU_RET`: the value to store (mapped form for name:mapped enum entries)
+# @returns
 # - Exit code: 0 if valid, 1 if rejected
+# bash-ide parse-func-sig
 bu_config_validate_value()
 {
     local name=$1 value=$2
@@ -1314,15 +1276,12 @@ bu_config_validate_value()
 
 # MARK: File-backed enums
 
-# *Description*:
 # Join enum values into the space-separated form of
 # BU_CONFIG_PROPERTIES[NAME,enum], dropping repeats (first one wins).
 #
-# *Params*:
-# - `...`: values (`name` or `name:mapped`)
-#
-# *Returns*:
-# - `BU_RET`: the joined values
+# @arg $@ {string} args... values (`name` or `name:mapped`)
+# @set BU_RET the joined values
+# bash-ide parse-func-sig
 __bu_config_enum_join()
 {
     local value joined=
@@ -1337,15 +1296,12 @@ __bu_config_enum_join()
     return 0
 }
 
-# *Description*:
 # The value on one line of an enum file or of an --enum-source's output: the
 # first word, or nothing for a blank line or a `#` comment.
 #
-# *Params*:
-# - `$1`: the line
-#
-# *Returns*:
-# - `BU_RET`: the value, or empty
+# @arg $1 {string} line the line
+# @set BU_RET the value, or empty
+# bash-ide parse-func-sig
 __bu_config_enum_line_value()
 {
     local line=$1
@@ -1359,17 +1315,16 @@ __bu_config_enum_line_value()
     return 0
 }
 
-# *Description*:
 # Read an --enum-file into its sections (the __BU_CONFIG_ENUM_* scratch
 # arrays): the header (leading comment and blank lines), the values after
 # `# --- generated (NOTE) ---`, and the values and lines after
 # `# --- hand-kept ---`. Values before any marker, and every value of a file
 # without markers, count as generated.
 #
-# *Params*:
-# - `$1`: file path (a missing file reads as empty)
+# @arg $1 {string} file file path (a missing file reads as empty)
 #
-# *Returns*: None (always 0)
+# @returns None (always 0)
+# bash-ide parse-func-sig
 __bu_config_parse_enum_file()
 {
     local -r file=$1
@@ -1426,23 +1381,22 @@ __bu_config_parse_enum_file()
     return 0
 }
 
-# *Description*:
 # Refresh a setting's --enum-file from its --enum-source: run the source,
 # compare its values with the file's generated section, and print what
 # changes. With --execute, rewrite the file (header kept, generated section
 # replaced under a dated marker, hand-kept section kept) and update the live
 # BU_CONFIG_PROPERTIES[NAME,enum]. An unchanged file is not rewritten.
 #
-# *Params*:
-# - `$1`: setting name (registered with --enum-file and --enum-source)
-# - `--execute` (optional): write the file
-#
-# *Returns*:
-# - stdout: TSV rows `name file kind value action`: one `added` / `removed`
+# @arg $1 string setting name (registered with --enum-file and --enum-source)
+# @option --execute (optional): write the file
+# @stdout TSV rows `name file kind value action`: one `added` / `removed`
 #   row per value, then one `summary` row ("N generated, M hand-kept, +a -r");
 #   action `would-write`, `written` or `unchanged`
+#
+# @returns
 # - Exit code: 0 on success, 1 when the setting has no source, the source
 #   fails or prints nothing, or the file cannot be written
+# bash-ide parse-func-sig
 bu_config_refresh_enum_file()
 {
     __BU_CONFIG_REFRESH_ROWS=()
@@ -1572,17 +1526,14 @@ __bu_config_refresh_enum_rows()
 
 # MARK: Validating settings
 
-# *Description*:
 # Where a setting's current value came from, as `bu get-config` reports it:
 # `shell` when it changed since its phase ran (or the last `bu set-config`),
 # else the recorded origin (env, local, site, callback, layer, or a
 # --settings-file label), else `default`.
 #
-# *Params*:
-# - `$1`: setting name
-#
-# *Returns*:
-# - `BU_RET`: the origin
+# @arg $1 {string} name setting name
+# @set BU_RET the origin
+# bash-ide parse-func-sig
 __bu_config_origin()
 {
     local -r name=$1
@@ -1692,6 +1643,7 @@ __bu_config_validate_rows()
 }
 
 # Is $1 one of the remaining arguments?
+# bash-ide parse-func-sig
 __bu_config_value_in()
 {
     local -r needle=$1
@@ -1705,6 +1657,7 @@ __bu_config_value_in()
 }
 
 # Sort the array named $1 in place (insertion sort; a few dozen names)
+# bash-ide parse-func-sig
 __bu_config_sort_names()
 {
     local -n _sort_arr=$1
@@ -1723,23 +1676,22 @@ __bu_config_sort_names()
     return 0
 }
 
-# *Description*:
 # Check settings' current values against their registered --enum / --bool
 # rules. Settings files are not validated at activation; call this (or the
 # gate bu_config_require_valid) where a bad value matters, e.g. a module's
 # preflight or plan verb.
 #
-# *Params*:
-# - `--allow VALUE` (optional, repeatable): a sentinel that passes as "not
-#   applicable" (e.g. `auto`, `none`); empty values always do
-# - `...`: setting names (default: every registered setting with an enum or
+# @arg $@ {string} args... setting names (default: every registered setting with an enum or
 #   bool rule). An unregistered name is invalid. The stored form of a
 #   `name:mapped` entry (BU_LOG_LVL holding 4) passes as well as the name.
-#
-# *Returns*:
-# - stdout: TSV rows `name value origin status detail`; origin as
+# @option --allow VALUE (optional, repeatable): a sentinel that passes as "not
+#   applicable" (e.g. `auto`, `none`); empty values always do
+# @stdout TSV rows `name value origin status detail`; origin as
 #   `bu get-config` reports it, status `ok` or `invalid`
+#
+# @returns
 # - Exit code: 0 when all pass, 1 when any is invalid
+# bash-ide parse-func-sig
 bu_config_validate_settings()
 {
     local status=0
@@ -1756,6 +1708,7 @@ bu_config_validate_settings()
 #
 # *Returns*:
 # - Exit code: 0 when all pass, 1 when any is invalid
+# bash-ide parse-func-sig
 bu_config_require_valid()
 {
     __bu_config_validate_rows "$@" && return 0
@@ -1780,6 +1733,7 @@ bu_config_require_valid()
 }
 
 # Completion helpers (consumed by `bu set-config` via the --ret DSL specifier).
+# bash-ide parse-func-sig
 __bu_config_completion_names()
 {
     local key
@@ -1793,6 +1747,7 @@ __bu_config_completion_names()
     done
 }
 
+# bash-ide parse-func-sig
 __bu_config_completion_values()
 {
     local name=$1
@@ -1829,6 +1784,7 @@ __bu_config_completion_values()
 
 # Completion helper: settings registered with --enum-source (for
 # bu update-config-enum).
+# bash-ide parse-func-sig
 __bu_config_completion_enum_source_names()
 {
     local key
@@ -1841,6 +1797,7 @@ __bu_config_completion_enum_source_names()
 }
 
 # Completion helper: list registered layer names (for bu set-config --layer).
+# bash-ide parse-func-sig
 __bu_config_completion_layers()
 {
     BU_RET=(local)

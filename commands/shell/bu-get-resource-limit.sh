@@ -67,6 +67,7 @@ limits of the current shell.
 fi
 
 # Parse one 'ulimit -?a' stream into TSV: flag <TAB> resource <TAB> units <TAB> value
+# bash-ide parse-func-sig
 __bu_get_resource_limit_tsv()
 {
     local line before rest paren value flag units

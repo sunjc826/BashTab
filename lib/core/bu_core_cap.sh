@@ -19,6 +19,7 @@
 
 # ── Platform detection ────────────────────────────────────────────────
 
+# bash-ide parse-func-sig
 bu_cap_detect_platform()
 {
     BU_PLATFORM_ID=
@@ -64,6 +65,7 @@ bu_cap_detect_platform()
 # Returns: 0 always. Presence/absence is recorded in BU_CAP[$cap] instead of
 # the exit status, because this runs while bu_entrypoint.sh is being sourced —
 # a non-zero return here would abort the whole activation under `set -e`.
+# bash-ide parse-func-sig
 bu_cap_probe()
 {
     local cap=$1 binary=$2 fallback=${3:-}
@@ -96,6 +98,7 @@ bu_cap_probe()
 }
 
 # Probe all known capabilities.  Called once at init.
+# bash-ide parse-func-sig
 bu_cap_probe_all()
 {
     bu_log_debug "Init probe"
@@ -150,6 +153,7 @@ declare -A -g BU_PKG_MAP=(
 #
 # Returns:
 # - BU_RET: install hint string, or empty if the cap is already present
+# bash-ide parse-func-sig
 bu_install_hint()
 {
     local cap=$1
@@ -215,6 +219,7 @@ bu_install_hint()
     BU_RET="no install hint available"
 }
 
+# bash-ide parse-func-sig
 bu_install_hint_for_distro()
 {
     local distro=$1 pkg=$2
@@ -261,6 +266,7 @@ BU_COMPAT_CACHE_FILE=
 # changing a command's --is-compatible dependencies.
 #
 # Returns: BU_RET = md5 hash string (empty if md5sum unavailable)
+# bash-ide parse-func-sig
 bu_cap_cache_fingerprint()
 {
     BU_RET=
@@ -305,6 +311,7 @@ bu_cap_cache_fingerprint()
 # - $1: fingerprint hash
 #
 # Returns: BU_RET = cache file path
+# bash-ide parse-func-sig
 bu_cap_cache_file_for()
 {
     BU_RET=$BU_CACHE_DIR/compat-$1.cache
@@ -318,6 +325,7 @@ bu_cap_cache_file_for()
 # - $1: fingerprint hash that identifies the cache file
 #
 # Returns: 0 if cache was loaded, 1 if the file doesn't exist
+# bash-ide parse-func-sig
 bu_cap_cache_load()
 {
     local fp=$1
@@ -349,6 +357,7 @@ bu_cap_cache_load()
 #
 # Params:
 # - $1: fingerprint hash for the cache file name
+# bash-ide parse-func-sig
 bu_cap_cache_save()
 {
     local fp=$1
@@ -392,6 +401,7 @@ bu_cap_cache_save()
 # Usage:
 #   bu_cap_cache_invalidate          # clear all cached environments
 #   bu_cap_cache_invalidate --stale  # clear only caches older than 7 days
+# bash-ide parse-func-sig
 bu_cap_cache_invalidate()
 {
     local mode=${1:-all}
@@ -423,7 +433,6 @@ bu_cap_cache_invalidate()
     esac
 }
 
-# *Description*:
 # Settle a deferred --is-compatible probe for one command.  Only acts when the
 # command carries the compat_pending marker written by the deferred scan; it
 # is otherwise a no-op.  The marker is cleared before probing so the probe
@@ -433,11 +442,11 @@ bu_cap_cache_invalidate()
 # failure produces — so the existing unavailable-reporting and
 # reprobe/recovery paths operate on it unmodified.
 #
-# *Params*:
-# - `$1`: command name
+# @arg $1 {string} cmd command name
 #
-# *Returns*:
+# @returns
 # - 0 if the command is available (or not pending), 1 if unavailable
+# bash-ide parse-func-sig
 bu_cap_ensure_compat()
 {
     local -r cmd=$1
@@ -461,17 +470,16 @@ bu_cap_ensure_compat()
     return 1
 }
 
-# *Description*:
 # Re-run --is-compatible probes for unavailable commands that have a
 # recorded script path.  On success, the command is registered, removed
 # from BU_COMMAND_UNAVAILABLE, and the active compat cache is re-saved.
 #
-# *Params*:
-# - `$1` (optional): Specific command to re-probe.  If omitted, reprobes
+# @arg $1 {string} [target] Specific command to re-probe.  If omitted, reprobes
 #   all currently unavailable commands with a recorded path.
 #
-# *Returns*:
+# @returns
 # - 0 if at least one command was recovered, 1 otherwise
+# bash-ide parse-func-sig
 bu_cap_reprobe_unavailable()
 {
     local target=${1:-}
@@ -523,6 +531,7 @@ bu_cap_reprobe_unavailable()
 
 # ── Initialization ────────────────────────────────────────────────────
 
+# bash-ide parse-func-sig
 bu_cap_init()
 {
     declare -A -g BU_CAP=()

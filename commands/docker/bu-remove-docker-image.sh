@@ -1,10 +1,11 @@
-#!/usr/bin/env bash
+# !/usr/bin/env bash
 # Pipeline: transform
 # Requires-Any: Repository ID name id
 # Fields: image action removed error
 # Dispatch: source
 # Synopsis: Remove a Docker image
 # Completion helper: image names from docker images.
+# bash-ide parse-func-sig
 __bu_bu_remove_docker_image_complete_images()
 {
     BU_RET=()

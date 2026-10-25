@@ -1,8 +1,7 @@
-#!/usr/bin/env bash
+# !/usr/bin/env bash
 # Pipeline: query
 # Dispatch: source
 # Synopsis: Apply SQL-style clauses (where, group-by, select, order-by) to a JSONL stream
-# *Description*:
 # Tokenize a comma-separated list that may span multiple words with flexible
 # comma placement ("a,b", "a, b", "a ,b", "a , b"). The list words begin at
 # _cl_start in the caller-provided words array. A word continues the list when
@@ -10,15 +9,15 @@
 # it starts with a comma. During autocomplete the final word is the in-progress
 # cursor word: it is excluded from the finalized spec and analyzed separately.
 #
-# *Params*:
-# - $1: nameref to the words array
-# - $2: index of the first list word
-# - $3: nameref to a stop-words array (exact matches terminate the list;
+# @arg $1 {var} _cl_words nameref to the words array
+# @arg $2 {string} _cl_start index of the first list word
+# @arg $3 {var} _cl_stop nameref to a stop-words array (exact matches terminate the list;
 #       pass an empty array for no stop words)
-# - $4: nameref to the output raw spec (concatenated finalized words)
-# - $5: nameref to the output consumed count (finalized list words)
-# - $6: nameref to the output used-set (associative array)
-# - $7: nameref to the output continues flag (true/false)
+# @arg $4 {var} _cl_spec nameref to the output raw spec (concatenated finalized words)
+# @arg $5 {var} _cl_consumed nameref to the output consumed count (finalized list words)
+# @arg $6 {var} _cl_used nameref to the output used-set (associative array)
+# @arg $7 {var} _cl_continues nameref to the output continues flag (true/false)
+# bash-ide parse-func-sig
 __bu_query_object_parse_comma_list()
 {
     local -n _cl_words=$1
@@ -999,6 +998,7 @@ pipeline|combined) ;;
     ;;
 esac
 
+# bash-ide parse-func-sig
 __bu_query_object_build_plan()
 {
     # Shared base for debug and explain. Keep the historical debug projection
@@ -1071,6 +1071,7 @@ __bu_query_object_build_plan()
     fi
 }
 
+# bash-ide parse-func-sig
 __bu_query_object_explain_plan()
 {
     local -r base_plan=$1
@@ -1172,6 +1173,7 @@ __bu_query_object_explain_plan()
         ' -- "${agg_specs[@]}"
 }
 
+# bash-ide parse-func-sig
 __bu_query_object_render_plan()
 {
     # Render only the already-built plan. Never attach this to query input or
@@ -1221,6 +1223,7 @@ fi
 # SQL order and shared core filters preserve the pipeline executor's semantics.
 # Returns: BU_RET contains the program; nonzero for invalid field specifications.
 # ```
+# bash-ide parse-func-sig
 __bu_query_object_compile()
 {
     local program=inputs
@@ -1286,6 +1289,7 @@ __bu_query_object_compile()
 # handled by combined_pipeline so it can capture the converter status.
 # Uses the enclosing combined_program and from_file locals.
 # ```
+# bash-ide parse-func-sig
 __bu_query_object_combined_input()
 {
     local input_ext=${from_file##*.}
@@ -1305,6 +1309,7 @@ __bu_query_object_combined_input()
 # Report stage failures and return the rightmost genuine failure. SIGPIPE from
 # a writer before a successful FIRST stage is expected cancellation. SIGPIPE
 # following a downstream failure is secondary; never hide other exit codes.
+# bash-ide parse-func-sig
 __bu_query_object_status()
 {
     local -n stage_names=$1
@@ -1328,6 +1333,7 @@ __bu_query_object_status()
     return "$status"
 }
 
+# bash-ide parse-func-sig
 __bu_query_object_combined_pipeline()
 {
     local -a statuses=()
@@ -1352,6 +1358,7 @@ __bu_query_object_combined_pipeline()
     __bu_query_object_status stages statuses
 }
 
+# bash-ide parse-func-sig
 __bu_query_object_where()
 {
     if [[ -n "$where_expr" && -n "$grep_expr" ]]
@@ -1368,6 +1375,7 @@ __bu_query_object_where()
     fi
 }
 
+# bash-ide parse-func-sig
 __bu_query_object_group()
 {
     if [[ -n "$group_keys" ]] || ((${#agg_specs[@]} > 0))
@@ -1385,6 +1393,7 @@ __bu_query_object_group()
     fi
 }
 
+# bash-ide parse-func-sig
 __bu_query_object_having()
 {
     if [[ -n "$having_expr" ]]
@@ -1395,6 +1404,7 @@ __bu_query_object_having()
     fi
 }
 
+# bash-ide parse-func-sig
 __bu_query_object_select()
 {
     if [[ -n "$select_fields" ]]
@@ -1408,6 +1418,7 @@ __bu_query_object_select()
     fi
 }
 
+# bash-ide parse-func-sig
 __bu_query_object_distinct()
 {
     if "$is_distinct"
@@ -1418,6 +1429,7 @@ __bu_query_object_distinct()
     fi
 }
 
+# bash-ide parse-func-sig
 __bu_query_object_sort()
 {
     if [[ -n "$order_by" ]]
@@ -1430,6 +1442,7 @@ __bu_query_object_sort()
     fi
 }
 
+# bash-ide parse-func-sig
 __bu_query_object_first()
 {
     if [[ -n "$first" ]]
@@ -1440,6 +1453,7 @@ __bu_query_object_first()
     fi
 }
 
+# bash-ide parse-func-sig
 __bu_query_object_pipeline()
 {
     local -a statuses=()
@@ -1455,6 +1469,7 @@ __bu_query_object_pipeline()
     __bu_query_object_status stages statuses "$first_index"
 }
 
+# bash-ide parse-func-sig
 __bu_query_object_input()
 {
     if [[ -z "$from_file" || "$from_file" == /dev/stdin || "$from_file" == - ]]

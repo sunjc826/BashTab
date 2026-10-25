@@ -7,16 +7,15 @@
 
 # MARK: Filesystem utilities
 
-# *Description*:
 # Create directories if they do not exist
 #
-# *Params*:
-# - `...`: List of directories to create
+# @arg $@ {string} args... List of directories to create
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_mkdir /tmp/dir1 /tmp/dir2
 # ```
+# bash-ide parse-func-sig
 bu_mkdir()
 {
     local missing=()
@@ -34,30 +33,27 @@ bu_mkdir()
     fi
 }
 
-# *Description*:
 # Convert a path to an absolute path without resolving symlinks
 #
-# *Params*:
-# - `$1`: Path to convert (relative or absolute)
-# - `$2` (optional): Base directory for resolving relative paths (default: `$PWD`)
+# @arg $1 {string} dir Path to convert (relative or absolute)
+# @arg $2 {string} [cwd=$PWD] Base directory for resolving relative paths
+# @set BU_RET The absolute path
 #
-# *Returns*:
-# - `$BU_RET`: The absolute path
-#
-# *Examples*:
-# ```bash
-# bu_realpath /tmp/file  # $BU_RET=/tmp/file
-# bu_realpath ../dir  # $BU_RET=$PWD/../dir
-# bu_realpath dir /home/user  # $BU_RET=/home/user/dir
-# ```
-#
-# *Notes*:
+# @notes
 # - Does not resolve symlinks (use the builtin `realpath` command for that)
 # - Simply converts relative paths to absolute paths
 # - Removes leading `./` from relative paths before appending to base directory
 # - Returns absolute paths unchanged
 # - Does not simplify ..
 # - No forking is needed as compared to realpath
+#
+# @example
+# ```bash
+# bu_realpath /tmp/file  # $BU_RET=/tmp/file
+# bu_realpath ../dir  # $BU_RET=$PWD/../dir
+# bu_realpath dir /home/user  # $BU_RET=/home/user/dir
+# ```
+# bash-ide parse-func-sig
 bu_realpath()
 {
     local -r dir=$1
@@ -137,20 +133,18 @@ esac
 
 # MARK: Conversion utilities
 
-# *Description*:
 # Execute a command and capture its output into the global variable `BU_RET`,
 # then print `BU_RET` to stdout in the specified format.
 #
-# *Params*:
-# - `--str` or `--spaces`: Specify the output format. `--str` prints `BU_RET` as a single string,
+# @arg $@ {string} args... Command to execute
+# @option --str or --spaces: Specify the output format. `--str` prints `BU_RET` as a single string,
 #   while `--spaces` prints each element of `BU_RET` on a new line. Default is `--spaces`.
-# - `...`: Command to execute
+# @stdout Formatted output of `BU_RET` from the executed command
 #
-# *Returns*:
+# @returns
 # - Exit code of the executed command
-# - `stdout`: Formatted output of `BU_RET` from the executed command
 #
-# *Examples*:
+# @example
 # ```bash
 # some_command() { BU_RET=hello; }
 # bu_ret_to_stdout --str some_command  # stdout=hello
@@ -286,21 +280,18 @@ bu_stdout_to_ret()
     return "$exit_code"
 }
 
-# *Description*:
 # Read the entire content of a file into a string variable
 #
-# *Params*:
-# - `$1`: File to read
-# - `$2` (optional): Name of the variable to store the result in (default: `BU_RET`)
+# @arg $1 {string} file File to read
+# @arg $2 {string} [ret=BU_RET] Name of the variable to store the result in
+# @set BU_RET or the variable named in `$2`: Content of the file as a string
 #
-# *Returns*:
-# - `$BU_RET` or the variable named in `$2`: Content of the file as a string
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_cat_str /path/to/file # $BU_RET contains the file content as a string
 # bu_cat_str /path/to/file MY_VAR # $MY_VAR contains the file content as a string
 # ```
+# bash-ide parse-func-sig
 bu_cat_str()
 {
     local file=$1
@@ -309,21 +300,18 @@ bu_cat_str()
     mapfile -d '' "$ret" <"$file"
 }
 
-# *Description*:
 # Read the entire content of a file into an array variable, splitting by lines
 #
-# *Params*:
-# - `$1`: File to read
-# - `$2` (optional): Name of the array variable to store the result in (default: `BU_RET`)
+# @arg $1 {string} file File to read
+# @arg $2 {string} [ret=BU_RET] Name of the array variable to store the result in
+# @set BU_RET[@] or the array variable named in `$2`: Content of the file as an array of lines
 #
-# *Returns*:
-# - `${BU_RET[@]}` or the array variable named in `$2`: Content of the file as an array of lines
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_cat_arr /path/to/file # ${BU_RET[@]} contains the file content as an array of lines
 # bu_cat_arr /path/to/file MY_ARR # ${MY_ARR[@]} contains the file content as an array of lines
 # ```
+# bash-ide parse-func-sig
 bu_cat_arr()
 {
     local file=$1
@@ -331,21 +319,18 @@ bu_cat_arr()
     mapfile -t "$ret" <"$file"
 }
 
-# *Description*:
 # Append the content of a file to an existing array variable, splitting by lines
 #
-# *Params*:
-# - `$1`: File to read
-# - `$2` (optional): Name of the array variable to append to (default: `BU_RET`)
+# @arg $1 {string} file File to read
+# @arg $2 {string} [ret=BU_RET] Name of the array variable to append to
+# @set BU_RET[@] or the array variable named in `$2`: Content of the file appended to the array
 #
-# *Returns*:
-# - `${BU_RET[@]}` or the array variable named in `$2`: Content of the file appended to the array
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_cat_arr_append /path/to/file # ${BU_RET[@]} has the file content appended
 # bu_cat_arr_append /path/to/file MY_ARR # ${MY_ARR[@]} has the file content appended
 # ```
+# bash-ide parse-func-sig
 bu_cat_arr_append()
 {
     local file=$1
@@ -371,7 +356,6 @@ declare -A -g __BU_COMMAND_HEADER_PARSED=()
 # scan's hot path (__bu_command_dispatch_decl) is a single assoc lookup.
 declare -A -g __BU_COMMAND_HEADER_DISPATCH=()
 
-# *Description*:
 # Parse a command script's `# Key: value` header comments into the header
 # cache.  Idempotent and memoized by path: the first call runs one awk pass
 # over the file; later calls are no-ops.  The cache is invalidated wholesale
@@ -379,19 +363,19 @@ declare -A -g __BU_COMMAND_HEADER_DISPATCH=()
 # which is the natural boundary — a scan re-reads the filesystem, so any
 # cached header may be stale.  No per-file stat fingerprinting is needed.
 #
-# *Params*:
-# - `$1`: Path to the command script
+# @arg $1 {string} file Path to the command script
 #
-# *Returns*:
+# @returns
 # - Always exits 0 (a missing file caches an empty header block — a normal,
 #   non-fatal condition).
 #
-# *Notes*:
+# @notes
 # - Directive headers (`Dispatch`, `Tab-Execute`, `Tab-Execute-Field`) are
 #   only honored within the first 8 lines so they must sit at the very top
 #   of the file; all other headers are honored within the first 30 lines.
 # - Values are extracted verbatim (no variable/command substitution) with
 #   leading space after the colon and trailing whitespace trimmed.
+# bash-ide parse-func-sig
 __bu_command_headers_parse()
 {
     local -r file=$1
@@ -423,19 +407,18 @@ __bu_command_headers_parse()
     return 0
 }
 
-# *Description*:
 # Read a single header value from a command script via the memoized header
 # cache.  The value extraction is pure bash; the parse memo means a file is
 # awk-scanned once and only re-scanned when its mtime:size changes.
 #
-# *Params*:
-# - `$1`: Path to the command script
-# - `$2`: Header key (e.g. `Synopsis`, `Fields`)
-# - `$3`: Name of the variable to receive the value (nameref)
+# @arg $1 {string} file Path to the command script
+# @arg $2 {string} key Header key (e.g. `Synopsis`, `Fields`)
+# @arg $3 {var} _hdr_out Name of the variable to receive the value (nameref)
 #
-# *Returns*:
+# @returns
 # - Always exits 0 (a missing key or file yields an empty value — a normal,
 #   non-fatal condition, so this is safe to call under `set -e`).
+# bash-ide parse-func-sig
 __bu_command_header_get()
 {
     local -r file=$1
@@ -452,19 +435,18 @@ __bu_command_header_get()
     return 0
 }
 
-# *Description*:
 # Parse the headers of many command scripts in a single awk process (batch
 # mode), populating the memoized header cache.  Called once per search
 # directory during the command scan so the per-file registration loop does
 # not fork an awk per file.
 #
-# *Params*:
-# - `$1`: Directory (prefix applied to the relative paths)
-# - `...`: Relative file paths within that directory
+# @arg $1 {string} dir Directory (prefix applied to the relative paths)
+# @arg $@ {string} args... Relative file paths within that directory
 #
-# *Returns*:
+# @returns
 # - Always exits 0.  Every given path is marked parsed (empty block); the
 #   awk pass fills in blocks for files that actually declare headers.
+# bash-ide parse-func-sig
 __bu_command_headers_batch()
 {
     local -r dir=$1
@@ -519,13 +501,11 @@ __bu_command_headers_batch()
 
 # MARK: Shell symbol helpers
 
-# *Description*:
 # Check if a symbol is a function
 #
-# *Params*:
-# - `$1`: Symbol name
+# @arg $1 string Symbol name
 #
-# *Returns*:
+# @returns
 # - Exit code 0 if the symbol is a function, non-zero otherwise
 bu_symbol_is_function()
 {
@@ -533,13 +513,11 @@ bu_symbol_is_function()
     [[ "$BU_RET" = function ]]
 }
 
-# *Description*:
 # Check if a symbol is a file
 #
-# *Params*:
-# - `$1`: Symbol name
+# @arg $1 string Symbol name
 #
-# *Returns*:
+# @returns
 # - Exit code 0 if the symbol is a file, non-zero otherwise
 bu_symbol_is_file()
 {
@@ -547,18 +525,17 @@ bu_symbol_is_file()
     [[ "$BU_RET" = file ]]
 }
 
-# *Description*:
 # Run fzf with its child shell pinned to the current bash.
 # fzf runs --preview/--bind commands via `$SHELL -c`, and `$SHELL` is the login
 # shell (zsh by default on macOS), not the bash we are running in. Only bash can
 # see `export -f` functions, so use this instead of plain `fzf` whenever those
 # commands call a BashTab function.
 #
-# *Params*:
-# - `$@`: Arguments passed through to fzf
+# @arg $@ {string} args... Arguments passed through to fzf
 #
-# *Returns*:
+# @returns
 # - fzf's stdout and exit code
+# bash-ide parse-func-sig
 __bu_fzf()
 {
     SHELL="$BASH" command fzf "$@"
@@ -652,15 +629,14 @@ bu_cached_keyed_execute()
 
 # MARK: Colors
 
-# *Description*:
 # Setup tput color codes into variables
 #
-# *Params*:
-# - `$1`: Name of the output variable to store the tput code
-# - `...`: Arguments to pass to tput
+# @arg $1 {var} __bu_setup_tput_outvar Name of the output variable to store the tput code
+# @arg $@ {string} args... Arguments to pass to tput
 #
-# *Returns*:
+# @returns
 # - `${!1}`: Variable containing the tput code
+# bash-ide parse-func-sig
 __bu_setup_tput()
 {
     local -n __bu_setup_tput_outvar=$1
@@ -753,18 +729,17 @@ fi
 
 # MARK: Logging
 
-# *Description*:
 # Internal logging function
 #
-# *Params*:
-# - `$1`: Color code
-# - `$2`: Log level
-# - `$3`: Log prefix
-# - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
-# - `...`: Log message
+# @arg $1 {string} color Color code
+# @arg $2 {string} log_lvl Log level
+# @arg $3 {string} log_prefix Log prefix
+# @arg $@ {string} args... Log message
+# @option -i|--idx <index> (optional): Stacktrace index offset for the logging context
 #
-# *Notes*:
+# @notes
 # - This should not be called externally, because it (in particular log_idx) assumes it is called by a bu_log_[LOG_LVL] function.
+# bash-ide parse-func-sig
 __bu_log()
 {
     local color=$1
@@ -787,16 +762,14 @@ __bu_log()
     __bu_log_print "$color" "$log_prefix" "$((log_idx + 2))" "$@"
 }
 
-# *Description*:
 # Check whether a log level is currently enabled
 #
-# *Params*:
-# - `$1`: Log level
+# @arg $1 string Log level
 #
-# *Returns*:
+# @returns
 # - Exit code 0 if messages at this level are shown, 1 otherwise
 #
-# *Notes*:
+# @notes
 # - Compares against `BU_AUTOCOMPLETE_LOG_LVL` while autocompleting, `BU_LOG_LVL` otherwise.
 # - Only use as a condition (`if`, `!`, `&&`, `||`), never as a bare statement under set -e.
 __bu_log_lvl_enabled()
@@ -816,16 +789,14 @@ __bu_log_lvl_enabled()
 # which cannot write to the terminal without garbling the line.
 declare -g __BU_LOG_AUTOCOMPLETE_OUT=/dev/tty
 
-# *Description*:
 # Print a single log line in the standard format: `PREFIX  file:line[func] message`
 #
-# *Params*:
-# - `$1`: Color code
-# - `$2`: Log prefix
-# - `$3`: Index into the caller's `FUNCNAME` of the function to attribute the line to
-# - `...`: Log message
+# @arg $1 {string} color Color code
+# @arg $2 {string} log_prefix Log prefix
+# @arg $3 string Index into the caller's `FUNCNAME` of the function to attribute the line to
+# @arg $@ {string} args... Log message
 #
-# *Notes*:
+# @notes
 # - Writes to `__BU_LOG_AUTOCOMPLETE_OUT` (/dev/tty) while autocompleting,
 #   stderr otherwise.
 __bu_log_print()
@@ -850,63 +821,57 @@ __bu_log_print()
     fi
 }
 
-# *Description*:
 # Assert an error condition
 #
-# *Params*:
-# - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
-# - `...`: Error message
+# @arg $@ {string} args... Error message
+# @option -i|--idx <index> (optional): Stacktrace index offset for the logging context
 #
-# *Returns*:
+# @returns
 # - Exit code 1
 #
-# *Notes*:
+# @notes
 # - This assumes that set -e is set, so that the assertion failure will terminate the script
+# bash-ide parse-func-sig
 bu_assert_err()
 {
     __bu_log "$BU_TPUT_VSCODE_RED" "$BU_LOG_LVL_ERR" ERR "$@"
     return 1
 }
 
-# *Description*:
 # Log an error message
 #
-# *Params*:
-# - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
-# - `...`: Log message
+# @arg $@ {string} args... Log message
+# @option -i|--idx <index> (optional): Stacktrace index offset for the logging context
+# bash-ide parse-func-sig
 bu_log_err()
 {
     __bu_log "$BU_TPUT_VSCODE_RED" "$BU_LOG_LVL_ERR" ERR "$@"
 }
 
-# *Description*:
 # Log a warning message
 #
-# *Params*:
-# - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
-# - `...`: Log message
+# @arg $@ {string} args... Log message
+# @option -i|--idx <index> (optional): Stacktrace index offset for the logging context
+# bash-ide parse-func-sig
 bu_log_warn() 
 {
     __bu_log "$BU_TPUT_VSCODE_ORANGE" "$BU_LOG_LVL_WARN" WARN "$@"
 }
 
-# *Description*:
 # Log an informational message
 #
-# *Params*:
-# - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
-# - `...`: Log message
+# @arg $@ {string} args... Log message
+# @option -i|--idx <index> (optional): Stacktrace index offset for the logging context
+# bash-ide parse-func-sig
 bu_log_info() 
 { 
     __bu_log "$BU_TPUT_VSCODE_YELLOW" "$BU_LOG_LVL_INFO" INFO "$@"
 }
 
-# *Description*:
 # Log a trace message (lowest level, hidden unless BU_LOG_LVL=trace)
 #
-# *Params*:
-# - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
-# - `...`: Log message
+# @arg $@ {string} args... Log message
+# @option -i|--idx <index> (optional): Stacktrace index offset for the logging context
 bu_log_trace()
 {
     local log_idx=0
@@ -919,54 +884,49 @@ bu_log_trace()
     __bu_log "$BU_TPUT_GREY" "$BU_LOG_LVL_TRACE" TRACE -i "$log_idx" "[${EPOCHREALTIME-}] $*"
 }
 
-# *Description*:
 # Log a debug message
 #
-# *Params*:
-# - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
-# - `...`: Log message
+# @arg $@ {string} args... Log message
+# @option -i|--idx <index> (optional): Stacktrace index offset for the logging context
+# bash-ide parse-func-sig
 bu_log_debug()
 { 
     __bu_log "$BU_TPUT_VSCODE_DARK_GREEN" "$BU_LOG_LVL_DEBUG" DEBUG "$@"
 }
 
-# *Description*:
 # Log a success message
 #
-# *Params*:
-# - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
-# - `...`: Log message
+# @arg $@ {string} args... Log message
+# @option -i|--idx <index> (optional): Stacktrace index offset for the logging context
+# bash-ide parse-func-sig
 bu_log_success()
 {
     __bu_log "$BU_TPUT_GREEN" "$BU_LOG_LVL_INFO" SUCCESS "$@"
 }
 
-# *Description*:
 # Log a message directly to the terminal (TTY)
 #
-# *Params*:
-# - `...`: Log message
+# @arg $@ {string} args... Log message
+# bash-ide parse-func-sig
 bu_log_tty()
 {
     printf '%s\n' "$*" > /dev/tty
 }
 
-# *Description*:
 # Log an input validation error, followed by a hint pointing the user at `--help`
 #
-# *Params*:
-# - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
-# - `...`: Error message
+# @arg $@ {string} args... Error message
+# @option -i|--idx <index> (optional): Stacktrace index offset for the logging context
 #
-# *Returns*:
+# @returns
 # - Exit code 0 (the caller is expected to `return 1` itself)
 #
-# *Notes*:
+# @notes
 # - The hint is `hint:  <cli> <script> --help`, where `<cli>` is `${BU_USER_DEFINED_CLI_COMMAND_NAME:-bu}`
 #   and `<script>` is the basename (without `.sh`) of the file defining the attributed function.
 # - The exit handler suppresses the traceback for a logged error followed by `return 1`.
 #
-# *Examples*:
+# @example
 # ```bash
 # if [[ -z "$name" ]]
 # then
@@ -1003,23 +963,22 @@ bu_log_err_usage()
     return 0
 }
 
-# *Description*:
 # Internal command logging function
 #
-# *Params*:
-# - `$1`: Color code
-# - `$2`: Log level
-# - `$3`: Log prefix
-# - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
-# - `--ignore-exit-code` (optional): Do not report or propagate a non-zero exit code
-# - `...`: Command to execute
+# @arg $1 {string} color Color code
+# @arg $2 {string} log_lvl Log level
+# @arg $3 {string} log_prefix Log prefix
+# @arg $@ {string} args... Command to execute
+# @option -i|--idx <index> (optional): Stacktrace index offset for the logging context
+# @option --ignore-exit-code (optional): Do not report or propagate a non-zero exit code
 #
-# *Returns*:
+# @returns
 # - Exit code 1 if the command ran and failed (without `--ignore-exit-code`), 0 otherwise
 #
-# *Notes*:
+# @notes
 # - This should not be called externally, because it (in particular log_idx) assumes it is called by a bu_log_cmd_[LOG_LVL] function.
 # - If the log level is suppressed, the command is not run at all.
+# bash-ide parse-func-sig
 __bu_log_cmd()
 {
     local color=$1
@@ -1068,18 +1027,17 @@ __bu_log_cmd()
     return 0
 }
 
-# *Description*:
 # Log and run a command, with its output already redirected by the caller
 #
-# *Params*:
-# - `$1`: Color code
-# - `$2`: Log prefix
-# - `$3`: Index into the caller's `FUNCNAME` of the function to attribute the line to
-# - `$4`: Whether to ignore a non-zero exit code (`true`/`false`)
-# - `...`: Command to execute
+# @arg $1 {string} color Color code
+# @arg $2 {string} log_prefix Log prefix
+# @arg $3 {string} frame Index into the caller's `FUNCNAME` of the function to attribute the line to
+# @arg $4 {string} is_ignore_exit_code Whether to ignore a non-zero exit code (`true`/`false`)
+# @arg $@ {string} args... Command to execute
 #
-# *Returns*:
+# @returns
 # - Exit code of the command
+# bash-ide parse-func-sig
 __bu_log_cmd_exec()
 {
     local color=$1
@@ -1114,94 +1072,88 @@ __bu_log_cmd_exec()
     return "$rc"
 }
 
-# *Description*:
 # Log and run an informational command at the error level
 #
-# *Params*:
-# - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
-# - `--ignore-exit-code` (optional): Do not report or propagate a non-zero exit code
-# - `...`: Command to execute
+# @arg $@ {string} args... Command to execute
+# @option -i|--idx <index> (optional): Stacktrace index offset for the logging context
+# @option --ignore-exit-code (optional): Do not report or propagate a non-zero exit code
 #
-# *Returns*:
+# @returns
 # - Exit code 1 if the command ran and failed (without `--ignore-exit-code`), 0 otherwise
 #
-# *Notes*:
+# @notes
 # - If the error level is suppressed, the command is not run.
+# bash-ide parse-func-sig
 bu_log_cmd_err()
 {
     __bu_log_cmd "$BU_TPUT_VSCODE_RED" "$BU_LOG_LVL_ERR" ERR "$@"
 }
 
-# *Description*:
 # Log and run an informational command at the warning level
 #
-# *Params*:
-# - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
-# - `--ignore-exit-code` (optional): Do not report or propagate a non-zero exit code
-# - `...`: Command to execute
+# @arg $@ {string} args... Command to execute
+# @option -i|--idx <index> (optional): Stacktrace index offset for the logging context
+# @option --ignore-exit-code (optional): Do not report or propagate a non-zero exit code
 #
-# *Returns*:
+# @returns
 # - Exit code 1 if the command ran and failed (without `--ignore-exit-code`), 0 otherwise
 #
-# *Notes*:
+# @notes
 # - If the warning level is suppressed, the command is not run.
+# bash-ide parse-func-sig
 bu_log_cmd_warn()
 {
     __bu_log_cmd "$BU_TPUT_VSCODE_ORANGE" "$BU_LOG_LVL_WARN" WARN "$@"
 }
 
-# *Description*:
 # Log and run an informational command (e.g. `cat` a config, `tail` a log) at the info level
 #
-# *Params*:
-# - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
-# - `--ignore-exit-code` (optional): Do not report or propagate a non-zero exit code
-# - `...`: Command to execute
+# @arg $@ {string} args... Command to execute
+# @option -i|--idx <index> (optional): Stacktrace index offset for the logging context
+# @option --ignore-exit-code (optional): Do not report or propagate a non-zero exit code
 #
-# *Returns*:
+# @returns
 # - Exit code 1 if the command ran and failed (without `--ignore-exit-code`), 0 otherwise
 #
-# *Notes*:
+# @notes
 # - If the info level is suppressed, the command is not run.
 # - The command line is logged (`%q`-quoted) before running, unless the command is `echo` or `printf`.
 # - The command's stdout and stderr both go to stderr (/dev/tty while autocompleting).
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_log_cmd_info cat "$config_file"
 # bu_log_cmd_info --ignore-exit-code pgrep -a my-daemon
 # ```
+# bash-ide parse-func-sig
 bu_log_cmd_info()
 {
     __bu_log_cmd "$BU_TPUT_VSCODE_YELLOW" "$BU_LOG_LVL_INFO" INFO "$@"
 }
 
-# *Description*:
 # Log and run an informational command at the debug level
 #
-# *Params*:
-# - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
-# - `--ignore-exit-code` (optional): Do not report or propagate a non-zero exit code
-# - `...`: Command to execute
+# @arg $@ {string} args... Command to execute
+# @option -i|--idx <index> (optional): Stacktrace index offset for the logging context
+# @option --ignore-exit-code (optional): Do not report or propagate a non-zero exit code
 #
-# *Returns*:
+# @returns
 # - Exit code 1 if the command ran and failed (without `--ignore-exit-code`), 0 otherwise
 #
-# *Notes*:
+# @notes
 # - If the debug level is suppressed, the command is not run.
+# bash-ide parse-func-sig
 bu_log_cmd_debug()
 {
     __bu_log_cmd "$BU_TPUT_VSCODE_DARK_GREEN" "$BU_LOG_LVL_DEBUG" DEBUG "$@"
 }
 
-# *Description*:
 # Log an unrecognized option error message
 #
-# *Params*:
-# - `-i|--idx <index>` (optional): Index offset for the logging context
-# - `$1`: Unrecognized option
+# @arg $1 string Unrecognized option
+# @option -i|--idx <index> (optional): Index offset for the logging context
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_log_unrecognized_option --idx 1 --unknown-option
 # ```
@@ -1220,14 +1172,11 @@ bu_log_unrecognized_option()
 
 # MARK: List manipulation
 
-# *Params*:
-# - `$1`: Separator
-# - `...`: List of entries to join
-# 
-# *Returns*:
-# - `$BU_RET`: Value of the joined string
+# @arg $1 {string} [delim] Separator
+# @arg $@ {string} args... List of entries to join
+# @set BU_RET Value of the joined string
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_list_join , a b c
 # echo "$BU_RET" # a,b,c
@@ -1243,16 +1192,12 @@ bu_list_join()
     fi
 }
 
-# *Description*:
 # Reverse a list of entries
 #
-# *Params*:
-# - `...`: List of entries
+# @arg $@ {string} args... List of entries
+# @set BU_RET[@] Array of entries in reverse order
 #
-# *Returns*:
-# - `${BU_RET[@]}`: Array of entries in reverse order
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_list_reverse a b c # ${BU_RET[@]}=(c b a)
 # ```
@@ -1265,19 +1210,16 @@ bu_list_reverse()
     done
 }
 
-# *Description*:
 # Remove empty entries from a list
 #
-# *Params*:
-# - `...`: List of entries
+# @arg $@ {string} args... List of entries
+# @set BU_RET Array of entries with empty entries removed
 #
-# *Returns*:
-# - `$BU_RET`: Array of entries with empty entries removed
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_list_filter_out_empty a "" b c "" # ${BU_RET[@]}=(a b c)
 # ```
+# bash-ide parse-func-sig
 bu_list_filter_out_empty()
 {
     BU_RET=()
@@ -1291,19 +1233,16 @@ bu_list_filter_out_empty()
     done
 }
 
-# *Description*:
 # Sort a list of entries
 #
-# *Params*:
-# - `...`: List of entries
+# @arg $@ {string} args... List of entries
+# @set BU_RET[@] Array of sorted entries
 #
-# *Returns*:
-# - `${BU_RET[@]}`: Array of sorted entries
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_list_sort c a b # ${BU_RET[@]}=(a b c)
 # ```
+# bash-ide parse-func-sig
 bu_list_sort()
 {
     local ifs_defined=false
@@ -1321,6 +1260,7 @@ bu_list_sort()
     fi
 }
 
+# bash-ide parse-func-sig
 bu_list_version_sort()
 {
     local ifs_defined=false
@@ -1338,24 +1278,23 @@ bu_list_version_sort()
     fi
 }
 
-# *Description*:
 # Check if a string exists in a list of strings
 #
-# *Params*:
-# - `$1`: String to search for (needle)
-# - `...`: List of strings (haystack)
+# @arg $1 {string} needle String to search for (needle)
+# @arg $@ {string} args... List of strings (haystack)
 #
-# *Returns*:
+# @returns
 # - Exit code:
 #   - `0`: if the string exists in the list
 #   - `1`: if the string does not exist in the list
 #
-# *Examples*:
+# @example
 # ```bash
 # HAYSTACK=(a b c)
 # bu_list_exists_str b "${HAYSTACK[@]}" # returns 0
 # bu_list_exists_str d "${HAYSTACK[@]}" # returns 1
 # ```
+# bash-ide parse-func-sig
 bu_list_exists_str()
 {
     local needle=$1
@@ -1373,52 +1312,46 @@ bu_list_exists_str()
 
 # MARK: String manipulation
 
-# *Params*:
-# - `$*`: String to convert to lower case
+# @arg $@ {string} args... String to convert to lower case
+# @stdout Lower-cased string
 #
-# *Returns*:
-# - `stdout`: Lower-cased string
+# @notes
+# - For better performance, consider using parameter expansion: `${var,,}`
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_tolower "AbC" # stdout=abc
 # ```
-# 
-# *Notes*:
-# - For better performance, consider using parameter expansion: `${var,,}`
+# bash-ide parse-func-sig
 bu_tolower()
 {
     tr '[:upper:]' '[:lower:]' <<<"$*"
 }
 
-# *Params*:
-# - `$*`: String to convert to upper case
+# @arg $@ {string} args... String to convert to upper case
+# @stdout Upper-cased string
 #
-# *Returns*:
-# - `stdout`: Upper-cased string
+# @notes
+# - For better performance, consider using parameter expansion: `${var^^}`
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_toupper "AbC" # stdout=ABC
 # ```
-#
-# *Notes*:
-# - For better performance, consider using parameter expansion: `${var^^}`
+# bash-ide parse-func-sig
 bu_toupper()
 {
     tr '[:lower:]' '[:upper:]' <<<"$*"
 }
 
-# *Params*:
-# - `stdin`: string to trim whitespaces
+# @stdin string to trim whitespaces
+# @stdout trimmed string
 #
-# *Returns*:
-# - `stdout`: trimmed string
-#
-# *Examples*:
+# @example
 # ```bash
 # echo '  abc ' | bu_gen_trim # stdout=abc
 # ```
+# bash-ide parse-func-sig
 bu_gen_trim()
 {
     awk '{$1=$1};1'
@@ -1455,22 +1388,19 @@ bu_gen_trim_empty_lines()
     fi
 }
 
-# *Description*:
 # Remove empty lines from a string
 #
-# *Params*:
-# - `stdin`: string to remove empty lines from
+# @stdin string to remove empty lines from
+# @stdout string with empty lines removed
 #
-# *Returns*:
-# - `stdout`: string with empty lines removed
-#
-# *Examples*:
+# @example
 # ```bash
 # echo '
 # abc
 #
 # ' | bu_gen_remove_empty_lines # stdout='abc'
 # ```
+# bash-ide parse-func-sig
 bu_gen_remove_empty_lines()
 {
     sed -r -e '/^$/d'
@@ -1490,22 +1420,21 @@ bu_gen_remove_empty_lines()
 # pattern pass `--glob` to bu_parse_positional, which makes completion list
 # what a typed pattern matches and marks the option `(glob)` in --help.
 
-# *Description*:
 # Test whether a string contains an unescaped glob wildcard: `*`, `?`, `[`,
 # or an extglob opener (`+(`, `@(`, `!(`).
 #
-# *Params*:
-# - `$1`: String to test
+# @arg $1 {string} str String to test
 #
-# *Returns*:
+# @returns
 # - `$?`: 0 if the string is a pattern, 1 if it is a plain name
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_glob_has_wildcard 'BU_*'   # 0
 # bu_glob_has_wildcard 'BU_\*'  # 1 (escaped)
 # bu_glob_has_wildcard HOME     # 1
 # ```
+# bash-ide parse-func-sig
 bu_glob_has_wildcard()
 {
     local -r str=$1
@@ -1530,23 +1459,22 @@ bu_glob_has_wildcard()
     return 1
 }
 
-# *Description*:
 # Test whether a name matches any of the given glob patterns. With no
 # patterns every name matches (no filter given).
 #
-# *Params*:
-# - `$1`: Name to test
-# - `...`: Glob patterns
+# @arg $1 {string} name Name to test
+# @arg $@ {string} args... Glob patterns
 #
-# *Returns*:
+# @returns
 # - `$?`: 0 if the name is kept, 1 otherwise
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_glob_match BU_OUT_DIR 'BU_OUT*' HOME  # 0
 # bu_glob_match PATH 'BU_*'                # 1
 # bu_glob_match PATH                       # 0
 # ```
+# bash-ide parse-func-sig
 bu_glob_match()
 {
     local -r name=$1
@@ -1561,48 +1489,46 @@ bu_glob_match()
     return 1
 }
 
-# *Description*:
 # Test whether a name matches any of the given exclude patterns. With no
 # patterns nothing is excluded.
 #
-# *Params*:
-# - `$1`: Name to test
-# - `...`: Glob patterns to exclude
+# @arg $1 string Name to test
+# @arg $@ {string} args... Glob patterns to exclude
 #
-# *Returns*:
+# @returns
 # - `$?`: 0 if the name is excluded, 1 otherwise
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_glob_excludes BU_OUT_JQ '*_JQ'  # 0
 # bu_glob_excludes BU_OUT_JQ         # 1
 # ```
+# bash-ide parse-func-sig
 bu_glob_excludes()
 {
     (($# > 1)) || return 1
     bu_glob_match "$@"
 }
 
-# *Description*:
 # Log an error for each exact name (pattern without wildcards) that matched
 # nothing, as PowerShell does for `Get-Variable -Name NOSUCH`. Wildcard
 # patterns never report: matching nothing is a valid, empty result.
 #
-# *Params*:
-# - `$1`: Noun for the message ("variable" gives "No variable named 'X'")
-# - `$2`: Name of an associative array whose keys are the names that matched
+# @arg $1 {string} noun Noun for the message ("variable" gives "No variable named 'X'")
+# @arg $2 {var} __bu_glob_report_missing_seen Name of an associative array whose keys are the names that matched
 #         an include pattern (before excludes are applied)
-# - `...`: The include patterns
+# @arg $@ {string} args... The include patterns
 #
-# *Returns*:
+# @returns
 # - `$?`: 1 if an exact name was not found, 0 otherwise
 #
-# *Examples*:
+# @example
 # ```bash
 # local -A seen=([HOME]=1)
 # bu_glob_report_missing variable seen HOME 'BU_*'  # 0
 # bu_glob_report_missing variable seen NOSUCH       # 1, logs the error
 # ```
+# bash-ide parse-func-sig
 bu_glob_report_missing()
 {
     local -r noun=$1
@@ -1639,13 +1565,11 @@ bu_glob_report_missing()
 
 # MARK: RAII Scopes
 
-# *Description*:
 # Push a new scope onto the scope stack
 #
-# *Params*: None
-# *Returns*: None
+# @noargs
 #
-# *Examples*:
+# @example
 # ```bash
 # if some_condition; then
 #     bu_scope_push
@@ -1658,18 +1582,17 @@ bu_glob_report_missing()
 #     bu_scope_pop
 # fi
 # ```
+# bash-ide parse-func-sig
 bu_scope_push()
 {
     BU_SCOPE_STACK+=("${#BU_SCOPE_STACK[@]}")
 }
 
-# *Description*:
 # Push a new function-level scope onto the scope stack
 #
-# *Params*: None
-# *Returns*: None
+# @noargs
 #
-# *Examples*:
+# @example
 # ```bash
 # function my_function() {
 #     bu_scope_push_function
@@ -1682,25 +1605,24 @@ bu_scope_push()
 #     bu_scope_pop_function
 # }
 # ```
+# bash-ide parse-func-sig
 bu_scope_push_function()
 {
     BU_SCOPE_STACK+=("_${#BU_SCOPE_STACK[@]}")
 }
 
-# *Description*:
 # Get the current scope handle
 #
-# *Params*: None
+# @noargs
+# @set BU_RET Current scope handle
 #
-# *Returns*:
-# - `$BU_RET`: Current scope handle
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_scope_push
 # bu_scope_handle # $BU_RET contains the current scope handle, e.g. 0
 # bu_scope_pop
 # ```
+# bash-ide parse-func-sig
 bu_scope_handle()
 {
     if ((!"${#BU_SCOPE_STACK[@]}"))
@@ -1712,16 +1634,12 @@ bu_scope_handle()
     BU_RET=${BU_SCOPE_STACK[-1]}
 }
 
-# *Description*:
 # Register a cleanup command to be executed when the scope which the handle refers to is popped
-# 
-# *Params*:
-# - `$1`: Scope handle
-# - `...`: Command to register as cleanup
 #
-# *Returns*: None
+# @arg $1 {string} handle Scope handle
+# @arg $@ {string} args... Command to register as cleanup
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_scope_push
 # bu_scope_handle # $BU_RET contains the current scope handle
@@ -1730,6 +1648,7 @@ bu_scope_handle()
 # bu_scope_handle_add_cleanup "$handle" rm -f /tmp/some_temp_file
 # bu_scope_pop
 # ```
+# bash-ide parse-func-sig
 bu_scope_handle_add_cleanup()
 {
     local handle=$1
@@ -1744,21 +1663,18 @@ bu_scope_handle_add_cleanup()
     deferred+=("$_cmd")
 }
 
-# *Description*:
 # Register a cleanup command to be executed when the current scope is popped
 #
-# *Params*:
-# - `...`: Command to register as cleanup
+# @arg $@ {string} args... Command to register as cleanup
 #
-# *Returns*: None
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_scope_push
 # touch /tmp/some_temp_file
 # bu_scope_add_cleanup rm -f /tmp/some_temp_file
 # bu_scope_pop
 # ```
+# bash-ide parse-func-sig
 bu_scope_add_cleanup()
 {
     if ((!"${#BU_SCOPE_STACK[@]}"))
@@ -1770,20 +1686,18 @@ bu_scope_add_cleanup()
     bu_scope_handle_add_cleanup "${BU_SCOPE_STACK[-1]}" "$@"
 }
 
-# *Description*:
 # Pop the current scope from the scope stack and execute all registered cleanup commands
 #
-# *Params*: None
+# @noargs
 #
-# *Returns*: None
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_scope_push
 # touch /tmp/some_temp_file
 # bu_scope_add_cleanup rm -f /tmp/some_temp_file
 # bu_scope_pop
 # ```
+# bash-ide parse-func-sig
 bu_scope_pop()
 {
     if ((!"${#BU_SCOPE_STACK[@]}"))
@@ -1809,13 +1723,11 @@ bu_scope_pop()
     return "$ret"
 }
 
-# *Description*:
 # Pop the current function-level scope including all nested scopes from the scope stack and execute all registered cleanup commands
 #
-# *Params*: None
-# *Returns*: None
+# @noargs
 #
-# *Examples*:
+# @example
 # ```bash
 # function my_function() {
 #     bu_scope_push_function
@@ -1833,6 +1745,7 @@ bu_scope_pop()
 #     bu_scope_pop_function
 # }
 # ```
+# bash-ide parse-func-sig
 bu_scope_pop_function()
 {
     if ((!"${#BU_SCOPE_STACK[@]}"))
@@ -1876,15 +1789,14 @@ bu_scope_pop_function()
     return "$ret"
 }
 
-# *Description*:
 # Pop all scopes from the scope stack and execute all registered cleanup commands
 #
-# *Params*: None
+# @noargs
 #
-# *Returns*:
+# @returns
 # - Exit code 0 if all cleanups succeeded, non-zero otherwise
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_scope_push
 # touch /tmp/some_temp_file
@@ -1894,6 +1806,7 @@ bu_scope_pop_function()
 # bu_scope_add_cleanup rm -f /tmp/some_temp_file2
 # bu_scope_pop_all
 # ```
+# bash-ide parse-func-sig
 bu_scope_pop_all()
 {
     local exit_code=0
@@ -1909,38 +1822,36 @@ bu_scope_pop_all()
 
 # MARK: Scope-related utilities
 
-# *Description*:
 # Call pushd with suppressed output
 #
-# *Params*:
-# - `$1`: Directory to change to
+# @arg $1 string Directory to change to
 #
-# *Returns*:
+# @returns
 # - Exit code of the `pushd` command
 bu_pushd_silent()
 {
     pushd "$1" >/dev/null
 }
 
-# *Description*:
 # Call popd with suppressed output
 #
-# *Params*: None
-#*Returns*:
+# @noargs
+#
+# @returns
 # - Exit code of the `popd` command
+# bash-ide parse-func-sig
 bu_popd_silent()
 {
     popd >/dev/null
 }
 
-# *Description*:
 # Close file descriptors
 #
-# *Params*:
-# - `...`: File descriptors to close
+# @arg $@ {string} args... File descriptors to close
 #
-# *Returns*:
+# @returns
 # - Exit code of the `exec` command
+# bash-ide parse-func-sig
 bu_close_fd()
 {
     local exit_code=0
@@ -1958,21 +1869,18 @@ bu_close_fd()
     return "$exit_code"
 }
 
-# *Description*:
 # Set a shell option for the current scope, restoring the previous value when the scope is popped
 #
-# *Params*:
-# - `$1`: Shell option to set (e.g. `errexit`, `nounset`, etc.)
+# @arg $1 {string} opt Shell option to set (e.g. `errexit`, `nounset`, etc.)
 #
-# *Returns*: None
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_scope_push
 # bu_scoped_set errexit
 # some_command_that_may_fail
 # bu_scope_pop
 # ```
+# bash-ide parse-func-sig
 bu_scoped_set_opt()
 {
     local opt=$1
@@ -1983,21 +1891,18 @@ bu_scoped_set_opt()
     fi
 }
 
-# *Description*:
 # Unset a shell option for the current scope, restoring the previous value when the scope is popped
 #
-# *Params*:
-# - `$1`: Shell option to unset (e.g. `errexit`, `nounset`, etc.)
+# @arg $1 {string} opt Shell option to unset (e.g. `errexit`, `nounset`, etc.)
 #
-# *Returns*: None
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_scope_push
 # bu_scoped_unset nounset
 # some_command_that_may_use_unset_variables
 # bu_scope_pop
 # ```
+# bash-ide parse-func-sig
 bu_scoped_unset_opt()
 {
     local opt=$1
@@ -2008,15 +1913,11 @@ bu_scoped_unset_opt()
     fi
 }
 
-# *Description*:
 # Set or unset a shell option for the current scope, restoring the previous value when the scope is popped
 #
-# *Params*:
-# - `$1`: Shell option to set or unset, prefixed with `-` to set or `+` to unset (e.g. `-errexit`, `+nounset`, etc.)
+# @arg $1 string Shell option to set or unset, prefixed with `-` to set or `+` to unset (e.g. `-errexit`, `+nounset`, etc.)
 #
-# *Returns*: None
-#
-# *Examples*:
+# @example
 # ```bash
 # bu_scope_push
 # bu_scoped_set -e
@@ -2055,13 +1956,10 @@ bu_scoped_set()
     esac
 }
 
-# *Description*:
 # Push a directory onto the directory stack and register a cleanup to pop it when the scope is popped
 #
-# *Params*:
-# - `$1`: Directory to change to
-#
-# *Returns*: None
+# @arg $1 string Directory to change to
+# bash-ide parse-func-sig
 bu_scoped_pushd()
 {
     bu_pushd_silent "$@"
@@ -2171,18 +2069,15 @@ BEGIN {
 AWK
 )
 
-# *Description*:
 # Lightly syntax-highlight a single line of shell source: bash reserved words
 # (violet), brackets/parens/braces (yellow), comments (grey, or blue on
 # 8-colour terminals), and quoted strings (green). When the terminal has no
 # color support the BU_TPUT_* codes are empty and the line is returned
 # unchanged.
 #
-# *Params*:
-# - `$1`: Source line to highlight
-#
-# *Returns*:
-# - stdout: The highlighted line
+# @arg $1 {string} line Source line to highlight
+# @stdout The highlighted line
+# bash-ide parse-func-sig
 __bu_traceback_highlight()
 {
     local -r line=$1
@@ -2195,14 +2090,13 @@ __bu_traceback_highlight()
         "$BU_TRACEBACK_HIGHLIGHT_AWK" <<<"$line"
 }
 
-# *Description*:
 # Print one traceback frame in the short (single-line) style.
 #
-# *Params*:
-# - `$1`: Frame index
-# - `$2`: Command text (frame 0) or function name (later frames)
-# - `$3`: Source file path
-# - `$4`: Line number
+# @arg $1 {string} idx Frame index
+# @arg $2 {string} what Command text (frame 0) or function name (later frames)
+# @arg $3 {string} file Source file path
+# @arg $4 {string} line Line number
+# bash-ide parse-func-sig
 __bu_traceback_print_frame_short()
 {
     local -r idx=$1
@@ -2215,16 +2109,15 @@ __bu_traceback_print_frame_short()
         "$BU_TPUT_UNDERLINE" "$(basename -- "$file")" "$line" "$BU_TPUT_NO_UNDERLINE"
 }
 
-# *Description*:
 # Print one traceback frame in the full (verbose) style: a Python-style
 # "File ... line N, in func" header followed by the surrounding source lines,
 # with the fault line highlighted. Falls back to a single grey line when the
 # source file is unavailable (missing, unreadable, or a non-numeric line).
 #
-# *Params*:
-# - `$1`: Command text (frame 0) or function name (later frames)
-# - `$2`: Source file path
-# - `$3`: Line number
+# @arg $1 {string} what Command text (frame 0) or function name (later frames)
+# @arg $2 {string} file Source file path
+# @arg $3 {string} line Line number
+# bash-ide parse-func-sig
 __bu_traceback_print_frame_full()
 {
     local -r what=$1
@@ -2279,15 +2172,14 @@ __bu_traceback_print_frame_full()
     return 0
 }
 
-# *Description*:
 # Dispatch one traceback frame to the active rendering style.
 #
-# *Params*:
-# - `$1`: Style (short or full)
-# - `$2`: Frame index
-# - `$3`: Command text (frame 0) or function name (later frames)
-# - `$4`: Source file path
-# - `$5`: Line number
+# @arg $1 {string} style Style (short or full)
+# @arg $2 {string} idx Frame index
+# @arg $3 {string} what Command text (frame 0) or function name (later frames)
+# @arg $4 {string} file Source file path
+# @arg $5 {string} line Line number
+# bash-ide parse-func-sig
 __bu_traceback_print_frame()
 {
     local -r style=$1
@@ -2307,12 +2199,12 @@ __bu_traceback_print_frame()
 
 BU_EXIT_HANDLER_CLEANING_UP=false
 
-# *Description*:
 # Exit handler to perform cleanup and print traceback on error
 #
-# *Params*: None
+# @noargs
 #
-# *Returns*: Exit code of the script
+# @returns Exit code of the script
+# bash-ide parse-func-sig
 __bu_exit_handler()
 {
     local exit_code=$?
@@ -2389,15 +2281,14 @@ __bu_exit_handler()
     return "$exit_code"
 }
 
-# *Description*:
 # Setup the exit handler without enabling errexit
 #
-# *Params*: None
-# *Returns*: None
+# @noargs
 #
-# *Notes*
+# @notes
 # - A no-op during autocompletion: the command is then sourced into the
 #   completing shell, whose ERR/EXIT traps it must not replace
+# bash-ide parse-func-sig
 bu_exit_handler_setup_no_e()
 {
     if bu_env_is_in_autocomplete
@@ -2408,14 +2299,13 @@ bu_exit_handler_setup_no_e()
     trap __bu_exit_handler EXIT
 }
 
-# *Description*:
 # Setup the exit handler with errexit enabled
 #
-# *Params*: None
-# *Returns*: None
+# @noargs
 #
-# *Notes*
+# @notes
 # - A no-op during autocompletion (see bu_exit_handler_setup_no_e)
+# bash-ide parse-func-sig
 bu_exit_handler_setup()
 {
     if bu_env_is_in_autocomplete
@@ -2426,6 +2316,7 @@ bu_exit_handler_setup()
     bu_exit_handler_setup_no_e
 }
 
+# bash-ide parse-func-sig
 bu_exit_handler_restore()
 {
     if [[ $- == *e* ]]
@@ -2436,13 +2327,10 @@ bu_exit_handler_restore()
 
 # MARK: Synchronization, file management
 
-# *Description*:
 # Acquire an exclusive lock on a file, storing the lock file descriptor in a companion .lockfd file
 #
-# *Params*:
-# - `$1`: File path to lock
-#
-# *Returns*: None
+# @arg $1 {string} file_path File path to lock
+# bash-ide parse-func-sig
 bu_sync_acquire_file()
 {
     local file_path=$1
@@ -2455,13 +2343,10 @@ bu_sync_acquire_file()
     echo "$lockfile_fd" > "$fd_path"
 }
 
-# *Description*:
 # Acquire an exclusive lock on a file descriptor
 #
-# *Params*:
-# - `$1`: File descriptor to lock
-#
-# *Returns*: None
+# @arg $1 {string} fd File descriptor to lock
+# bash-ide parse-func-sig
 bu_sync_acquire_fd()
 {
     local fd=$1
@@ -2469,13 +2354,10 @@ bu_sync_acquire_fd()
     flock --exclusive "$fd"
 }
 
-# *Description*:
 # Release an exclusive lock on a file locked by bu_sync_acquire_file, using the lock file descriptor stored in the companion .lockfd file
 #
-# *Params*:
-# - `$1`: File path to unlock
-#
-# *Returns*: None
+# @arg $1 {string} file_path File path to unlock
+# bash-ide parse-func-sig
 bu_sync_release_file()
 {
     local file_path=$1
@@ -2512,13 +2394,10 @@ bu_sync_release_file()
     return 0
 }
 
-# *Description*:
 # Release an exclusive lock on a file descriptor locked by bu_sync_acquire_fd
 #
-# *Params*:
-# - `$1`: File descriptor to unlock
-#
-# *Returns*: None
+# @arg $1 {string} fd File descriptor to unlock
+# bash-ide parse-func-sig
 bu_sync_release_fd()
 {
     local fd=$1
@@ -2532,17 +2411,15 @@ bu_sync_release_fd()
     fi
 }
 
-# *Description*:
 # Cycle a log file, keeping only the last N (possibly unique) lines
-# *Params*:
-# - `$1`: File path to cycle
-# - `$2`: Whether to acquire a lock on the file (true/false) whilst cycling
-# - `$3` (optional): Number of lines to keep (default: all)
-# - `$4`: Whether to keep only unique lines. 
+#
+# @arg $1 {string} filepath File path to cycle
+# @arg $2 {string} should_lock Whether to acquire a lock on the file (true/false) whilst cycling
+# @arg $3 {string} [num_lines="+1"] Number of lines to keep (default: all)
+# @arg $4 {string} unique Whether to keep only unique lines.
 #         If true, only the last occurrence of each line is kept. (more expensive operation)
 #         If false, the uniq command is used to remove consecutive duplicate lines.
-#
-# *Returns*: None
+# bash-ide parse-func-sig
 bu_sync_cycle_file()
 {
     local filepath=$1
@@ -2584,32 +2461,29 @@ bu_sync_cycle_file()
     fi
 }
 
-# *Description*:
 # Cycle the last run commands log file, keeping only the last 500 unique lines
 #
-# *Params*: None
-# *Returns*: None
+# @noargs
+# bash-ide parse-func-sig
 bu_sync_cycle_last_run_cmds()
 {
     bu_sync_cycle_file "$BU_LAST_RUN_CMDS" true 500 false || return 1
 }
 
-# *Description*:
 # Cycle numbered files, e.g. log files
 #
-# *Params*:
-# - `$1`: Base file name (without extension)
-# - `$2`: Cycle length (number of files to keep)
-# - `$3` (optional): Target directory (default: current directory)
-# - `$4` (optional): File extension (default: log)
+# @arg $1 {string} file_base Base file name (without extension)
+# @arg $2 {string} cycle_length Cycle length (number of files to keep)
+# @arg $3 {string} [target_dir=.] Target directory (default: current directory)
+# @arg $4 {string} [file_ext=log] File extension (default: log)
+# @set BU_RET[@] Array containing the write and read file descriptors for the new file
+#                   (`BU_RET[0]`: write fd, `BU_RET[1]`: read fd)
 #
-# *Returns*:
+# @returns
 # - Exit code:
 #   - `0`: Success
 #   - `1`: Failure
-# - `${BU_RET[@]}`: Array containing the write and read file descriptors for the new file
-#                   (`BU_RET[0]`: write fd, `BU_RET[1]`: read fd)
-#
+# bash-ide parse-func-sig
 bu_sync_cycle_numbered_files()
 {
     local file_base=$1
@@ -2661,19 +2535,17 @@ bu_sync_cycle_numbered_files()
     cd "$original_dir" || return 1
 }
 
-# *Description*:
 # Poll a log file for a pattern to appear (or disappear)
 #
-# *Params*:
-# - `--negate` (optional): If present, wait for the pattern to disappear
-# - `$1`: Log file path
-# - `$2`: Pattern to wait for (regular expression)
-# - `$3`: Error pattern (regular expression) that causes immediate failure if found
-# - `$4` (optional): Poll timeout in seconds (default: 60)
-# - `$5` (optional): Poll interval in seconds (default: 3)
-# - `$6` (optional): File not exists timeout in seconds (default: 20)
+# @arg $1 {string} log_file Log file path
+# @arg $2 {string} wait_pattern Pattern to wait for (regular expression)
+# @arg $3 {string} error_pattern Error pattern (regular expression) that causes immediate failure if found
+# @arg $4 {string} [poll_timeout=60] Poll timeout in seconds (default: 60)
+# @arg $5 {string} [poll_interval=3] Poll interval in seconds (default: 3)
+# @arg $6 {string} [file_not_exists_timeout=20] File not exists timeout in seconds (default: 20)
+# @option --negate (optional): If present, wait for the pattern to disappear
 #
-# *Returns*:
+# @returns
 # - Exit code:
 #   - `0`: if the pattern was found (or disappeared, if `--negate` is used)
 #   - `1`: if the error pattern was found or the timeout was reached
@@ -2760,16 +2632,15 @@ bu_sync_log_poll_wait()
     done
 }
 
-# *Description*:
 # Wait for all fifos in the argument list to be written to
 #
-# *Params*:
-# - `...`: List of fifo paths to wait on
+# @arg $@ {string} args... List of fifo paths to wait on
 #
-# *Returns*:
+# @returns
 # - Exit code:
 #   - `0`: Success
 #   - `1`: Failure
+# bash-ide parse-func-sig
 bu_sync_wait_group_wait()
 {
     local fifo
@@ -2785,16 +2656,15 @@ bu_sync_wait_group_wait()
     done
 }
 
-# *Description*:
 # Signal readiness to all fifos in the argument list by writing "ready" to them
 #
-# *Params*:
-# - `...`: List of fifo paths to signal readiness to
+# @arg $@ {string} args... List of fifo paths to signal readiness to
 #
-# *Returns*:
+# @returns
 # - Exit code:
 #   - `0`: Success
 #   - `1`: Failure
+# bash-ide parse-func-sig
 bu_sync_wait_group_ready()
 {
     local fifo
@@ -2809,16 +2679,15 @@ bu_sync_wait_group_ready()
     done
 }
 
-# *Description*:
 # Wait for all children to be ready, then signal readiness to them
 #
-# *Params*:
-# - `...`: List of fifo paths to wait on and signal readiness to
+# @arg $@ {string} args... List of fifo paths to wait on and signal readiness to
 #
-# *Returns*:
+# @returns
 # - Exit code:
 #   - `0`: Success
 #   - `1`: Failure
+# bash-ide parse-func-sig
 bu_sync_wait_group_parent()
 {
     bu_log_info "Wait group: Waiting on children"
@@ -2828,13 +2697,11 @@ bu_sync_wait_group_parent()
     bu_log_info "Wait group: Unblocking children"
 }
 
-# *Description*:
 # Signal readiness to the parent, then wait for the parent to be ready
 #
-# *Params*:
-# - `$1`: Parent fifo path
+# @arg $1 string Parent fifo path
 #
-# *Returns*:
+# @returns
 # - Exit code:
 #   - `0`: Success
 #   - `1`: Failure
@@ -2853,14 +2720,10 @@ bu_sync_wait_group_child()
 }
 
 # MARK: Environment/Path utilities
-# *Description*:
 # Get function definition location
 #
-# *Params*:
-# - `$1`: Function name
-#
-# *Returns*:
-# - `stdout`: Function definition location
+# @arg $1 string Function name
+# @stdout Function definition location
 bu_env_whichfunc()
 {
     shopt -s extdebug
@@ -2868,14 +2731,11 @@ bu_env_whichfunc()
     shopt -u extdebug
 }
 
-# *Description*:
 # Append a path to a generic path-like environment variable if it is not already present
 #
-# *Params*:
-# - `$1`: Name of the path variable (e.g. PATH, LD_LIBRARY_PATH, etc.)
-# - `$2`: Path to append
-#
-# *Returns*: None
+# @arg $1 {var} __path_var Name of the path variable (e.g. PATH, LD_LIBRARY_PATH, etc.)
+# @arg $2 {string} path_to_append Path to append
+# bash-ide parse-func-sig
 __bu_env_append_generic_path()
 {
     local -n __path_var=$1
@@ -2886,15 +2746,11 @@ __bu_env_append_generic_path()
     fi
 }
 
-# *Description*:
 # Prepend a path to a generic path-like environment variable, moving it to the
 # front if it is already present (e.g. after macOS path_helper put /bin ahead)
 #
-# *Params*:
-# - `$1`: Name of the path variable (e.g. PATH, LD_LIBRARY_PATH, etc.)
-# - `$2`: Path to prepend
-#
-# *Returns*: None
+# @arg $1 {var} __path_var Name of the path variable (e.g. PATH, LD_LIBRARY_PATH, etc.)
+# @arg $2 {string} path_to_prepend Path to prepend
 __bu_env_prepend_generic_path()
 {
     local -n __path_var=$1
@@ -2906,14 +2762,11 @@ __bu_env_prepend_generic_path()
     __path_var=$path_to_prepend${__path_var:+:$__path_var}
 }
 
-# *Description*:
 # Prepend a path to a generic path-like environment variable, even if it is already present
 #
-# *Params*:
-# - `$1`: Name of the path variable (e.g. PATH, LD_LIBRARY_PATH, etc.)
-# - `$2`: Path to prepend
-#
-# *Returns*: None
+# @arg $1 {var} __path_var Name of the path variable (e.g. PATH, LD_LIBRARY_PATH, etc.)
+# @arg $2 {string} path_to_prepend Path to prepend
+# bash-ide parse-func-sig
 __bu_env_prepend_generic_path_force()
 {
     local -n __path_var=$1
@@ -2921,98 +2774,67 @@ __bu_env_prepend_generic_path_force()
     __path_var=$path_to_prepend${__path_var:+:$__path_var}
 }
 
-# *Description*:
 # Append a path to the PATH environment variable if it is not already present
 #
-# *Params*:
-# - `$1`: Path to append
-#
-# *Returns*: None
+# @arg $1 string Path to append
 bu_env_append_path()
 {
     __bu_env_append_generic_path PATH "$1"
 }
 
-# *Description*:
 # Prepend a path to the PATH environment variable, moving it to the front if already present
 #
-# *Params*:
-# - `$1`: Path to prepend
-#
-# *Returns*: None
+# @arg $1 string Path to prepend
 bu_env_prepend_path()
 {
     __bu_env_prepend_generic_path PATH "$1"
 }
 
-# *Description*:
 # Prepend a path to the PATH environment variable, even if it is already present
 #
-# *Params*:
-# - `$1`: Path to prepend
-#
-# *Returns*: None
+# @arg $1 string Path to prepend
 bu_env_prepend_path_force()
 {
     __bu_env_prepend_generic_path_force PATH "$1"
 }
 
-# *Description*:
 # Prepend a path to the LD_LIBRARY_PATH environment variable if it is not already present
 #
-# *Params*:
-# - `$1`: Path to prepend
-#
-# *Returns*: None
+# @arg $1 string Path to prepend
 bu_env_append_ld_library_path()
 {
     __bu_env_append_generic_path LD_LIBRARY_PATH "$1"
 }
 
-# *Description*:
 # Prepend a path to the PYTHONPATH environment variable, moving it to the front if already present
 #
-# *Params*:
-# - `$1`: Path to prepend
-#
-# *Returns*: None
+# @arg $1 string Path to prepend
 bu_env_prepend_pythonpath()
 {
     __bu_env_prepend_generic_path PYTHONPATH "$1"
 }
 
-# *Description*:
 # Append a path to the PYTHONPATH environment variable if it is not already present
 #
-# *Params*:
-# - `$1`: Path to append
-#
-# *Returns*: None
+# @arg $1 string Path to append
 bu_env_append_pythonpath()
 {
     __bu_env_append_generic_path PYTHONPATH "$1"
 }
 
-# *Description*:
 # Prepend a path to the PYTHONPATH environment variable, even if it is already present
 #
-# *Params*:
-# - `$1`: Path to prepend
-#
-# *Returns*: None
+# @arg $1 string Path to prepend
 bu_env_prepend_pythonpath_force()
 {
     __bu_env_prepend_generic_path_force PYTHONPATH "$1"
 }
 
-# *Description*:
 # Remove a path from a generic path-like environment variable
 #
-# *Params*:
-# - `$1`: Name of the path variable (e.g. PATH, LD_LIBRARY_PATH, etc.)
-# - `$2`: Path to remove
-#
-# *Returns*: None
+# @arg $1 {var} __path_var Name of the path variable (e.g. PATH, LD_LIBRARY_PATH, etc.)
+# @arg $2 {string} path_to_remove Path to remove
+# bash-ide parse-func-sig
 __bu_env_remove_from_generic_path()
 {
     local -n __path_var=$1
@@ -3027,50 +2849,35 @@ __bu_env_remove_from_generic_path()
     fi
 }
 
-# *Description*:
 # Remove a path from the PATH environment variable
 #
-# *Params*:
-# - `$1`: Path to remove
-#
-# *Returns*: None
+# @arg $1 string Path to remove
 bu_env_remove_from_path()
 {
     __bu_env_remove_from_generic_path PATH "$1"
 }
 
-# *Description*:
 # Remove a path from the LD_LIBRARY_PATH environment variable
 #
-# *Params*:
-# - `$1`: Path to remove
-#
-# *Returns*: None
+# @arg $1 string Path to remove
 bu_env_remove_from_ld_library_path()
 {
     __bu_env_remove_from_generic_path LD_LIBRARY_PATH "$1"
 }
 
-# *Description*:
 # Remove a path from the PYTHONPATH environment variable
 #
-# *Params*:
-# - `$1`: Path to remove
-#
-# *Returns*: None
+# @arg $1 string Path to remove
 bu_env_remove_from_pythonpath()
 {
     __bu_env_remove_from_generic_path PYTHONPATH "$1"
 }
 
-# *Description*:
 # Rename a bash function
 #
-# *Params*:
-# - `$1`: Old function name
-# - `$2`: New function name
-#
-# *Returns*: None
+# @arg $1 {string} old_func_name Old function name
+# @arg $2 {string} new_func_name New function name
+# bash-ide parse-func-sig
 bu_env_rename_func()
 {
     local old_func_name=$1
@@ -3079,59 +2886,57 @@ bu_env_rename_func()
     eval "$(declare -f "$old_func_name" | sed -r "s/\b$old_func_name\b/$new_func_name/g")"
 }
 
-# *Description*:
 # Check if the current shell session is inside a tmux session
 #
-# *Params*: None
+# @noargs
 #
-# *Returns*:
+# @returns
 # - Exit code:
 #   - `0`: If in tmux
 #   - `1`: If not in tmux
+# bash-ide parse-func-sig
 bu_env_is_in_tmux()
 {
     [[ -n "${TMUX:-}" && ("${TERM:-}" == screen* || "${TERM:-}" == tmux*) ]]
 }
 
-# *Description*:
 # Check if the current shell code is executing in an autocomplete context
 #
-# *Params*: None
+# @noargs
 #
-# *Returns*:
+# @returns
 # - Exit code:
 #   - `0`: If in autocomplete context
 #   - `1`: If not in autocomplete context
 #
-# *Notes*
+# @notes
 # - Set BU_COMP_FAKE to a non-empty value to force this to be false
+# bash-ide parse-func-sig
 bu_env_is_in_autocomplete()
 {
     [[ -n "${COMP_CWORD:-}" && -z "${BU_COMP_FAKE:-}" ]]
 }
 
 # MARK: Run utils
-# *Description*:
 # Execute a command with caching based on specified environment variables and bash variables
 #
-# *Params*:
-# - `--check`: If present, only check if the command is cached, do not execute it
-# - `--error-pattern <pattern>`: Regular expression pattern to search for in the command output that indicates an error
-# - `--allow-empty`: If present, do not treat empty output as an error
-# - `--env-vars <var1,var2,...>`: Comma-separated list of environment variable names to include in the cache key
-# - `--bash-vars <var1,var2,...>`: Comma-separated list of bash variable names to include in the cache key
-# - `--dir <cache_dir>`: Directory to use for caching (default: `$BU_HASHED_CACHE_DIR`)
-# - `--invalidate` or `--invalidate-cache`: If present, invalidate the cache for this command before executing
-# - `--invalidate-bool` or `--invalidate-cache-bool <true|false>`: Boolean to control cache invalidation
-# - `--strict-equality`: If present, use strict equality (including command line) for cache hits
-# - `--`: End of options; the remaining arguments are treated as the command to execute
-# - `...`: Command and its arguments to execute
+# @arg $@ {string} args... Command and its arguments to execute
+# @option --check: If present, only check if the command is cached, do not execute it
+# @option --error-pattern <pattern>: Regular expression pattern to search for in the command output that indicates an error
+# @option --allow-empty: If present, do not treat empty output as an error
+# @option --env-vars <var1,var2,...>: Comma-separated list of environment variable names to include in the cache key
+# @option --bash-vars <var1,var2,...>: Comma-separated list of bash variable names to include in the cache key
+# @option --dir <cache_dir>: Directory to use for caching (default: `$BU_HASHED_CACHE_DIR`)
+# @option --invalidate or --invalidate-cache: If present, invalidate the cache for this command before executing
+# @option --invalidate-bool or --invalidate-cache-bool <true|false>: Boolean to control cache invalidation
+# @option --strict-equality: If present, use strict equality (including command line) for cache hits
+# @option --: End of options; the remaining arguments are treated as the command to execute
+# @stdout The output of the command, either from cache or from execution
 #
-# *Returns*:
+# @returns
 # - Exit code:
 #   - `0`: If the command was executed successfully or the cached output was used
 #   - `1`: If the command failed, the error pattern was found, or the output was empty (unless `--allow-empty` is used)
-# - `stdout`: The output of the command, either from cache or from execution
 # - If `--check` is used, the command outputs the cache key and returns `0` if cached, `1` if not cached
 bu_cached_execute()
 {
@@ -3321,15 +3126,11 @@ bu_cached_execute()
     return 0
 }
 
-# *Description*:
 # Cycle command logs, keeping only a specified number of log files
 #
-# *Params*:
-# - `$1`: Command name (used as the base name for log files)
-# - `$2`: Cycle length (number of log files to keep)
-#
-# *Returns*:
-# - `${BU_RET[@]}`: Array containing the write and read file descriptors for the new log file
+# @arg $1 {string} command Command name (used as the base name for log files)
+# @arg $2 {string} cycle_length Cycle length (number of log files to keep)
+# @set BU_RET[@] Array containing the write and read file descriptors for the new log file
 #                   (`${BU_RET[0]}`: write fd, `${BU_RET[1]}`: read fd)
 __bu_cycle_logs()
 {
@@ -3374,24 +3175,21 @@ __bu_cycle_logs()
     popd &>/dev/null
 }
 
-# *Description*:
 # Log the current command to the last run commands history file
 #
-# *Params*:
-# - `...`: Arguments to log (typically `$@` from the calling function)
+# @arg $@ {string} args... Arguments to log (typically `$@` from the calling function)
 #
-# *Returns*: None
-#
-# *Examples*:
-# ```bash
-# bu_run_log_command "$@"
-# ```
-#
-# *Notes*:
+# @notes
 # - Does nothing if called from autocomplete context to avoid spam
 # - Writes to `$BU_LAST_RUN_CMDS` file
 # - The file will get trimmed if it gets too long
 # - The command will be logged as: `<calling_script_name> <arguments>`
+#
+# @example
+# ```bash
+# bu_run_log_command "$@"
+# ```
+# bash-ide parse-func-sig
 bu_run_log_command()
 {
     if bu_env_is_in_autocomplete
@@ -3404,24 +3202,21 @@ bu_run_log_command()
     bu_scope_add_cleanup bu_sync_cycle_last_run_cmds
 }
 
-# *Description*:
 # Edit one or more files with the configured editor
 #
-# *Params*:
-# - `...`: File paths to edit
+# @arg $@ {string} args... File paths to edit
 #
-# *Returns*: None
+# @notes
+# - Uses `$VISUAL` or `$EDITOR` environment variables to determine the editor
+# - Supports special handling for VS Code (both `code` and `bu_code_wait.sh`)
+# - Falls back to VS Code (if available) or vim if no editor is configured
 #
-# *Examples*:
+# @example
 # ```bash
 # bu_edit_file /path/to/file1.txt
 # bu_edit_file /path/to/file1.txt /path/to/file2.txt
 # ```
-#
-# *Notes*:
-# - Uses `$VISUAL` or `$EDITOR` environment variables to determine the editor
-# - Supports special handling for VS Code (both `code` and `bu_code_wait.sh`)
-# - Falls back to VS Code (if available) or vim if no editor is configured
+# bash-ide parse-func-sig
 bu_edit_file()
 {
     local files=("$@")
@@ -3455,23 +3250,20 @@ bu_edit_file()
     esac
 }
 
-# *Description*:
 # Open a log file with the configured editor or viewer
 #
-# *Params*:
-# - `$1`: Log file path to open
+# @arg $1 {string} log_file Log file path to open
 #
-# *Returns*: None
-#
-# *Examples*:
-# ```bash
-# bu_run_open_logs /path/to/logfile.log
-# ```
-#
-# *Notes*:
+# @notes
 # - Uses `$VISUAL` or `$EDITOR` environment variables to determine the editor/viewer
 # - Supports special handling for VS Code (both `code` and `bu_code_wait.sh`)
 # - Falls back to VS Code (if available) or `less` if no editor is configured
+#
+# @example
+# ```bash
+# bu_run_open_logs /path/to/logfile.log
+# ```
+# bash-ide parse-func-sig
 bu_run_open_logs()
 {
     local log_file=$1
@@ -3494,13 +3286,10 @@ bu_run_open_logs()
     esac
 }
 
-# *Description*:
 # Sleep for a specified number of seconds, optionally displaying a progress bar if `tqdm` is available.
 #
-# *Params*:
-# - `$1`: Number of seconds to sleep
-#
-# *Returns*: None
+# @arg $1 {string} num_seconds Number of seconds to sleep
+# bash-ide parse-func-sig
 bu_sleep()
 {
     local num_seconds=$1
@@ -3517,38 +3306,36 @@ bu_sleep()
     fi
 }
 
-# *Description*:
 # Run a command with various options such as logging, debugging, and working directory management.
 #
-# *Params*:
-# - `--gdb`: Run the command under gdb
-# - `--log`: Enable logging to a file
-# - `--log-stdout`: Enable logging to stdout
-# - `--copy-logs-to <path>`: Copy logs to the specified path after execution
-# - `--open-logs`: Open the log file after execution
-# - `--kill`: Kill existing instances of the command before running
-# - `--ignore-non-zero-exit-code`: Ignore non-zero exit codes from the command
-# - `--watch <interval>`: Re-run the command at the specified interval (in seconds)
-# - `--ldd`: Print the output of `ldd` for the command before running
-# - `--dry-run`: Print the command that would be run without actually executing it
-# - `--cached`: Run the command with caching
-# - `--no-log-last-run-cmd`: Do not log the command to the last run commands history
-# - `--cmd-log-file <file>`: Log the command to the specified file
-# - `--working-directory <dir>`: Change to the specified working directory before running the command
-# - `--mapfile`: Capture the command's output into an array variable
-# - `--mapfile-str`: Capture the command's output into a string variable
-# - `--mapfile-outparam <var>`: Specify the output variable name for mapfile options (default: BU_RET)
-# - `--tmux-name <name>`: Set the tmux window name to the specified name
-# - `--wait-group <fifo>`: Use the specified fifo for wait group synchronization
-# - `--`: End of options; the remaining arguments are treated as the command to run
-# - `...`: Command and its arguments to run
+# @arg $@ {string} args... Command and its arguments to run
+# @option --gdb: Run the command under gdb
+# @option --log: Enable logging to a file
+# @option --log-stdout: Enable logging to stdout
+# @option --copy-logs-to <path>: Copy logs to the specified path after execution
+# @option --open-logs: Open the log file after execution
+# @option --kill: Kill existing instances of the command before running
+# @option --ignore-non-zero-exit-code: Ignore non-zero exit codes from the command
+# @option --watch <interval>: Re-run the command at the specified interval (in seconds)
+# @option --ldd: Print the output of `ldd` for the command before running
+# @option --dry-run: Print the command that would be run without actually executing it
+# @option --cached: Run the command with caching
+# @option --no-log-last-run-cmd: Do not log the command to the last run commands history
+# @option --cmd-log-file <file>: Log the command to the specified file
+# @option --working-directory <dir>: Change to the specified working directory before running the command
+# @option --mapfile: Capture the command's output into an array variable
+# @option --mapfile-str: Capture the command's output into a string variable
+# @option --mapfile-outparam <var>: Specify the output variable name for mapfile options (default: BU_RET)
+# @option --tmux-name <name>: Set the tmux window name to the specified name
+# @option --wait-group <fifo>: Use the specified fifo for wait group synchronization
+# @option --: End of options; the remaining arguments are treated as the command to run
+# @set BU_RET[@] If `--mapfile`, contains the command's output
+# @set BU_RET If `--mapfile-str`, contains the command's output as a string
 #
-# *Returns*:
+# @returns
 # - Exit code:
 #   - `0`: If the command was executed successfully
 #   - `1`: If the command failed (unless `--ignore-non-zero-exit-code` is used)
-# - `${BU_RET[@]}`: If `--mapfile`, contains the command's output
-# - `${BU_RET}`: If `--mapfile-str`, contains the command's output as a string
 bu_run()
 {
     bu_scope_push_function
@@ -3912,6 +3699,7 @@ bu_run()
 
 # MARK: VSCode
 
+# bash-ide parse-func-sig
 bu_vscode_find_latest_server()
 {
     if "$BU_ENV_IS_WSL"
@@ -3922,6 +3710,7 @@ bu_vscode_find_latest_server()
     fi
 }
 
+# bash-ide parse-func-sig
 bu_vscode_find_latest_socket()
 {
     if "$BU_ENV_IS_WSL"
@@ -3932,6 +3721,7 @@ bu_vscode_find_latest_socket()
     fi
 }
 
+# bash-ide parse-func-sig
 bu_vscode_is_socket_inactive()
 {
     local grep_result
@@ -3954,14 +3744,10 @@ bu_vscode_is_socket_inactive()
 
 # MARK: Pretty 
 
-# *Description*:
 # Pretty print associative (or non-associative) array variable
 #
-# *Params*:
-# - `$1`: Name of the associative array variable
-#
-# *Returns*:
-# - `stdout`: Pretty printed key-value pairs of the associative array
+# @arg $1 {var} __bu_print_var_name Name of the associative array variable
+# @stdout Pretty printed key-value pairs of the associative array
 bu_print_var()
 {
     local -n __bu_print_var_name=$1
@@ -3974,13 +3760,11 @@ bu_print_var()
     done
 }
 
-# *Description*:
 # Pretty print the current scope stack
 #
-# *Params*: None
-#
-# *Returns*:
-# - `stdout`: Pretty printed scope stack
+# @noargs
+# @stdout Pretty printed scope stack
+# bash-ide parse-func-sig
 bu_scope_print()
 {
     bu_print_var BU_SCOPE_STACK
@@ -3988,16 +3772,13 @@ bu_scope_print()
 
 # MARK: Code gen
 
-# *Description*:
 # Substitute variables in the input stream
 #
-# *Params*:
-# - `...`: List of variable names or functions to substitute.
+# @arg $@ {string} args... List of variable names or functions to substitute.
 #          Note that functions do not take any parameters,
 #          so they are more like computed variables.
-#
-# *Returns*:
-# - `stdout`: Input stream with variables substituted
+# @stdout Input stream with variables substituted
+# bash-ide parse-func-sig
 bu_gen_substitute()
 {
     bu_scope_push
@@ -4049,9 +3830,9 @@ bu_gen_substitute()
 
 # MARK: Bindings
 
-# *Description*:
 # Edit the current command line using the default editor
 # Meant to be bound to a readline keybinding
+# bash-ide parse-func-sig
 __bu_bind_edit()
 {
     local editor=${VISUAL:-${EDITOR:-vim}}
@@ -4063,9 +3844,9 @@ __bu_bind_edit()
     rm -f "$tmp_file"
 }
 
-# *Description*:
 # Toggle gdb prefix on the current command line
 # Meant to be bound to a readline keybinding
+# bash-ide parse-func-sig
 __bu_bind_toggle_gdb()
 {
     local words=()

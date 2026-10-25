@@ -21,13 +21,12 @@ declare -A -g BU_LOCATION_PROPERTIES=()    # [name,path] [name,resolver] [name,d
                                            # [name,repo_*] (see bu_core_repo.sh)
 declare -A -g BU_LOCATION_ALIASES=()       # alias -> canonical name/key
 
-# *Description*:
 # First BASH_SOURCE frame OUTSIDE the location/repo registry core files.
 # Used to record provenance ([name,source]) so a delegating wrapper (e.g.
 # bu_repo_register) records the actual registrant (module preinit, local file).
 #
-# *Returns*:
-# - BU_RET: source file path
+# @set BU_RET source file path
+# bash-ide parse-func-sig
 __bu_location_provenance()
 {
     local i file base
@@ -43,8 +42,8 @@ __bu_location_provenance()
     return 0
 }
 
-# *Description*:
 # True when `tag` appears in the comma-separated tags CSV.
+# bash-ide parse-func-sig
 __bu_location_tag_match()
 {
     local tags_csv=$1
@@ -59,14 +58,14 @@ __bu_location_tag_match()
     return 1
 }
 
-# *Description*:
 # Reject path expressions that could become code execution at resolve time.
 # A path typo must never run a command.  Plain $VAR / ${VAR} expansion is
 # allowed; command substitution ($(...) and backticks) and shell metachars
 # are not.
 #
-# *Returns*:
+# @returns
 # - 0 if safe, 1 if the expression contains a forbidden sequence
+# bash-ide parse-func-sig
 __bu_location_validate_path_expr()
 {
     local expr=$1
@@ -79,18 +78,16 @@ __bu_location_validate_path_expr()
     return 0
 }
 
-# *Description*:
 # Expand a stored path expression at resolve time.  The expansion is
 # double-quoted so a value containing spaces stays ONE path.  A leading
 # `~`/`~/` is converted to `$HOME` first (quoting suppresses tilde
 # expansion).  Validation (__bu_location_validate_path_expr) is the security
 # boundary: only $VAR/parameter expansion survives to this point.
 #
-# *Params*:
-# - `$1`: unexpanded path expression
+# @arg $1 {string} expr unexpanded path expression
+# @set BU_RET expanded path (scalar)
 #
-# *Returns*:
-# - BU_RET: expanded path (scalar)
+# @returns
 # - 0 on success, 1 if expansion fails
 __bu_location_expand_path()
 {
@@ -111,19 +108,18 @@ __bu_location_expand_path()
     return 0
 }
 
-# *Description*:
 # Resolve a name (and optional kind) to its storage key in BU_LOCATION_REGISTRY.
 # Alias-aware.  A --kind mismatch is an error unless a kind:name sibling of the
 # requested kind exists.
 #
-# *Params*:
-# - `$1`: name or alias
-# - `--kind KIND` (optional)
+# @arg $1 {string} name name or alias
+# @option --kind KIND: (optional)
+# @set BU_RET storage key
+# @set BU_RET_MAP[param] value after the first @ (empty for bare names or NAME@)
 #
-# *Returns*:
-# - BU_RET: storage key
-# - BU_RET_MAP[param]: value after the first @ (empty for bare names or NAME@)
+# @returns
 # - 0 on success, 1 on unknown name / kind mismatch / invalid parameter use
+# bash-ide parse-func-sig
 __bu_location_resolve_key()
 {
     local name=$1
@@ -180,7 +176,6 @@ __bu_location_resolve_key()
     return 0
 }
 
-# *Description*:
 # Map a name or alias head to its canonical storage key, stripping @VALUE.
 # Empty heads return the input unchanged. Identity for
 # non-aliases and for names that are not registered at all.
@@ -191,12 +186,12 @@ __bu_location_resolve_key()
 # resolve). An unknown name maps to itself so the subsequent property lookup
 # simply yields empty rather than emitting an "Unknown location" error.
 #
-# *Params*:
-# - `$1`: name or alias
+# @arg $1 {string} name name or alias
+# @set BU_RET canonical storage key (identity for non-aliases/unknown names)
 #
-# *Returns*:
-# - BU_RET: canonical storage key (identity for non-aliases/unknown names)
+# @returns
 # - Always 0
+# bash-ide parse-func-sig
 bu_location_canonical_name()
 {
     local name=$1
@@ -209,13 +204,12 @@ bu_location_canonical_name()
     return 0
 }
 
-# *Description*:
 # Clear an entry's registry slot, all its properties, and every alias that
 # points at it.  Used by overwrite and unregister so stale resolver/path/alias
 # data never lingers.
 #
-# *Params*:
-# - `$1`: storage key
+# @arg $1 {string} key storage key
+# bash-ide parse-func-sig
 __bu_location_clear_entry()
 {
     local key=$1
@@ -237,25 +231,24 @@ __bu_location_clear_entry()
     done
 }
 
-# *Description*:
 # Register a named location.
 #
-# *Params*:
-# - `$1`: name
-# - `--kind dir|file|multi` (default dir)
-# - `--path 'EXPR'`       unexpanded path expression (mutually exclusive with --resolver)
-# - `--resolver FN`       resolver function (returns BU_RET scalar/array)
-# - `--param-complete FN` KEY -> BU_RET values (dir only, paired with --param-resolve)
-# - `--param-resolve FN`  KEY VALUE -> BU_RET directory, nonzero on failure
-# - `--param-hint TEXT`   value description for parameter-only errors
-# - `--alias A`           repeatable
-# - `--description TEXT`
-# - `--tags CSV`
-# - `--on-enter FN`       dir kind only
+# @arg $1 {string} name name
+# @option --kind dir|file|multi: (default dir)
+# @option --path 'EXPR': unexpanded path expression (mutually exclusive with --resolver)
+# @option --resolver FN: resolver function (returns BU_RET scalar/array)
+# @option --param-complete FN: KEY -> BU_RET values (dir only, paired with --param-resolve)
+# @option --param-resolve FN: KEY VALUE -> BU_RET directory, nonzero on failure
+# @option --param-hint TEXT: value description for parameter-only errors
+# @option --alias A: repeatable
+# @option --description TEXT
+# @option --tags CSV
+# @option --on-enter FN: dir kind only
+# @set BU_RET storage key (name, or kind:name sibling)
 #
-# *Returns*:
-# - BU_RET: storage key (name, or kind:name sibling)
+# @returns
 # - 0 on success, 1 on invalid registration
+# bash-ide parse-func-sig
 bu_location_register()
 {
     local name=$1
@@ -370,17 +363,16 @@ bu_location_register()
     return 0
 }
 
-# *Description*:
 # Resolve a location to its target path(s).
 #
-# *Params*:
-# - `$1`: name or alias
-# - `--kind KIND` (optional)
-# - `--no-verify`  skip the existence check (dir/file kinds)
+# @arg $1 {string} name name or alias
+# @option --kind KIND: (optional)
+# @option --no-verify: skip the existence check (dir/file kinds)
+# @set BU_RET resolved path (scalar for dir/file, array for multi)
 #
-# *Returns*:
-# - BU_RET: resolved path (scalar for dir/file, array for multi)
+# @returns
 # - 0 on success, 1 on error
+# bash-ide parse-func-sig
 bu_location_resolve()
 {
     local name=$1
@@ -517,13 +509,12 @@ bu_location_names()
     return 0
 }
 
-# *Description*:
 # Resolve a dir location, cd into it, and run its on-enter callback.  The
 # goto primitive; callers must be source-dispatch so the cd takes effect.
 #
-# *Params*:
-# - `$1`: name or alias
-# - `--no-enter-hook`: skip the on-enter callback
+# @arg $1 {string} name name or alias
+# @option --no-enter-hook: skip the on-enter callback
+# bash-ide parse-func-sig
 bu_location_enter()
 {
     local name=$1
@@ -559,8 +550,8 @@ bu_location_enter()
     return 0
 }
 
-# *Description*:
 # Remove a location entry, its properties, and all aliases pointing at it.
+# bash-ide parse-func-sig
 bu_location_unregister()
 {
     local name=$1
@@ -573,10 +564,10 @@ bu_location_unregister()
     return 0
 }
 
-# *Description*:
 # Source the user-local location file.  Missing file is not an error and this
 # never returns non-zero.  Called from bu_entrypoint.sh AFTER module preinits
 # so user registrations override code defaults (last write wins).
+# bash-ide parse-func-sig
 bu_location_source_local_file()
 {
     local file=${BU_LOCATION_LOCAL_FILE:-"$BU_DIR"/config/bu_locations_local.sh}

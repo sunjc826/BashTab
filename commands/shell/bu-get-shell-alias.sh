@@ -102,6 +102,7 @@ bu_scope_pop_function
 }
 
 # Completion helper: defined alias names.
+# bash-ide parse-func-sig
 __bu_bu_get_shell_alias_complete_names()
 {
     BU_RET=()

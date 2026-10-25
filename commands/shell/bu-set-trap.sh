@@ -1,10 +1,11 @@
-#!/usr/bin/env bash
+# !/usr/bin/env bash
 # Pipeline: transform
 # Requires-All: signal
 # Fields: signal handler set error
 # Dispatch: source
 # Synopsis: Set a shell trap handler
 # Common signal names for completion.
+# bash-ide parse-func-sig
 __bu_bu_set_trap_complete_signals()
 {
     BU_RET=(EXIT SIGINT SIGTERM SIGQUIT SIGHUP SIGUSR1 SIGUSR2 SIGALRM SIGPIPE SIGCHLD SIGTSTP SIGCONT SIGSTOP)

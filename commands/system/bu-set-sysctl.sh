@@ -1,10 +1,11 @@
-#!/usr/bin/env bash
+# !/usr/bin/env bash
 # Pipeline: transform
 # Requires-All: name
 # Fields: name old_value new_value set error
 # Dispatch: source
 # Synopsis: Set a kernel parameter
 # Completion helper: sysctl parameter names from the live system.
+# bash-ide parse-func-sig
 __bu_bu_set_sysctl_complete_names()
 {
     BU_RET=()

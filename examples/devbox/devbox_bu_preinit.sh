@@ -22,6 +22,7 @@ export DEVBOX_DIR
 # The host uses its own (simpler) converter: verb-noun files, *.sh only,
 # verb/noun metadata for listings. Unlike gitshelf, it leaves the namespace
 # unset so __bu_stamp_command_module defaults it to the module (devbox).
+# bash-ide parse-func-sig
 __devbox_convert_file_to_command()
 {
     local -r file_path=$1
