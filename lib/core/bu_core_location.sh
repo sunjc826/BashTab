@@ -21,7 +21,6 @@ declare -A -g BU_LOCATION_PROPERTIES=()    # [name,path] [name,resolver] [name,d
                                            # [name,repo_*] (see bu_core_repo.sh)
 declare -A -g BU_LOCATION_ALIASES=()       # alias -> canonical name/key
 
-# ```
 # *Description*:
 # First BASH_SOURCE frame OUTSIDE the location/repo registry core files.
 # Used to record provenance ([name,source]) so a delegating wrapper (e.g.
@@ -29,7 +28,6 @@ declare -A -g BU_LOCATION_ALIASES=()       # alias -> canonical name/key
 #
 # *Returns*:
 # - BU_RET: source file path
-# ```
 __bu_location_provenance()
 {
     local i file base
@@ -45,10 +43,8 @@ __bu_location_provenance()
     return 0
 }
 
-# ```
 # *Description*:
 # True when `tag` appears in the comma-separated tags CSV.
-# ```
 __bu_location_tag_match()
 {
     local tags_csv=$1
@@ -63,7 +59,6 @@ __bu_location_tag_match()
     return 1
 }
 
-# ```
 # *Description*:
 # Reject path expressions that could become code execution at resolve time.
 # A path typo must never run a command.  Plain $VAR / ${VAR} expansion is
@@ -72,7 +67,6 @@ __bu_location_tag_match()
 #
 # *Returns*:
 # - 0 if safe, 1 if the expression contains a forbidden sequence
-# ```
 __bu_location_validate_path_expr()
 {
     local expr=$1
@@ -85,7 +79,6 @@ __bu_location_validate_path_expr()
     return 0
 }
 
-# ```
 # *Description*:
 # Expand a stored path expression at resolve time.  The expansion is
 # double-quoted so a value containing spaces stays ONE path.  A leading
@@ -99,7 +92,6 @@ __bu_location_validate_path_expr()
 # *Returns*:
 # - BU_RET: expanded path (scalar)
 # - 0 on success, 1 if expansion fails
-# ```
 __bu_location_expand_path()
 {
     local expr=$1
@@ -119,7 +111,6 @@ __bu_location_expand_path()
     return 0
 }
 
-# ```
 # *Description*:
 # Resolve a name (and optional kind) to its storage key in BU_LOCATION_REGISTRY.
 # Alias-aware.  A --kind mismatch is an error unless a kind:name sibling of the
@@ -133,7 +124,6 @@ __bu_location_expand_path()
 # - BU_RET: storage key
 # - BU_RET_MAP[param]: value after the first @ (empty for bare names or NAME@)
 # - 0 on success, 1 on unknown name / kind mismatch / invalid parameter use
-# ```
 __bu_location_resolve_key()
 {
     local name=$1
@@ -190,7 +180,6 @@ __bu_location_resolve_key()
     return 0
 }
 
-# ```
 # *Description*:
 # Map a name or alias head to its canonical storage key, stripping @VALUE.
 # Empty heads return the input unchanged. Identity for
@@ -208,7 +197,6 @@ __bu_location_resolve_key()
 # *Returns*:
 # - BU_RET: canonical storage key (identity for non-aliases/unknown names)
 # - Always 0
-# ```
 bu_location_canonical_name()
 {
     local name=$1
@@ -221,7 +209,6 @@ bu_location_canonical_name()
     return 0
 }
 
-# ```
 # *Description*:
 # Clear an entry's registry slot, all its properties, and every alias that
 # points at it.  Used by overwrite and unregister so stale resolver/path/alias
@@ -229,7 +216,6 @@ bu_location_canonical_name()
 #
 # *Params*:
 # - `$1`: storage key
-# ```
 __bu_location_clear_entry()
 {
     local key=$1
@@ -251,7 +237,6 @@ __bu_location_clear_entry()
     done
 }
 
-# ```
 # *Description*:
 # Register a named location.
 #
@@ -271,7 +256,6 @@ __bu_location_clear_entry()
 # *Returns*:
 # - BU_RET: storage key (name, or kind:name sibling)
 # - 0 on success, 1 on invalid registration
-# ```
 bu_location_register()
 {
     local name=$1
@@ -386,7 +370,6 @@ bu_location_register()
     return 0
 }
 
-# ```
 # *Description*:
 # Resolve a location to its target path(s).
 #
@@ -398,7 +381,6 @@ bu_location_register()
 # *Returns*:
 # - BU_RET: resolved path (scalar for dir/file, array for multi)
 # - 0 on success, 1 on error
-# ```
 bu_location_resolve()
 {
     local name=$1
@@ -459,7 +441,6 @@ bu_location_resolve()
     return 0
 }
 
-# ```
 # *Description*:
 # List location names (newline on stdout — the completion feed).
 # Kind-qualified siblings list under their plain name, deduplicated.
@@ -470,7 +451,6 @@ bu_location_resolve()
 # - `--with-aliases`  also include alias names
 # - `--no-stubs`      omit family stubs in bare mode
 # - final word       NAME@ queries live values; bare mode never calls completers
-# ```
 bu_location_names()
 {
     local kind= tag= word= head= key= k= display= a= value=
@@ -537,7 +517,6 @@ bu_location_names()
     return 0
 }
 
-# ```
 # *Description*:
 # Resolve a dir location, cd into it, and run its on-enter callback.  The
 # goto primitive; callers must be source-dispatch so the cd takes effect.
@@ -545,7 +524,6 @@ bu_location_names()
 # *Params*:
 # - `$1`: name or alias
 # - `--no-enter-hook`: skip the on-enter callback
-# ```
 bu_location_enter()
 {
     local name=$1
@@ -581,10 +559,8 @@ bu_location_enter()
     return 0
 }
 
-# ```
 # *Description*:
 # Remove a location entry, its properties, and all aliases pointing at it.
-# ```
 bu_location_unregister()
 {
     local name=$1
@@ -597,12 +573,10 @@ bu_location_unregister()
     return 0
 }
 
-# ```
 # *Description*:
 # Source the user-local location file.  Missing file is not an error and this
 # never returns non-zero.  Called from bu_entrypoint.sh AFTER module preinits
 # so user registrations override code defaults (last write wins).
-# ```
 bu_location_source_local_file()
 {
     local file=${BU_LOCATION_LOCAL_FILE:-"$BU_DIR"/config/bu_locations_local.sh}

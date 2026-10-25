@@ -7,7 +7,6 @@
 
 # MARK: Filesystem utilities
 
-# ```
 # *Description*:
 # Create directories if they do not exist
 #
@@ -17,7 +16,6 @@
 # *Examples*:
 # ```bash
 # bu_mkdir /tmp/dir1 /tmp/dir2
-# ```
 # ```
 bu_mkdir()
 {
@@ -36,7 +34,6 @@ bu_mkdir()
     fi
 }
 
-# ```
 # *Description*:
 # Convert a path to an absolute path without resolving symlinks
 #
@@ -61,7 +58,6 @@ bu_mkdir()
 # - Returns absolute paths unchanged
 # - Does not simplify ..
 # - No forking is needed as compared to realpath
-# ```
 bu_realpath()
 {
     local -r dir=$1
@@ -141,7 +137,6 @@ esac
 
 # MARK: Conversion utilities
 
-# ```
 # *Description*:
 # Execute a command and capture its output into the global variable `BU_RET`,
 # then print `BU_RET` to stdout in the specified format.
@@ -291,7 +286,6 @@ bu_stdout_to_ret()
     return "$exit_code"
 }
 
-# ```
 # *Description*:
 # Read the entire content of a file into a string variable
 #
@@ -307,7 +301,6 @@ bu_stdout_to_ret()
 # bu_cat_str /path/to/file # $BU_RET contains the file content as a string
 # bu_cat_str /path/to/file MY_VAR # $MY_VAR contains the file content as a string
 # ```
-# ```
 bu_cat_str()
 {
     local file=$1
@@ -316,7 +309,6 @@ bu_cat_str()
     mapfile -d '' "$ret" <"$file"
 }
 
-# ```
 # *Description*:
 # Read the entire content of a file into an array variable, splitting by lines
 #
@@ -332,7 +324,6 @@ bu_cat_str()
 # bu_cat_arr /path/to/file # ${BU_RET[@]} contains the file content as an array of lines
 # bu_cat_arr /path/to/file MY_ARR # ${MY_ARR[@]} contains the file content as an array of lines
 # ```
-# ```
 bu_cat_arr()
 {
     local file=$1
@@ -340,7 +331,6 @@ bu_cat_arr()
     mapfile -t "$ret" <"$file"
 }
 
-# ```
 # *Description*:
 # Append the content of a file to an existing array variable, splitting by lines
 #
@@ -355,7 +345,6 @@ bu_cat_arr()
 # ```bash
 # bu_cat_arr_append /path/to/file # ${BU_RET[@]} has the file content appended
 # bu_cat_arr_append /path/to/file MY_ARR # ${MY_ARR[@]} has the file content appended
-# ```
 # ```
 bu_cat_arr_append()
 {
@@ -382,7 +371,6 @@ declare -A -g __BU_COMMAND_HEADER_PARSED=()
 # scan's hot path (__bu_command_dispatch_decl) is a single assoc lookup.
 declare -A -g __BU_COMMAND_HEADER_DISPATCH=()
 
-# ```
 # *Description*:
 # Parse a command script's `# Key: value` header comments into the header
 # cache.  Idempotent and memoized by path: the first call runs one awk pass
@@ -404,7 +392,6 @@ declare -A -g __BU_COMMAND_HEADER_DISPATCH=()
 #   of the file; all other headers are honored within the first 30 lines.
 # - Values are extracted verbatim (no variable/command substitution) with
 #   leading space after the colon and trailing whitespace trimmed.
-# ```
 __bu_command_headers_parse()
 {
     local -r file=$1
@@ -436,7 +423,6 @@ __bu_command_headers_parse()
     return 0
 }
 
-# ```
 # *Description*:
 # Read a single header value from a command script via the memoized header
 # cache.  The value extraction is pure bash; the parse memo means a file is
@@ -450,7 +436,6 @@ __bu_command_headers_parse()
 # *Returns*:
 # - Always exits 0 (a missing key or file yields an empty value — a normal,
 #   non-fatal condition, so this is safe to call under `set -e`).
-# ```
 __bu_command_header_get()
 {
     local -r file=$1
@@ -467,7 +452,6 @@ __bu_command_header_get()
     return 0
 }
 
-# ```
 # *Description*:
 # Parse the headers of many command scripts in a single awk process (batch
 # mode), populating the memoized header cache.  Called once per search
@@ -481,7 +465,6 @@ __bu_command_header_get()
 # *Returns*:
 # - Always exits 0.  Every given path is marked parsed (empty block); the
 #   awk pass fills in blocks for files that actually declare headers.
-# ```
 __bu_command_headers_batch()
 {
     local -r dir=$1
@@ -536,7 +519,6 @@ __bu_command_headers_batch()
 
 # MARK: Shell symbol helpers
 
-# ```
 # *Description*:
 # Check if a symbol is a function
 #
@@ -545,14 +527,12 @@ __bu_command_headers_batch()
 #
 # *Returns*:
 # - Exit code 0 if the symbol is a function, non-zero otherwise
-# ```
 bu_symbol_is_function()
 {
     bu_stdout_to_ret type -t "$1"
     [[ "$BU_RET" = function ]]
 }
 
-# ```
 # *Description*:
 # Check if a symbol is a file
 #
@@ -561,14 +541,12 @@ bu_symbol_is_function()
 #
 # *Returns*:
 # - Exit code 0 if the symbol is a file, non-zero otherwise
-# ```
 bu_symbol_is_file()
 {
     bu_stdout_to_ret type -t "$1"
     [[ "$BU_RET" = file ]]
 }
 
-# ```
 # *Description*:
 # Run fzf with its child shell pinned to the current bash.
 # fzf runs --preview/--bind commands via `$SHELL -c`, and `$SHELL` is the login
@@ -581,7 +559,6 @@ bu_symbol_is_file()
 #
 # *Returns*:
 # - fzf's stdout and exit code
-# ```
 __bu_fzf()
 {
     SHELL="$BASH" command fzf "$@"
@@ -675,7 +652,6 @@ bu_cached_keyed_execute()
 
 # MARK: Colors
 
-# ```
 # *Description*:
 # Setup tput color codes into variables
 #
@@ -685,7 +661,6 @@ bu_cached_keyed_execute()
 #
 # *Returns*:
 # - `${!1}`: Variable containing the tput code
-# ```
 __bu_setup_tput()
 {
     local -n __bu_setup_tput_outvar=$1
@@ -778,7 +753,6 @@ fi
 
 # MARK: Logging
 
-# ```
 # *Description*:
 # Internal logging function
 #
@@ -791,7 +765,6 @@ fi
 #
 # *Notes*:
 # - This should not be called externally, because it (in particular log_idx) assumes it is called by a bu_log_[LOG_LVL] function.
-# ```
 __bu_log()
 {
     local color=$1
@@ -814,7 +787,6 @@ __bu_log()
     __bu_log_print "$color" "$log_prefix" "$((log_idx + 2))" "$@"
 }
 
-# ```
 # *Description*:
 # Check whether a log level is currently enabled
 #
@@ -827,7 +799,6 @@ __bu_log()
 # *Notes*:
 # - Compares against `BU_AUTOCOMPLETE_LOG_LVL` while autocompleting, `BU_LOG_LVL` otherwise.
 # - Only use as a condition (`if`, `!`, `&&`, `||`), never as a bare statement under set -e.
-# ```
 __bu_log_lvl_enabled()
 {
     local log_lvl_setting
@@ -845,7 +816,6 @@ __bu_log_lvl_enabled()
 # which cannot write to the terminal without garbling the line.
 declare -g __BU_LOG_AUTOCOMPLETE_OUT=/dev/tty
 
-# ```
 # *Description*:
 # Print a single log line in the standard format: `PREFIX  file:line[func] message`
 #
@@ -858,7 +828,6 @@ declare -g __BU_LOG_AUTOCOMPLETE_OUT=/dev/tty
 # *Notes*:
 # - Writes to `__BU_LOG_AUTOCOMPLETE_OUT` (/dev/tty) while autocompleting,
 #   stderr otherwise.
-# ```
 __bu_log_print()
 {
     local color=$1
@@ -881,7 +850,6 @@ __bu_log_print()
     fi
 }
 
-# ```
 # *Description*:
 # Assert an error condition
 #
@@ -894,60 +862,51 @@ __bu_log_print()
 #
 # *Notes*:
 # - This assumes that set -e is set, so that the assertion failure will terminate the script
-# ```
 bu_assert_err()
 {
     __bu_log "$BU_TPUT_VSCODE_RED" "$BU_LOG_LVL_ERR" ERR "$@"
     return 1
 }
 
-# ```
 # *Description*:
 # Log an error message
 #
 # *Params*:
 # - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
 # - `...`: Log message
-# ```
 bu_log_err()
 {
     __bu_log "$BU_TPUT_VSCODE_RED" "$BU_LOG_LVL_ERR" ERR "$@"
 }
 
-# ```
 # *Description*:
 # Log a warning message
 #
 # *Params*:
 # - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
 # - `...`: Log message
-# ```
 bu_log_warn() 
 {
     __bu_log "$BU_TPUT_VSCODE_ORANGE" "$BU_LOG_LVL_WARN" WARN "$@"
 }
 
-# ```
 # *Description*:
 # Log an informational message
 #
 # *Params*:
 # - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
 # - `...`: Log message
-# ```
 bu_log_info() 
 { 
     __bu_log "$BU_TPUT_VSCODE_YELLOW" "$BU_LOG_LVL_INFO" INFO "$@"
 }
 
-# ```
 # *Description*:
 # Log a trace message (lowest level, hidden unless BU_LOG_LVL=trace)
 #
 # *Params*:
 # - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
 # - `...`: Log message
-# ```
 bu_log_trace()
 {
     local log_idx=0
@@ -960,45 +919,38 @@ bu_log_trace()
     __bu_log "$BU_TPUT_GREY" "$BU_LOG_LVL_TRACE" TRACE -i "$log_idx" "[${EPOCHREALTIME-}] $*"
 }
 
-# ```
 # *Description*:
 # Log a debug message
 #
 # *Params*:
 # - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
 # - `...`: Log message
-# ```
 bu_log_debug()
 { 
     __bu_log "$BU_TPUT_VSCODE_DARK_GREEN" "$BU_LOG_LVL_DEBUG" DEBUG "$@"
 }
 
-# ```
 # *Description*:
 # Log a success message
 #
 # *Params*:
 # - `-i|--idx <index>` (optional): Stacktrace index offset for the logging context
 # - `...`: Log message
-# ```
 bu_log_success()
 {
     __bu_log "$BU_TPUT_GREEN" "$BU_LOG_LVL_INFO" SUCCESS "$@"
 }
 
-# ```
 # *Description*:
 # Log a message directly to the terminal (TTY)
 #
 # *Params*:
 # - `...`: Log message
-# ```
 bu_log_tty()
 {
     printf '%s\n' "$*" > /dev/tty
 }
 
-# ```
 # *Description*:
 # Log an input validation error, followed by a hint pointing the user at `--help`
 #
@@ -1021,7 +973,6 @@ bu_log_tty()
 #     bu_log_err_usage "Missing --name"
 #     return 1
 # fi
-# ```
 # ```
 bu_log_err_usage()
 {
@@ -1052,7 +1003,6 @@ bu_log_err_usage()
     return 0
 }
 
-# ```
 # *Description*:
 # Internal command logging function
 #
@@ -1070,7 +1020,6 @@ bu_log_err_usage()
 # *Notes*:
 # - This should not be called externally, because it (in particular log_idx) assumes it is called by a bu_log_cmd_[LOG_LVL] function.
 # - If the log level is suppressed, the command is not run at all.
-# ```
 __bu_log_cmd()
 {
     local color=$1
@@ -1119,7 +1068,6 @@ __bu_log_cmd()
     return 0
 }
 
-# ```
 # *Description*:
 # Log and run a command, with its output already redirected by the caller
 #
@@ -1132,7 +1080,6 @@ __bu_log_cmd()
 #
 # *Returns*:
 # - Exit code of the command
-# ```
 __bu_log_cmd_exec()
 {
     local color=$1
@@ -1167,7 +1114,6 @@ __bu_log_cmd_exec()
     return "$rc"
 }
 
-# ```
 # *Description*:
 # Log and run an informational command at the error level
 #
@@ -1181,13 +1127,11 @@ __bu_log_cmd_exec()
 #
 # *Notes*:
 # - If the error level is suppressed, the command is not run.
-# ```
 bu_log_cmd_err()
 {
     __bu_log_cmd "$BU_TPUT_VSCODE_RED" "$BU_LOG_LVL_ERR" ERR "$@"
 }
 
-# ```
 # *Description*:
 # Log and run an informational command at the warning level
 #
@@ -1201,13 +1145,11 @@ bu_log_cmd_err()
 #
 # *Notes*:
 # - If the warning level is suppressed, the command is not run.
-# ```
 bu_log_cmd_warn()
 {
     __bu_log_cmd "$BU_TPUT_VSCODE_ORANGE" "$BU_LOG_LVL_WARN" WARN "$@"
 }
 
-# ```
 # *Description*:
 # Log and run an informational command (e.g. `cat` a config, `tail` a log) at the info level
 #
@@ -1229,13 +1171,11 @@ bu_log_cmd_warn()
 # bu_log_cmd_info cat "$config_file"
 # bu_log_cmd_info --ignore-exit-code pgrep -a my-daemon
 # ```
-# ```
 bu_log_cmd_info()
 {
     __bu_log_cmd "$BU_TPUT_VSCODE_YELLOW" "$BU_LOG_LVL_INFO" INFO "$@"
 }
 
-# ```
 # *Description*:
 # Log and run an informational command at the debug level
 #
@@ -1249,13 +1189,11 @@ bu_log_cmd_info()
 #
 # *Notes*:
 # - If the debug level is suppressed, the command is not run.
-# ```
 bu_log_cmd_debug()
 {
     __bu_log_cmd "$BU_TPUT_VSCODE_DARK_GREEN" "$BU_LOG_LVL_DEBUG" DEBUG "$@"
 }
 
-# ```
 # *Description*:
 # Log an unrecognized option error message
 #
@@ -1266,7 +1204,6 @@ bu_log_cmd_debug()
 # *Examples*:
 # ```bash
 # bu_log_unrecognized_option --idx 1 --unknown-option
-# ```
 # ```
 bu_log_unrecognized_option()
 {
@@ -1283,7 +1220,6 @@ bu_log_unrecognized_option()
 
 # MARK: List manipulation
 
-# ```
 # *Params*:
 # - `$1`: Separator
 # - `...`: List of entries to join
@@ -1296,7 +1232,6 @@ bu_log_unrecognized_option()
 # bu_list_join , a b c
 # echo "$BU_RET" # a,b,c
 # ```
-# ```
 bu_list_join()
 {
     local delim=${1-}
@@ -1308,7 +1243,6 @@ bu_list_join()
     fi
 }
 
-# ```
 # *Description*:
 # Reverse a list of entries
 #
@@ -1322,7 +1256,6 @@ bu_list_join()
 # ```bash
 # bu_list_reverse a b c # ${BU_RET[@]}=(c b a)
 # ```
-# ```
 bu_list_reverse()
 {
     BU_RET=()
@@ -1332,7 +1265,6 @@ bu_list_reverse()
     done
 }
 
-# ```
 # *Description*:
 # Remove empty entries from a list
 #
@@ -1359,7 +1291,6 @@ bu_list_filter_out_empty()
     done
 }
 
-# ```
 # *Description*:
 # Sort a list of entries
 #
@@ -1372,7 +1303,6 @@ bu_list_filter_out_empty()
 # *Examples*:
 # ```bash
 # bu_list_sort c a b # ${BU_RET[@]}=(a b c)
-# ```
 # ```
 bu_list_sort()
 {
@@ -1408,7 +1338,6 @@ bu_list_version_sort()
     fi
 }
 
-# ```
 # *Description*:
 # Check if a string exists in a list of strings
 #
@@ -1444,7 +1373,6 @@ bu_list_exists_str()
 
 # MARK: String manipulation
 
-# ```
 # *Params*:
 # - `$*`: String to convert to lower case
 #
@@ -1458,13 +1386,11 @@ bu_list_exists_str()
 # 
 # *Notes*:
 # - For better performance, consider using parameter expansion: `${var,,}`
-# ```
 bu_tolower()
 {
     tr '[:upper:]' '[:lower:]' <<<"$*"
 }
 
-# ```
 # *Params*:
 # - `$*`: String to convert to upper case
 #
@@ -1478,13 +1404,11 @@ bu_tolower()
 #
 # *Notes*:
 # - For better performance, consider using parameter expansion: `${var^^}`
-# ```
 bu_toupper()
 {
     tr '[:lower:]' '[:upper:]' <<<"$*"
 }
 
-# ```
 # *Params*:
 # - `stdin`: string to trim whitespaces
 #
@@ -1495,13 +1419,11 @@ bu_toupper()
 # ```bash
 # echo '  abc ' | bu_gen_trim # stdout=abc
 # ```
-# ```
 bu_gen_trim()
 {
     awk '{$1=$1};1'
 }
 
-# ```
 # trim is kind of a misnomer here.
 # *Params*:
 # One of
@@ -1523,7 +1445,6 @@ bu_gen_trim()
 # abc
 # ' # stdout='abc'
 # ```
-# ```
 bu_gen_trim_empty_lines()
 {
     if [[ -n "$1" ]]
@@ -1534,7 +1455,6 @@ bu_gen_trim_empty_lines()
     fi
 }
 
-# ```
 # *Description*:
 # Remove empty lines from a string
 #
@@ -1550,7 +1470,6 @@ bu_gen_trim_empty_lines()
 # abc
 #
 # ' | bu_gen_remove_empty_lines # stdout='abc'
-# ```
 # ```
 bu_gen_remove_empty_lines()
 {
@@ -1571,7 +1490,6 @@ bu_gen_remove_empty_lines()
 # pattern pass `--glob` to bu_parse_positional, which makes completion list
 # what a typed pattern matches and marks the option `(glob)` in --help.
 
-# ```
 # *Description*:
 # Test whether a string contains an unescaped glob wildcard: `*`, `?`, `[`,
 # or an extglob opener (`+(`, `@(`, `!(`).
@@ -1587,7 +1505,6 @@ bu_gen_remove_empty_lines()
 # bu_glob_has_wildcard 'BU_*'   # 0
 # bu_glob_has_wildcard 'BU_\*'  # 1 (escaped)
 # bu_glob_has_wildcard HOME     # 1
-# ```
 # ```
 bu_glob_has_wildcard()
 {
@@ -1613,7 +1530,6 @@ bu_glob_has_wildcard()
     return 1
 }
 
-# ```
 # *Description*:
 # Test whether a name matches any of the given glob patterns. With no
 # patterns every name matches (no filter given).
@@ -1631,7 +1547,6 @@ bu_glob_has_wildcard()
 # bu_glob_match PATH 'BU_*'                # 1
 # bu_glob_match PATH                       # 0
 # ```
-# ```
 bu_glob_match()
 {
     local -r name=$1
@@ -1646,7 +1561,6 @@ bu_glob_match()
     return 1
 }
 
-# ```
 # *Description*:
 # Test whether a name matches any of the given exclude patterns. With no
 # patterns nothing is excluded.
@@ -1663,14 +1577,12 @@ bu_glob_match()
 # bu_glob_excludes BU_OUT_JQ '*_JQ'  # 0
 # bu_glob_excludes BU_OUT_JQ         # 1
 # ```
-# ```
 bu_glob_excludes()
 {
     (($# > 1)) || return 1
     bu_glob_match "$@"
 }
 
-# ```
 # *Description*:
 # Log an error for each exact name (pattern without wildcards) that matched
 # nothing, as PowerShell does for `Get-Variable -Name NOSUCH`. Wildcard
@@ -1690,7 +1602,6 @@ bu_glob_excludes()
 # local -A seen=([HOME]=1)
 # bu_glob_report_missing variable seen HOME 'BU_*'  # 0
 # bu_glob_report_missing variable seen NOSUCH       # 1, logs the error
-# ```
 # ```
 bu_glob_report_missing()
 {
@@ -1728,7 +1639,6 @@ bu_glob_report_missing()
 
 # MARK: RAII Scopes
 
-# ```
 # *Description*:
 # Push a new scope onto the scope stack
 #
@@ -1748,13 +1658,11 @@ bu_glob_report_missing()
 #     bu_scope_pop
 # fi
 # ```
-# ```
 bu_scope_push()
 {
     BU_SCOPE_STACK+=("${#BU_SCOPE_STACK[@]}")
 }
 
-# ```
 # *Description*:
 # Push a new function-level scope onto the scope stack
 #
@@ -1774,13 +1682,11 @@ bu_scope_push()
 #     bu_scope_pop_function
 # }
 # ```
-# ```
 bu_scope_push_function()
 {
     BU_SCOPE_STACK+=("_${#BU_SCOPE_STACK[@]}")
 }
 
-# ```
 # *Description*:
 # Get the current scope handle
 #
@@ -1795,7 +1701,6 @@ bu_scope_push_function()
 # bu_scope_handle # $BU_RET contains the current scope handle, e.g. 0
 # bu_scope_pop
 # ```
-# ```
 bu_scope_handle()
 {
     if ((!"${#BU_SCOPE_STACK[@]}"))
@@ -1807,7 +1712,6 @@ bu_scope_handle()
     BU_RET=${BU_SCOPE_STACK[-1]}
 }
 
-# ```
 # *Description*:
 # Register a cleanup command to be executed when the scope which the handle refers to is popped
 # 
@@ -1826,7 +1730,6 @@ bu_scope_handle()
 # bu_scope_handle_add_cleanup "$handle" rm -f /tmp/some_temp_file
 # bu_scope_pop
 # ```
-# ```
 bu_scope_handle_add_cleanup()
 {
     local handle=$1
@@ -1841,7 +1744,6 @@ bu_scope_handle_add_cleanup()
     deferred+=("$_cmd")
 }
 
-# ```
 # *Description*:
 # Register a cleanup command to be executed when the current scope is popped
 #
@@ -1857,7 +1759,6 @@ bu_scope_handle_add_cleanup()
 # bu_scope_add_cleanup rm -f /tmp/some_temp_file
 # bu_scope_pop
 # ```
-# ```
 bu_scope_add_cleanup()
 {
     if ((!"${#BU_SCOPE_STACK[@]}"))
@@ -1869,7 +1770,6 @@ bu_scope_add_cleanup()
     bu_scope_handle_add_cleanup "${BU_SCOPE_STACK[-1]}" "$@"
 }
 
-# ```
 # *Description*:
 # Pop the current scope from the scope stack and execute all registered cleanup commands
 #
@@ -1883,7 +1783,6 @@ bu_scope_add_cleanup()
 # touch /tmp/some_temp_file
 # bu_scope_add_cleanup rm -f /tmp/some_temp_file
 # bu_scope_pop
-# ```
 # ```
 bu_scope_pop()
 {
@@ -1910,7 +1809,6 @@ bu_scope_pop()
     return "$ret"
 }
 
-# ```
 # *Description*:
 # Pop the current function-level scope including all nested scopes from the scope stack and execute all registered cleanup commands
 #
@@ -1934,7 +1832,6 @@ bu_scope_pop()
 #     fi
 #     bu_scope_pop_function
 # }
-# ```
 # ```
 bu_scope_pop_function()
 {
@@ -1979,7 +1876,6 @@ bu_scope_pop_function()
     return "$ret"
 }
 
-# ```
 # *Description*:
 # Pop all scopes from the scope stack and execute all registered cleanup commands
 #
@@ -1998,7 +1894,6 @@ bu_scope_pop_function()
 # bu_scope_add_cleanup rm -f /tmp/some_temp_file2
 # bu_scope_pop_all
 # ```
-# ```
 bu_scope_pop_all()
 {
     local exit_code=0
@@ -2014,7 +1909,6 @@ bu_scope_pop_all()
 
 # MARK: Scope-related utilities
 
-# ```
 # *Description*:
 # Call pushd with suppressed output
 #
@@ -2023,26 +1917,22 @@ bu_scope_pop_all()
 #
 # *Returns*:
 # - Exit code of the `pushd` command
-# ```
 bu_pushd_silent()
 {
     pushd "$1" >/dev/null
 }
 
-# ```
 # *Description*:
 # Call popd with suppressed output
 #
 # *Params*: None
 #*Returns*:
 # - Exit code of the `popd` command
-# ```
 bu_popd_silent()
 {
     popd >/dev/null
 }
 
-# ```
 # *Description*:
 # Close file descriptors
 #
@@ -2051,7 +1941,6 @@ bu_popd_silent()
 #
 # *Returns*:
 # - Exit code of the `exec` command
-# ```
 bu_close_fd()
 {
     local exit_code=0
@@ -2069,7 +1958,6 @@ bu_close_fd()
     return "$exit_code"
 }
 
-# ```
 # *Description*:
 # Set a shell option for the current scope, restoring the previous value when the scope is popped
 #
@@ -2085,7 +1973,6 @@ bu_close_fd()
 # some_command_that_may_fail
 # bu_scope_pop
 # ```
-# ```
 bu_scoped_set_opt()
 {
     local opt=$1
@@ -2096,7 +1983,6 @@ bu_scoped_set_opt()
     fi
 }
 
-# ```
 # *Description*:
 # Unset a shell option for the current scope, restoring the previous value when the scope is popped
 #
@@ -2112,7 +1998,6 @@ bu_scoped_set_opt()
 # some_command_that_may_use_unset_variables
 # bu_scope_pop
 # ```
-# ```
 bu_scoped_unset_opt()
 {
     local opt=$1
@@ -2123,7 +2008,6 @@ bu_scoped_unset_opt()
     fi
 }
 
-# ```
 # *Description*:
 # Set or unset a shell option for the current scope, restoring the previous value when the scope is popped
 #
@@ -2171,7 +2055,6 @@ bu_scoped_set()
     esac
 }
 
-# ```
 # *Description*:
 # Push a directory onto the directory stack and register a cleanup to pop it when the scope is popped
 #
@@ -2179,7 +2062,6 @@ bu_scoped_set()
 # - `$1`: Directory to change to
 #
 # *Returns*: None
-# ```
 bu_scoped_pushd()
 {
     bu_pushd_silent "$@"
@@ -2289,7 +2171,6 @@ BEGIN {
 AWK
 )
 
-# ```
 # *Description*:
 # Lightly syntax-highlight a single line of shell source: bash reserved words
 # (violet), brackets/parens/braces (yellow), comments (grey, or blue on
@@ -2302,7 +2183,6 @@ AWK
 #
 # *Returns*:
 # - stdout: The highlighted line
-# ```
 __bu_traceback_highlight()
 {
     local -r line=$1
@@ -2315,7 +2195,6 @@ __bu_traceback_highlight()
         "$BU_TRACEBACK_HIGHLIGHT_AWK" <<<"$line"
 }
 
-# ```
 # *Description*:
 # Print one traceback frame in the short (single-line) style.
 #
@@ -2324,7 +2203,6 @@ __bu_traceback_highlight()
 # - `$2`: Command text (frame 0) or function name (later frames)
 # - `$3`: Source file path
 # - `$4`: Line number
-# ```
 __bu_traceback_print_frame_short()
 {
     local -r idx=$1
@@ -2337,7 +2215,6 @@ __bu_traceback_print_frame_short()
         "$BU_TPUT_UNDERLINE" "$(basename -- "$file")" "$line" "$BU_TPUT_NO_UNDERLINE"
 }
 
-# ```
 # *Description*:
 # Print one traceback frame in the full (verbose) style: a Python-style
 # "File ... line N, in func" header followed by the surrounding source lines,
@@ -2348,7 +2225,6 @@ __bu_traceback_print_frame_short()
 # - `$1`: Command text (frame 0) or function name (later frames)
 # - `$2`: Source file path
 # - `$3`: Line number
-# ```
 __bu_traceback_print_frame_full()
 {
     local -r what=$1
@@ -2403,7 +2279,6 @@ __bu_traceback_print_frame_full()
     return 0
 }
 
-# ```
 # *Description*:
 # Dispatch one traceback frame to the active rendering style.
 #
@@ -2413,7 +2288,6 @@ __bu_traceback_print_frame_full()
 # - `$3`: Command text (frame 0) or function name (later frames)
 # - `$4`: Source file path
 # - `$5`: Line number
-# ```
 __bu_traceback_print_frame()
 {
     local -r style=$1
@@ -2433,14 +2307,12 @@ __bu_traceback_print_frame()
 
 BU_EXIT_HANDLER_CLEANING_UP=false
 
-# ```
 # *Description*:
 # Exit handler to perform cleanup and print traceback on error
 #
 # *Params*: None
 #
 # *Returns*: Exit code of the script
-# ```
 __bu_exit_handler()
 {
     local exit_code=$?
@@ -2517,7 +2389,6 @@ __bu_exit_handler()
     return "$exit_code"
 }
 
-# ```
 # *Description*:
 # Setup the exit handler without enabling errexit
 #
@@ -2527,7 +2398,6 @@ __bu_exit_handler()
 # *Notes*
 # - A no-op during autocompletion: the command is then sourced into the
 #   completing shell, whose ERR/EXIT traps it must not replace
-# ```
 bu_exit_handler_setup_no_e()
 {
     if bu_env_is_in_autocomplete
@@ -2538,7 +2408,6 @@ bu_exit_handler_setup_no_e()
     trap __bu_exit_handler EXIT
 }
 
-# ```
 # *Description*:
 # Setup the exit handler with errexit enabled
 #
@@ -2547,7 +2416,6 @@ bu_exit_handler_setup_no_e()
 #
 # *Notes*
 # - A no-op during autocompletion (see bu_exit_handler_setup_no_e)
-# ```
 bu_exit_handler_setup()
 {
     if bu_env_is_in_autocomplete
@@ -2568,7 +2436,6 @@ bu_exit_handler_restore()
 
 # MARK: Synchronization, file management
 
-# ```
 # *Description*:
 # Acquire an exclusive lock on a file, storing the lock file descriptor in a companion .lockfd file
 #
@@ -2576,7 +2443,6 @@ bu_exit_handler_restore()
 # - `$1`: File path to lock
 #
 # *Returns*: None
-# ```
 bu_sync_acquire_file()
 {
     local file_path=$1
@@ -2589,7 +2455,6 @@ bu_sync_acquire_file()
     echo "$lockfile_fd" > "$fd_path"
 }
 
-# ```
 # *Description*:
 # Acquire an exclusive lock on a file descriptor
 #
@@ -2597,7 +2462,6 @@ bu_sync_acquire_file()
 # - `$1`: File descriptor to lock
 #
 # *Returns*: None
-# ```
 bu_sync_acquire_fd()
 {
     local fd=$1
@@ -2605,7 +2469,6 @@ bu_sync_acquire_fd()
     flock --exclusive "$fd"
 }
 
-# ```
 # *Description*:
 # Release an exclusive lock on a file locked by bu_sync_acquire_file, using the lock file descriptor stored in the companion .lockfd file
 #
@@ -2613,7 +2476,6 @@ bu_sync_acquire_fd()
 # - `$1`: File path to unlock
 #
 # *Returns*: None
-# ```
 bu_sync_release_file()
 {
     local file_path=$1
@@ -2650,7 +2512,6 @@ bu_sync_release_file()
     return 0
 }
 
-# ```
 # *Description*:
 # Release an exclusive lock on a file descriptor locked by bu_sync_acquire_fd
 #
@@ -2658,7 +2519,6 @@ bu_sync_release_file()
 # - `$1`: File descriptor to unlock
 #
 # *Returns*: None
-# ```
 bu_sync_release_fd()
 {
     local fd=$1
@@ -2672,7 +2532,6 @@ bu_sync_release_fd()
     fi
 }
 
-# ```
 # *Description*:
 # Cycle a log file, keeping only the last N (possibly unique) lines
 # *Params*:
@@ -2684,7 +2543,6 @@ bu_sync_release_fd()
 #         If false, the uniq command is used to remove consecutive duplicate lines.
 #
 # *Returns*: None
-# ```
 bu_sync_cycle_file()
 {
     local filepath=$1
@@ -2726,19 +2584,16 @@ bu_sync_cycle_file()
     fi
 }
 
-# ```
 # *Description*:
 # Cycle the last run commands log file, keeping only the last 500 unique lines
 #
 # *Params*: None
 # *Returns*: None
-# ```
 bu_sync_cycle_last_run_cmds()
 {
     bu_sync_cycle_file "$BU_LAST_RUN_CMDS" true 500 false || return 1
 }
 
-# ```
 # *Description*:
 # Cycle numbered files, e.g. log files
 #
@@ -2755,7 +2610,6 @@ bu_sync_cycle_last_run_cmds()
 # - `${BU_RET[@]}`: Array containing the write and read file descriptors for the new file
 #                   (`BU_RET[0]`: write fd, `BU_RET[1]`: read fd)
 #
-# ```
 bu_sync_cycle_numbered_files()
 {
     local file_base=$1
@@ -2807,7 +2661,6 @@ bu_sync_cycle_numbered_files()
     cd "$original_dir" || return 1
 }
 
-# ```
 # *Description*:
 # Poll a log file for a pattern to appear (or disappear)
 #
@@ -2824,7 +2677,6 @@ bu_sync_cycle_numbered_files()
 # - Exit code:
 #   - `0`: if the pattern was found (or disappeared, if `--negate` is used)
 #   - `1`: if the error pattern was found or the timeout was reached
-# ```
 bu_sync_log_poll_wait()
 {
     local is_negate=false
@@ -2908,7 +2760,6 @@ bu_sync_log_poll_wait()
     done
 }
 
-# ```
 # *Description*:
 # Wait for all fifos in the argument list to be written to
 #
@@ -2919,7 +2770,6 @@ bu_sync_log_poll_wait()
 # - Exit code:
 #   - `0`: Success
 #   - `1`: Failure
-# ```
 bu_sync_wait_group_wait()
 {
     local fifo
@@ -2935,7 +2785,6 @@ bu_sync_wait_group_wait()
     done
 }
 
-# ```
 # *Description*:
 # Signal readiness to all fifos in the argument list by writing "ready" to them
 #
@@ -2946,7 +2795,6 @@ bu_sync_wait_group_wait()
 # - Exit code:
 #   - `0`: Success
 #   - `1`: Failure
-# ```
 bu_sync_wait_group_ready()
 {
     local fifo
@@ -2961,7 +2809,6 @@ bu_sync_wait_group_ready()
     done
 }
 
-# ```
 # *Description*:
 # Wait for all children to be ready, then signal readiness to them
 #
@@ -2972,7 +2819,6 @@ bu_sync_wait_group_ready()
 # - Exit code:
 #   - `0`: Success
 #   - `1`: Failure
-# ```
 bu_sync_wait_group_parent()
 {
     bu_log_info "Wait group: Waiting on children"
@@ -2982,7 +2828,6 @@ bu_sync_wait_group_parent()
     bu_log_info "Wait group: Unblocking children"
 }
 
-# ```
 # *Description*:
 # Signal readiness to the parent, then wait for the parent to be ready
 #
@@ -2993,7 +2838,6 @@ bu_sync_wait_group_parent()
 # - Exit code:
 #   - `0`: Success
 #   - `1`: Failure
-# ```
 bu_sync_wait_group_child()
 {
     if (($# != 1))
@@ -3009,7 +2853,6 @@ bu_sync_wait_group_child()
 }
 
 # MARK: Environment/Path utilities
-# ```
 # *Description*:
 # Get function definition location
 #
@@ -3018,7 +2861,6 @@ bu_sync_wait_group_child()
 #
 # *Returns*:
 # - `stdout`: Function definition location
-# ```
 bu_env_whichfunc()
 {
     shopt -s extdebug
@@ -3026,7 +2868,6 @@ bu_env_whichfunc()
     shopt -u extdebug
 }
 
-# ```
 # *Description*:
 # Append a path to a generic path-like environment variable if it is not already present
 #
@@ -3035,7 +2876,6 @@ bu_env_whichfunc()
 # - `$2`: Path to append
 #
 # *Returns*: None
-# ```
 __bu_env_append_generic_path()
 {
     local -n __path_var=$1
@@ -3046,7 +2886,6 @@ __bu_env_append_generic_path()
     fi
 }
 
-# ```
 # *Description*:
 # Prepend a path to a generic path-like environment variable, moving it to the
 # front if it is already present (e.g. after macOS path_helper put /bin ahead)
@@ -3056,7 +2895,6 @@ __bu_env_append_generic_path()
 # - `$2`: Path to prepend
 #
 # *Returns*: None
-# ```
 __bu_env_prepend_generic_path()
 {
     local -n __path_var=$1
@@ -3068,7 +2906,6 @@ __bu_env_prepend_generic_path()
     __path_var=$path_to_prepend${__path_var:+:$__path_var}
 }
 
-# ```
 # *Description*:
 # Prepend a path to a generic path-like environment variable, even if it is already present
 #
@@ -3077,7 +2914,6 @@ __bu_env_prepend_generic_path()
 # - `$2`: Path to prepend
 #
 # *Returns*: None
-# ```
 __bu_env_prepend_generic_path_force()
 {
     local -n __path_var=$1
@@ -3085,7 +2921,6 @@ __bu_env_prepend_generic_path_force()
     __path_var=$path_to_prepend${__path_var:+:$__path_var}
 }
 
-# ```
 # *Description*:
 # Append a path to the PATH environment variable if it is not already present
 #
@@ -3093,13 +2928,11 @@ __bu_env_prepend_generic_path_force()
 # - `$1`: Path to append
 #
 # *Returns*: None
-# ```
 bu_env_append_path()
 {
     __bu_env_append_generic_path PATH "$1"
 }
 
-# ```
 # *Description*:
 # Prepend a path to the PATH environment variable, moving it to the front if already present
 #
@@ -3107,13 +2940,11 @@ bu_env_append_path()
 # - `$1`: Path to prepend
 #
 # *Returns*: None
-# ```
 bu_env_prepend_path()
 {
     __bu_env_prepend_generic_path PATH "$1"
 }
 
-# ```
 # *Description*:
 # Prepend a path to the PATH environment variable, even if it is already present
 #
@@ -3121,13 +2952,11 @@ bu_env_prepend_path()
 # - `$1`: Path to prepend
 #
 # *Returns*: None
-# ```
 bu_env_prepend_path_force()
 {
     __bu_env_prepend_generic_path_force PATH "$1"
 }
 
-# ```
 # *Description*:
 # Prepend a path to the LD_LIBRARY_PATH environment variable if it is not already present
 #
@@ -3135,13 +2964,11 @@ bu_env_prepend_path_force()
 # - `$1`: Path to prepend
 #
 # *Returns*: None
-# ```
 bu_env_append_ld_library_path()
 {
     __bu_env_append_generic_path LD_LIBRARY_PATH "$1"
 }
 
-# ```
 # *Description*:
 # Prepend a path to the PYTHONPATH environment variable, moving it to the front if already present
 #
@@ -3149,13 +2976,11 @@ bu_env_append_ld_library_path()
 # - `$1`: Path to prepend
 #
 # *Returns*: None
-# ```
 bu_env_prepend_pythonpath()
 {
     __bu_env_prepend_generic_path PYTHONPATH "$1"
 }
 
-# ```
 # *Description*:
 # Append a path to the PYTHONPATH environment variable if it is not already present
 #
@@ -3163,13 +2988,11 @@ bu_env_prepend_pythonpath()
 # - `$1`: Path to append
 #
 # *Returns*: None
-# ```
 bu_env_append_pythonpath()
 {
     __bu_env_append_generic_path PYTHONPATH "$1"
 }
 
-# ```
 # *Description*:
 # Prepend a path to the PYTHONPATH environment variable, even if it is already present
 #
@@ -3177,13 +3000,11 @@ bu_env_append_pythonpath()
 # - `$1`: Path to prepend
 #
 # *Returns*: None
-# ```
 bu_env_prepend_pythonpath_force()
 {
     __bu_env_prepend_generic_path_force PYTHONPATH "$1"
 }
 
-# ```
 # *Description*:
 # Remove a path from a generic path-like environment variable
 #
@@ -3192,7 +3013,6 @@ bu_env_prepend_pythonpath_force()
 # - `$2`: Path to remove
 #
 # *Returns*: None
-# ```
 __bu_env_remove_from_generic_path()
 {
     local -n __path_var=$1
@@ -3207,7 +3027,6 @@ __bu_env_remove_from_generic_path()
     fi
 }
 
-# ```
 # *Description*:
 # Remove a path from the PATH environment variable
 #
@@ -3215,13 +3034,11 @@ __bu_env_remove_from_generic_path()
 # - `$1`: Path to remove
 #
 # *Returns*: None
-# ```
 bu_env_remove_from_path()
 {
     __bu_env_remove_from_generic_path PATH "$1"
 }
 
-# ```
 # *Description*:
 # Remove a path from the LD_LIBRARY_PATH environment variable
 #
@@ -3229,13 +3046,11 @@ bu_env_remove_from_path()
 # - `$1`: Path to remove
 #
 # *Returns*: None
-# ```
 bu_env_remove_from_ld_library_path()
 {
     __bu_env_remove_from_generic_path LD_LIBRARY_PATH "$1"
 }
 
-# ```
 # *Description*:
 # Remove a path from the PYTHONPATH environment variable
 #
@@ -3243,13 +3058,11 @@ bu_env_remove_from_ld_library_path()
 # - `$1`: Path to remove
 #
 # *Returns*: None
-# ```
 bu_env_remove_from_pythonpath()
 {
     __bu_env_remove_from_generic_path PYTHONPATH "$1"
 }
 
-# ```
 # *Description*:
 # Rename a bash function
 #
@@ -3258,7 +3071,6 @@ bu_env_remove_from_pythonpath()
 # - `$2`: New function name
 #
 # *Returns*: None
-# ```
 bu_env_rename_func()
 {
     local old_func_name=$1
@@ -3267,7 +3079,6 @@ bu_env_rename_func()
     eval "$(declare -f "$old_func_name" | sed -r "s/\b$old_func_name\b/$new_func_name/g")"
 }
 
-# ```
 # *Description*:
 # Check if the current shell session is inside a tmux session
 #
@@ -3277,13 +3088,11 @@ bu_env_rename_func()
 # - Exit code:
 #   - `0`: If in tmux
 #   - `1`: If not in tmux
-# ```
 bu_env_is_in_tmux()
 {
     [[ -n "${TMUX:-}" && ("${TERM:-}" == screen* || "${TERM:-}" == tmux*) ]]
 }
 
-# ```
 # *Description*:
 # Check if the current shell code is executing in an autocomplete context
 #
@@ -3296,14 +3105,12 @@ bu_env_is_in_tmux()
 #
 # *Notes*
 # - Set BU_COMP_FAKE to a non-empty value to force this to be false
-# ```
 bu_env_is_in_autocomplete()
 {
     [[ -n "${COMP_CWORD:-}" && -z "${BU_COMP_FAKE:-}" ]]
 }
 
 # MARK: Run utils
-# ```
 # *Description*:
 # Execute a command with caching based on specified environment variables and bash variables
 #
@@ -3326,7 +3133,6 @@ bu_env_is_in_autocomplete()
 #   - `1`: If the command failed, the error pattern was found, or the output was empty (unless `--allow-empty` is used)
 # - `stdout`: The output of the command, either from cache or from execution
 # - If `--check` is used, the command outputs the cache key and returns `0` if cached, `1` if not cached
-# ```
 bu_cached_execute()
 {
     local is_check=false
@@ -3515,7 +3321,6 @@ bu_cached_execute()
     return 0
 }
 
-# ```
 # *Description*:
 # Cycle command logs, keeping only a specified number of log files
 #
@@ -3526,7 +3331,6 @@ bu_cached_execute()
 # *Returns*:
 # - `${BU_RET[@]}`: Array containing the write and read file descriptors for the new log file
 #                   (`${BU_RET[0]}`: write fd, `${BU_RET[1]}`: read fd)
-# ```
 __bu_cycle_logs()
 {
     BU_RET=()
@@ -3570,7 +3374,6 @@ __bu_cycle_logs()
     popd &>/dev/null
 }
 
-# ```
 # *Description*:
 # Log the current command to the last run commands history file
 #
@@ -3589,7 +3392,6 @@ __bu_cycle_logs()
 # - Writes to `$BU_LAST_RUN_CMDS` file
 # - The file will get trimmed if it gets too long
 # - The command will be logged as: `<calling_script_name> <arguments>`
-# ```
 bu_run_log_command()
 {
     if bu_env_is_in_autocomplete
@@ -3602,7 +3404,6 @@ bu_run_log_command()
     bu_scope_add_cleanup bu_sync_cycle_last_run_cmds
 }
 
-# ```
 # *Description*:
 # Edit one or more files with the configured editor
 #
@@ -3621,7 +3422,6 @@ bu_run_log_command()
 # - Uses `$VISUAL` or `$EDITOR` environment variables to determine the editor
 # - Supports special handling for VS Code (both `code` and `bu_code_wait.sh`)
 # - Falls back to VS Code (if available) or vim if no editor is configured
-# ```
 bu_edit_file()
 {
     local files=("$@")
@@ -3655,7 +3455,6 @@ bu_edit_file()
     esac
 }
 
-# ```
 # *Description*:
 # Open a log file with the configured editor or viewer
 #
@@ -3673,7 +3472,6 @@ bu_edit_file()
 # - Uses `$VISUAL` or `$EDITOR` environment variables to determine the editor/viewer
 # - Supports special handling for VS Code (both `code` and `bu_code_wait.sh`)
 # - Falls back to VS Code (if available) or `less` if no editor is configured
-# ```
 bu_run_open_logs()
 {
     local log_file=$1
@@ -3696,7 +3494,6 @@ bu_run_open_logs()
     esac
 }
 
-# ```
 # *Description*:
 # Sleep for a specified number of seconds, optionally displaying a progress bar if `tqdm` is available.
 #
@@ -3704,7 +3501,6 @@ bu_run_open_logs()
 # - `$1`: Number of seconds to sleep
 #
 # *Returns*: None
-# ```
 bu_sleep()
 {
     local num_seconds=$1
@@ -3721,7 +3517,6 @@ bu_sleep()
     fi
 }
 
-# ```
 # *Description*:
 # Run a command with various options such as logging, debugging, and working directory management.
 #
@@ -3754,7 +3549,6 @@ bu_sleep()
 #   - `1`: If the command failed (unless `--ignore-non-zero-exit-code` is used)
 # - `${BU_RET[@]}`: If `--mapfile`, contains the command's output
 # - `${BU_RET}`: If `--mapfile-str`, contains the command's output as a string
-# ```
 bu_run()
 {
     bu_scope_push_function
@@ -4160,7 +3954,6 @@ bu_vscode_is_socket_inactive()
 
 # MARK: Pretty 
 
-# ```
 # *Description*:
 # Pretty print associative (or non-associative) array variable
 #
@@ -4169,7 +3962,6 @@ bu_vscode_is_socket_inactive()
 #
 # *Returns*:
 # - `stdout`: Pretty printed key-value pairs of the associative array
-# ```
 bu_print_var()
 {
     local -n __bu_print_var_name=$1
@@ -4182,7 +3974,6 @@ bu_print_var()
     done
 }
 
-# ```
 # *Description*:
 # Pretty print the current scope stack
 #
@@ -4190,7 +3981,6 @@ bu_print_var()
 #
 # *Returns*:
 # - `stdout`: Pretty printed scope stack
-# ```
 bu_scope_print()
 {
     bu_print_var BU_SCOPE_STACK
@@ -4198,7 +3988,6 @@ bu_scope_print()
 
 # MARK: Code gen
 
-# ```
 # *Description*:
 # Substitute variables in the input stream
 #
@@ -4209,7 +3998,6 @@ bu_scope_print()
 #
 # *Returns*:
 # - `stdout`: Input stream with variables substituted
-# ```
 bu_gen_substitute()
 {
     bu_scope_push
@@ -4261,11 +4049,9 @@ bu_gen_substitute()
 
 # MARK: Bindings
 
-# ```
 # *Description*:
 # Edit the current command line using the default editor
 # Meant to be bound to a readline keybinding
-# ```
 __bu_bind_edit()
 {
     local editor=${VISUAL:-${EDITOR:-vim}}
@@ -4277,11 +4063,9 @@ __bu_bind_edit()
     rm -f "$tmp_file"
 }
 
-# ```
 # *Description*:
 # Toggle gdb prefix on the current command line
 # Meant to be bound to a readline keybinding
-# ```
 __bu_bind_toggle_gdb()
 {
     local words=()

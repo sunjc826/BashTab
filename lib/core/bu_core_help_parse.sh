@@ -26,7 +26,6 @@ bu_mkdir "$__BU_HELP_PARSE_CACHE_DIR"
 # runs its declare) write to an associative array, not an indexed one.
 declare -A -g __BU_HELP_PARSE_CACHE_MAP=()
 
-# ```
 # *Description*:
 # Register a parse strategy for a command.  Modules and preinit scripts
 # should call this to declare how a particular command's help should be
@@ -40,7 +39,6 @@ declare -A -g __BU_HELP_PARSE_CACHE_MAP=()
 # ```bash
 # bu_register_help_strategy git usage
 # bu_register_help_strategy find man
-# ```
 # ```
 bu_register_help_strategy()
 {
@@ -56,7 +54,6 @@ bu_register_help_strategy()
     __BU_HELP_PARSE_STRATEGY[$cmd]=$strategy
 }
 
-# ```
 # *Description*:
 # Normalize a command name into a cache key (path → basename, slashes → dashes).
 #
@@ -65,7 +62,6 @@ bu_register_help_strategy()
 #
 # *Returns*:
 # - stdout: Cache-safe key
-# ```
 __bu_help_parse_cache_key()
 {
     local key=$1
@@ -378,7 +374,6 @@ __bu_help_parse_man()
 # Dispatcher + caching layer
 # ═══════════════════════════════════════════════════════════════════════
 
-# ```
 # *Description*:
 # Resolve the effective strategy for a command.  Checks:
 # 1. Explicit registration (__BU_HELP_PARSE_STRATEGY)
@@ -390,7 +385,6 @@ __bu_help_parse_man()
 #
 # *Returns*:
 # - stdout: Strategy name (fig, gnu, usage, or man), or empty
-# ```
 __bu_help_parse_resolve_strategy()
 {
     local -r cmd=$1
@@ -416,7 +410,6 @@ __bu_help_parse_resolve_strategy()
     return 1
 }
 
-# ```
 # *Description*:
 # Compute the cache hash for a command + strategy combination.  We hash the
 # strategy name together with the command's help output so that switching
@@ -426,7 +419,6 @@ __bu_help_parse_resolve_strategy()
 # - `$1`: Command to run
 # - `$2`: Strategy name (gnu, usage, man)
 # - nameref `$3`: Output variable for the hash (empty on failure)
-# ```
 __bu_help_parse_hash()
 {
     local -r cmd=$1
@@ -463,7 +455,6 @@ __bu_help_parse_hash()
     [[ -n "$_out" ]]
 }
 
-# ```
 # *Description*:
 # Run the appropriate strategy for a command and populate the global
 # associative array __BU_HELP_PARSE_CACHE_MAP.
@@ -474,7 +465,6 @@ __bu_help_parse_hash()
 # *Returns*:
 # - 0 on success, 1 if no strategy produced results
 # - Populates __BU_HELP_PARSE_CACHE_MAP assoc: option token → description
-# ```
 __bu_help_parse_run()
 {
     local -r cmd=$1
@@ -562,7 +552,6 @@ __bu_help_parse_run()
     return 0
 }
 
-# ```
 # *Description*:
 # Get option descriptions for a command.  Runs --help / man on first call
 # and caches the result; subsequent calls return instantly from cache.
@@ -575,7 +564,6 @@ __bu_help_parse_run()
 # - 0 on success (array may be empty if no options found)
 # - 1 if no strategy produced results or command not found
 # - Populates the nameref array: option token → description
-# ```
 __bu_help_parse_get()
 {
     local -r cmd=$1
@@ -596,7 +584,6 @@ __bu_help_parse_get()
     return 0
 }
 
-# ```
 # *Description*:
 # Enrich BU_COMPREPLY_METADATA with option descriptions for external
 # commands, using Fig specs when available or --help parsing as fallback.
@@ -614,7 +601,6 @@ __bu_help_parse_get()
 # - The first token ($3) is the command name.  Remaining tokens before the
 #   cursor (typically all but the last) are used to resolve the subcommand
 #   path for Fig specs.
-# ```
 __bu_help_enrich_preview()
 {
     local -n _comps=$1

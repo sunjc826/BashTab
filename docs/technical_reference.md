@@ -522,7 +522,6 @@ This project follows a consistent documentation format for functions and variabl
 Functions should be documented with the following format:
 
 ```sh
-# ```
 # *Description*
 # Short description of function
 #
@@ -541,10 +540,9 @@ Functions should be documented with the following format:
 # *Notes*:
 # - Important note 1
 # - Important note 2
-# ```
 ```
 
-The outer triple backticks allow bash-language-server to properly parse the markdown documentation inside the comments. How it works is that bash-language-server defaults to wrapping comment blocks in a `` ``` `` block, thus the top and bottom triple backticks close up the txt block so we can add arbitrary markdown in between.
+bash-language-server renders the comment block above a function or variable as Markdown, so write it as Markdown directly: lists, emphasis and fenced examples render in hovers. Lines without a blank `#` line between them join into one paragraph.
 
 #### Variable Naming Conventions
 

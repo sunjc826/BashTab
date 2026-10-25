@@ -20,7 +20,6 @@
 declare -A -g BU_HELP_TOPIC_REGISTRY=()     # name -> topic script path
 declare -A -g BU_HELP_TOPIC_PROPERTIES=()   # [name,source] = registrant provenance
 
-# ```
 # *Description*:
 # First BASH_SOURCE frame OUTSIDE the help-topic registry core file.
 # Used to record provenance ([name,source]) so a delegating wrapper records
@@ -28,7 +27,6 @@ declare -A -g BU_HELP_TOPIC_PROPERTIES=()   # [name,source] = registrant provena
 #
 # *Returns*:
 # - BU_RET: source file path
-# ```
 __bu_help_topic_provenance()
 {
     local i file base
@@ -44,7 +42,6 @@ __bu_help_topic_provenance()
     return 0
 }
 
-# ```
 # *Description*:
 # Extract a topic script's own `# Synopsis:` header (first ~30 lines).
 # Values are extracted verbatim (no variable/command substitution).
@@ -54,7 +51,6 @@ __bu_help_topic_provenance()
 #
 # *Returns*:
 # - BU_RET: synopsis text, or empty
-# ```
 __bu_help_topic_synopsis()
 {
     BU_RET=
@@ -65,7 +61,6 @@ __bu_help_topic_synopsis()
     return 0
 }
 
-# ```
 # *Description*:
 # Extract a command script's explicit `# Help-Topic:` header (first ~30
 # lines).  Empty when the script declares no topic back-reference.
@@ -75,7 +70,6 @@ __bu_help_topic_synopsis()
 #
 # *Returns*:
 # - BU_RET: declared topic name, or empty
-# ```
 __bu_help_topic_header()
 {
     BU_RET=
@@ -86,7 +80,6 @@ __bu_help_topic_header()
     return 0
 }
 
-# ```
 # *Description*:
 # Register a named help topic backed by a script file.
 #
@@ -96,7 +89,6 @@ __bu_help_topic_header()
 #
 # *Returns*:
 # - 0 on success, 1 on invalid registration
-# ```
 bu_help_topic_register()
 {
     local name=$1
@@ -133,7 +125,6 @@ bu_help_topic_register()
     return 0
 }
 
-# ```
 # *Description*:
 # Register every `DIR/<topic>.help.sh` as topic `<topic>` — the idiomatic
 # one-liner for a module preinit.  A missing/empty dir is success (a module
@@ -144,7 +135,6 @@ bu_help_topic_register()
 #
 # *Returns*:
 # - 0 on success (including missing/empty dir)
-# ```
 bu_help_topic_register_dir()
 {
     local dir=$1
@@ -164,7 +154,6 @@ bu_help_topic_register_dir()
     return 0
 }
 
-# ```
 # *Description*:
 # Resolve a topic name to its backing script path.
 #
@@ -174,7 +163,6 @@ bu_help_topic_register_dir()
 # *Returns*:
 # - BU_RET: topic script path
 # - 0 on success, 1 if unknown
-# ```
 bu_help_topic_resolve()
 {
     local name=$1
@@ -188,13 +176,11 @@ bu_help_topic_resolve()
     return 0
 }
 
-# ```
 # *Description*:
 # List registered topic names, sorted (the completion feed).
 #
 # *Returns*:
 # - BU_RET: array of topic names
-# ```
 bu_help_topic_names()
 {
     BU_RET=()
@@ -212,7 +198,6 @@ bu_help_topic_names()
     return 0
 }
 
-# ```
 # *Description*:
 # Emit a command table for a list of command script files.  One row per file:
 # `  <cli-name> <command-name> <synopsis>`, sorted by row.  Command names are
@@ -222,7 +207,6 @@ bu_help_topic_names()
 #
 # *Params*:
 # - `$@`: command script paths
-# ```
 __bu_help_topic_commands_print()
 {
     local -a files=("$@")
@@ -247,7 +231,6 @@ __bu_help_topic_commands_print()
     return 0
 }
 
-# ```
 # *Description*:
 # Print a command table for a suite directory.  For each `*.sh`/`*.py`
 # (skipping `__*`, `functions.*`, `overrides*`), emit one row.  Topic scripts
@@ -255,7 +238,6 @@ __bu_help_topic_commands_print()
 #
 # *Params*:
 # - `$1`: suite directory
-# ```
 bu_help_topic_commands()
 {
     local dir=$1
@@ -277,7 +259,6 @@ bu_help_topic_commands()
     return 0
 }
 
-# ```
 # *Description*:
 # Like bu_help_topic_commands, but includes only files whose header carries
 # `# Help-Topic: TOPIC`.  For flat command dirs hosting many subsystems,
@@ -287,7 +268,6 @@ bu_help_topic_commands()
 # *Params*:
 # - `$1`: topic name to filter by
 # - `$2...`: suite directories to scan
-# ```
 bu_help_topic_commands_tagged()
 {
     local topic=$1
@@ -316,7 +296,6 @@ bu_help_topic_commands_tagged()
     return 0
 }
 
-# ```
 # *Description*:
 # Resolve the help topic for a command script.  An explicit `# Help-Topic:`
 # header wins; otherwise the script's parent directory name is used.  Fails
@@ -328,7 +307,6 @@ bu_help_topic_commands_tagged()
 # *Returns*:
 # - BU_RET: topic name
 # - 0 on success, 1 if no registered topic applies
-# ```
 bu_help_topic_for_script()
 {
     local script=$1
@@ -353,7 +331,6 @@ bu_help_topic_for_script()
     return 0
 }
 
-# ```
 # *Description*:
 # Render a topic script.  Sources FILE in a subshell (so the topic cannot
 # mutate the caller) with BU_TPUT_BOLD/BU_TPUT_RESET set to the given values.
@@ -364,7 +341,6 @@ bu_help_topic_for_script()
 # - `$1`: topic script path
 # - `$2`: value for BU_TPUT_BOLD
 # - `$3`: value for BU_TPUT_RESET
-# ```
 __bu_help_topic_render()
 {
     local file=$1

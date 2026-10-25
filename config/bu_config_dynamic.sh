@@ -7,24 +7,18 @@ source "$BU_NULL"
 # file generated from these registrations (see "Settings precedence and
 # provenance" in docs/technical_reference.md).
 
-# ```
 # Whether to ignore cache when running bu_cached_execute
-# ```
 bu_config_register BU_INVALIDATE_CACHE --bool --default false \
     --hint "Ignore cache when running bu_cached_execute"
 
-# ```
 # The log-level when running commands
-# ```
 bu_config_register BU_LOG_LVL --default "$BU_LOG_LVL_WARN" \
     --enum trace:"$BU_LOG_LVL_TRACE" debug:"$BU_LOG_LVL_DEBUG" info:"$BU_LOG_LVL_INFO" warn:"$BU_LOG_LVL_WARN" err:"$BU_LOG_LVL_ERR" silence:"$BU_LOG_LVL_SILENCE" enum-- \
     --hint "Log level when running commands"
 
-# ```
 # The log-level when hitting TAB.
 # In general, this should only log errors to avoid cluttering the
 # autocomplete suggestions.
-# ```
 bu_config_register BU_AUTOCOMPLETE_LOG_LVL --default "$BU_LOG_LVL_ERR" \
     --enum trace:"$BU_LOG_LVL_TRACE" debug:"$BU_LOG_LVL_DEBUG" info:"$BU_LOG_LVL_INFO" warn:"$BU_LOG_LVL_WARN" err:"$BU_LOG_LVL_ERR" silence:"$BU_LOG_LVL_SILENCE" enum-- \
     --hint "Log level during autocomplete (keep at err to avoid cluttering suggestions)"
@@ -35,7 +29,6 @@ bu_config_register BU_AUTOCOMPLETE_BIND_FZF_DISPLAY_METADATA --bool --default tr
 bu_config_register BU_AUTOCOMPLETE_BIND_TAB_TO_FZF --bool --default true \
     --hint "Bind Tab to BashTab completion, shown by BU_AUTOCOMPLETE_TAB_BACKEND (Alt-Z toggles per session)"
 
-# ```
 # How BashTab Tab completion shows its candidates (all three use the same
 # completion engine):
 # - fzf:       fzf dropdown placed under the word being completed, with a
@@ -45,16 +38,13 @@ bu_config_register BU_AUTOCOMPLETE_BIND_TAB_TO_FZF --bool --default true \
 # - readline:  readline's own candidate list, with descriptions; honours
 #              inputrc settings and needs no fzf
 # The fzf backends fall back to readline when fzf is not installed.
-# ```
 bu_config_register BU_AUTOCOMPLETE_TAB_BACKEND --default fzf \
     --enum fzf fzf-cheap readline enum-- \
     --hint "Tab completion UI: fzf (dropdown under the word), fzf-cheap (dropdown on the prompt row, fewer processes), readline (native list with descriptions)"
 
-# ```
 # Use tree-sitter-bash (via node daemon) for command-line parsing
 # in fzf autocomplete instead of the built-in bash parser.
 # Provides more accurate cursor-position tracking and syntax awareness.
-# ```
 bu_config_register BU_AUTOCOMPLETE_USE_TREE_SITTER --bool --default false \
     --hint "Use tree-sitter-bash (node daemon) for command-line parsing in fzf autocomplete"
 
@@ -107,36 +97,28 @@ bu_config_register BU_OUT_VALIDATE_RECORDS --default first \
     --enum first all enum-- \
     --hint "Check required fields on the first record or every record"
 
-# ```
 # Show the active top-level module name in PS1, like Python venvs.
 # When enabled, PS1 is prefixed with e.g. "[myproject] ".
-# ```
 bu_config_register BU_PROMPT_SHOW_MODULE --bool --default true \
     --hint "Show the active top-level module name in the shell prompt (PS1)"
 
-# ```
 # When true, expose every source/execute command as a bare shell function
 # (e.g. `get-command` instead of `bu get-command`), with Tab completion.
-# ```
 bu_config_register BU_EXPOSE_COMMANDS --bool --default false \
     --hint "Expose commands as bare shell functions with Tab completion"
 
-# ```
 # How the exit-handler traceback is rendered when a command fails.
 #   short - one compact line per stack frame
 #   full  - Python-style frames plus the surrounding source lines (default)
 # The number of context lines shown by "full" is BU_STACKTRACE_CONTEXT_LINES
 # (a tunable global in bu_core_base.sh; not registered because it is a plain
 # integer).
-# ```
 bu_config_register BU_STACKTRACE_STYLE --default full \
     --enum short full enum-- \
     --hint "Traceback rendering style (short: one line per frame, full: source context)"
 
-# ```
 # Directory for remote-session ControlMaster sockets (see bu_core_remote.sh).
 # Socket paths must stay under the ~100-byte unix sun_path limit, so a long
 # BU_OUT_DIR should be paired with a short override here.
-# ```
 bu_config_register BU_REMOTE_SSH_DIR --default "$BU_OUT_DIR/ssh" \
     --hint "Directory for remote-session ControlMaster sockets"

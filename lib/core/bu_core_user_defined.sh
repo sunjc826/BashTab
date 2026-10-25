@@ -1,28 +1,24 @@
 # bash-ide source=../../bu_custom_source.sh
 # bash-ide source=../../bu_user_defined_decl.sh
 
-# ```
 # *Description*:
 # Sources user defined configuration callback scripts.
 #
 # *Params*: None
 #
 # *Returns*: None
-# ```
 bu_source_user_defined_configs()
 {
     bu_source_multi_once "${BU_USER_DEFINED_STATIC_CONFIGS[@]}"
     bu_source_multi "${BU_USER_DEFINED_DYNAMIC_CONFIGS[@]}"
 }
 
-# ```
 # *Description*:
 # Sources user defined pre-init callback scripts.
 #
 # *Params*: None
 #
 # *Returns*: None
-# ```
 bu_source_user_defined_pre_init_callbacks()
 {
     local -r saved_module=${BU_CURRENT_MODULE:-}
@@ -47,21 +43,18 @@ bu_source_user_defined_pre_init_callbacks()
     bu_source_multi "${BU_USER_DEFINED_DYNAMIC_POST_ENTRYPOINT_CALLBACKS[@]}"
 }
 
-# ```
 # *Description*:
 # Sources user defined post-init callback scripts.
 #
 # *Params*: None
 #
 # *Returns*: None
-# ```
 bu_source_user_defined_post_entrypoint_callbacks()
 {
     bu_source_multi_once "${BU_USER_DEFINED_STATIC_POST_ENTRYPOINT_CALLBACKS[@]}"
     bu_source_multi "${BU_USER_DEFINED_DYNAMIC_POST_ENTRYPOINT_CALLBACKS[@]}"
 }
 
-# ```
 # *Params*
 # - `$1`: Command to convert to a key
 #
@@ -78,7 +71,6 @@ bu_source_user_defined_post_entrypoint_callbacks()
 #   - 0: Function successfully maps command to a key
 #   - 1 or any other non-zero exit code: Mapping is unsuccessful
 # - `$BU_RET`: If exit code is 0, then this should be the key
-# ```
 bu_user_defined_convert_command_to_key()
 {
     local command=$1
@@ -94,7 +86,6 @@ bu_user_defined_convert_command_to_key()
     BU_RET=command-$command # default conversion
 }
 
-# ```
 # *Params*
 # - `...`: Lazy autocompletion args
 #
@@ -114,7 +105,6 @@ bu_user_defined_convert_command_to_key()
 #   - 1: Function does not handle the lazy autocompletion args
 # - `${COMPREPLY[@]}`: If exit code is 0, then this is the original contents plus new autocompletions
 # - `$BU_RET`: If exit code is 0, then this should be the number of lazy autocompletion args consumed
-# ```
 bu_user_defined_autocomplete_lazy()
 {
     local fn
@@ -137,7 +127,6 @@ bu_user_defined_autocomplete_lazy()
     return "$exit_code"
 }
 
-# ```
 # *Description*:
 # Normalize BU_MODULE_LIST in place: drop empty and repeated entries (by
 # module name, first wins). BU_MODULE_LIST is a static setting, so the
@@ -147,7 +136,6 @@ bu_user_defined_autocomplete_lazy()
 # *Params*: None
 #
 # *Returns*: None (always 0)
-# ```
 __bu_module_list_normalize()
 {
     local entry name normalized=
@@ -171,7 +159,6 @@ __bu_module_list_normalize()
     return 0
 }
 
-# ```
 # *Description*:
 # Order the BU_MODULE_LIST entries so that every module comes after the
 # modules it requires (BU_MODULE_DEPS, recorded by bu_module_require): a
@@ -186,7 +173,6 @@ __bu_module_list_normalize()
 #
 # *Returns*:
 # - `BU_RET`: the "name:version:preinit_path" entries, dependencies first
-# ```
 __bu_module_order()
 {
     local -r key="${BU_MODULE_LIST:-}|${BU_MODULE_DEPS:-}"
@@ -261,7 +247,6 @@ __bu_module_order_visit()
     return 0
 }
 
-# ```
 # *Description*:
 # Source each module's config registration file, found next to its preinit
 # (from BU_MODULE_LIST): NAME_bu_config.static.sh for the static config phase,
@@ -275,7 +260,6 @@ __bu_module_order_visit()
 # - `$1`: `static` or `main`
 #
 # *Returns*: None (always 0)
-# ```
 __bu_source_module_configs()
 {
     local -r kind=$1
@@ -303,7 +287,6 @@ __bu_source_module_configs()
     return 0
 }
 
-# ```
 # *Description*:
 # Parse BU_MODULE_LIST and register preinit callbacks + module registry entries.
 #
@@ -320,7 +303,6 @@ __bu_source_module_configs()
 # - Appends preinit paths to BU_USER_DEFINED_STATIC_PRE_INIT_ENTRYPOINT_CALLBACKS
 #   in dependency order (__bu_module_order), so a module's preinit runs after
 #   those of the modules it requires and the top-level module's runs last
-# ```
 __bu_parse_module_list()
 {
     local entry name version path

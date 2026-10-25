@@ -40,7 +40,6 @@ declare -A -g __BU_TABLE_PAGER_PRESETS=(
     [never]=cat
 )
 
-# ```
 # *Description*:
 # Register a preset pager shortcut for BU_TABLE_PAGER.
 # Users can then write BU_TABLE_PAGER=<name> or BU_TABLE_PAGER=preset:<name>.
@@ -52,7 +51,6 @@ declare -A -g __BU_TABLE_PAGER_PRESETS=(
 # *Examples*:
 # ```bash
 # bu_register_table_pager_preset "moar" "moar -style native"
-# ```
 # ```
 bu_register_table_pager_preset()
 {
@@ -85,7 +83,6 @@ declare -A -g __BU_TABLE_STYLES=(
     [clickhouse]='{"header_bold":true,"left":"│ ","vsep":" │ ","right":" │","top":{"left":"┌","char":"─","join":"┬","right":"┐","min":1,"pad":1},"hsep":null,"rsep":null,"bottom":{"left":"└","char":"─","join":"┴","right":"┘","min":1,"pad":1}}'
 )
 
-# ```
 # *Description*:
 # Register (or override) a table display style for bu_format_table.
 # Users can then pass --style <name> or set BU_TABLE_STYLE=<name>.
@@ -97,7 +94,6 @@ declare -A -g __BU_TABLE_STYLES=(
 # *Examples*:
 # ```bash
 # bu_register_table_style "fancy" '{"header_bold":true,"left":"","vsep":"  ","right":"","top":null,"hsep":{"left":"","char":"=","join":"  ","right":"","min":1,"pad":0},"rsep":null,"bottom":null}'
-# ```
 # ```
 bu_register_table_style()
 {
@@ -176,7 +172,6 @@ declare -A -g BU_OUT_TAB_EXECUTE=()
 # here on first use) over central registration.
 declare -A -g BU_OUT_TAB_EXECUTE_FIELD=()
 
-# ```
 # *Description*:
 # Register a producer as safe to execute during TAB completion so its
 # distinct field values can be offered at the where/query value position.
@@ -187,7 +182,6 @@ declare -A -g BU_OUT_TAB_EXECUTE_FIELD=()
 # *Examples*:
 # ```bash
 # bu_register_tab_execute "bu get-command"
-# ```
 # ```
 bu_register_tab_execute()
 {
@@ -200,7 +194,6 @@ bu_register_tab_execute()
     BU_OUT_TAB_EXECUTE[$producer]=1
 }
 
-# ```
 # *Description*:
 # Register a producer as safe to execute during TAB completion so its record
 # field names can be discovered at the post-pipe field position.
@@ -211,7 +204,6 @@ bu_register_tab_execute()
 # *Examples*:
 # ```bash
 # bu_register_tab_execute_field "bu get-command"
-# ```
 # ```
 bu_register_tab_execute_field()
 {
@@ -241,13 +233,11 @@ declare -A -g __BU_OUT_TAB_ROWS=()
 # invalidated; no disk cache (datasets are live).
 declare -A -g __BU_OUT_FILE_FIELDS=()
 
-# ```
 # *Description*:
 # Assert that jq is available for structured output
 #
 # *Returns*:
 # - Exit code 1 and logs an error if jq is not available
-# ```
 __bu_out_assert_jq()
 {
     if [[ -z "$BU_OUT_JQ" ]]
@@ -257,7 +247,6 @@ __bu_out_assert_jq()
     fi
 }
 
-# ```
 # *Description*:
 # Validate a record key. Keys become jq object keys in generated programs,
 # so they must be plain identifiers.
@@ -267,7 +256,6 @@ __bu_out_assert_jq()
 #
 # *Returns*:
 # - Exit code 1 and logs an error if the key is invalid
-# ```
 __bu_out_validate_key()
 {
     if [[ ! "$1" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]
@@ -277,7 +265,6 @@ __bu_out_validate_key()
     fi
 }
 
-# ```
 # *Description*:
 # Parse a comma-separated column spec list, supporting optional display labels.
 #
@@ -294,7 +281,6 @@ __bu_out_validate_key()
 # *Notes*:
 # - Labels are display-only; lookups and --colors always use the key.
 # - Keys must be identifiers (validated); labels may be any string.
-# ```
 __bu_out_parse_colspecs()
 {
     local -a specs=()
@@ -326,7 +312,6 @@ __bu_out_parse_colspecs()
     fi
 }
 
-# ```
 # *Description*:
 # Convert a comma-separated column spec list to a JSON array of keys,
 # silently dropping any `:Label` display labels.
@@ -336,13 +321,11 @@ __bu_out_parse_colspecs()
 #
 # *Returns*:
 # - `$BU_RET`: JSON array of keys
-# ```
 __bu_out_cols_to_json()
 {
     __bu_out_parse_colspecs "$@"
 }
 
-# ```
 # *Description*:
 # Convert a comma-separated column spec list to a JSON array of
 # `{key, header}` objects for the display formatters.
@@ -352,7 +335,6 @@ __bu_out_cols_to_json()
 #
 # *Returns*:
 # - `$BU_RET`: JSON array (e.g. `[{"key":"name","header":"Module"},...]`)
-# ```
 __bu_out_colspecs_to_json()
 {
     __bu_out_parse_colspecs "$@" || return 1
@@ -381,7 +363,6 @@ __BU_OUT_RAINBOW=(
     dark_blue
 )
 
-# ```
 # *Description*:
 # Build a JSON color map from a comma-separated `key=color` spec
 #
@@ -391,7 +372,6 @@ __BU_OUT_RAINBOW=(
 #
 # *Returns*:
 # - `$BU_RET`: JSON object mapping keys to ANSI codes (e.g. `{"name":"\u001b[32m"}`)
-# ```
 __bu_out_colors_to_json()
 {
     local spec=$1
@@ -429,13 +409,11 @@ __bu_out_colors_to_json()
     fi
 }
 
-# ```
 # *Description*:
 # Get the terminal width for table layout
 #
 # *Returns*:
 # - `$BU_RET`: Terminal width in columns (defaults to 80 if undetectable)
-# ```
 __bu_out_term_width()
 {
     BU_RET=${COLUMNS:-}
@@ -451,7 +429,6 @@ __bu_out_term_width()
 
 # MARK: Recordifiers (raw -> JSONL)
 
-# ```
 # *Description*:
 # Construct a single JSON record (one line of JSONL) from key=value pairs.
 # Values are properly JSON-escaped via jq --arg.
@@ -475,7 +452,6 @@ __bu_out_term_width()
 # *Notes*:
 # - Forks one jq process per call. For loops over many records, prefer
 #   emitting TSV and converting once with `bu_out_from_tsv`.
-# ```
 bu_out_record()
 {
     __bu_out_assert_jq || return 1
@@ -512,7 +488,6 @@ bu_out_record()
     "$BU_OUT_JQ" -cn "${jq_args[@]}" "{$prog}"
 }
 
-# ```
 # *Description*:
 # Convert a TSV stream to JSONL in a single jq process (stream recordifier).
 # This is the preferred pattern for loops: printf TSV per record (zero forks),
@@ -536,7 +511,6 @@ bu_out_record()
 # *Notes*:
 # - Values must not contain tabs or newlines. For arbitrary strings, use
 #   `bu_out_record` per record instead.
-# ```
 bu_out_from_tsv()
 {
     __bu_out_assert_jq || return 1
@@ -579,7 +553,6 @@ bu_out_from_tsv()
     '
 }
 
-# ```
 # *Description*:
 # Convert a line-oriented stream to JSONL, one single-key record per line.
 # Useful for wrapping line-oriented tools (ls, git, ...) into records.
@@ -634,7 +607,6 @@ bu_out_from_lines()
 
 # MARK: Transforms (JSONL -> JSONL)
 
-# ```
 # *Description*:
 # Filter a JSONL stream with a jq boolean expression (PowerShell Where-Object).
 # Streams record-by-record with O(1) latency.
@@ -655,7 +627,6 @@ bu_out_from_lines()
 # *Notes*:
 # - The expression is embedded into a jq program verbatim (same trust
 #   boundary as writing raw jq).
-# ```
 bu_out_where()
 {
     __bu_out_assert_jq || return 1
@@ -671,7 +642,6 @@ bu_out_where()
 # Operator-to-jq translation helpers (for PowerShell-style --where syntax)
 # --------------------------------------------------------------------------
 
-# ```
 # *Description*:
 # Convert a user-supplied value to a jq literal. Numbers, booleans, and null
 # are passed through as-is; everything else is quoted as a jq string.
@@ -690,7 +660,6 @@ bu_out_where()
 # __bu_jq_literal null      # null
 # __bu_jq_literal hello     # "hello"
 # __bu_jq_literal "hi,there" # "hi,there"  (shell-stripped quotes, re-quoted)
-# ```
 # ```
 __bu_jq_literal()
 {
@@ -714,7 +683,6 @@ __bu_jq_literal()
     printf '"%s"' "$escaped"
 }
 
-# ```
 # *Description*:
 # Report whether a value produced by `__bu_jq_literal` is a jq *number*
 # literal (as opposed to a quoted string, `true`, `false`, or `null`).
@@ -724,14 +692,12 @@ __bu_jq_literal()
 #
 # *Returns*:
 # - exit 0 when the literal is numeric, 1 otherwise
-# ```
 __bu_jq_literal_is_numeric()
 {
     local lit=$1
     [[ "$lit" =~ ^-?[0-9]+\.?[0-9]*$ || "$lit" =~ ^-?[0-9]*\.[0-9]+$ ]]
 }
 
-# ```
 # *Description*:
 # Convert a shell glob pattern to a jq-compatible regex for the `test`
 # function.  Handles `*` (any chars), `?` (one char), escapes everything
@@ -747,7 +713,6 @@ __bu_jq_literal_is_numeric()
 # ```bash
 # __bu_glob_to_regex "*.sh"   # ^.*\.sh$
 # __bu_glob_to_regex "get-?"  # ^get-.$
-# ```
 # ```
 __bu_glob_to_regex()
 {
@@ -769,7 +734,6 @@ __bu_glob_to_regex()
     printf '^%s$' "$regex"
 }
 
-# ```
 # *Description*:
 # Translate a PowerShell-style structured comparison to a jq boolean
 # expression string suitable for `bu_out_where` (or the --where clause of
@@ -815,7 +779,6 @@ __bu_glob_to_regex()
 # __bu_query_object_translate_op verb -isnull           # .verb == null
 # __bu_query_object_translate_op type -in source,alias # .type | IN("source","alias")
 # __bu_query_object_translate_op type -notin source,alias # .type | IN("source","alias") | not
-# ```
 # ```
 __bu_query_object_translate_op()
 {
@@ -964,7 +927,6 @@ __bu_query_object_translate_op()
     printf '%s' "$jq_expr"
 }
 
-# ```
 # *Description*:
 # Build the jq boolean expression for `bu query-object grep`: true when the
 # pattern matches ANY top-level field value of a record (a grep of the row).
@@ -989,7 +951,6 @@ __bu_query_object_translate_op()
 # __bu_query_object_translate_grep regex '^get-'   # any value matches the regex
 # __bu_query_object_translate_grep glob command    # any value contains "command"
 # __bu_query_object_translate_grep iglob 'GET-*'   # case-insensitive glob
-# ```
 # ```
 __bu_query_object_translate_grep()
 {
@@ -1022,7 +983,6 @@ __bu_query_object_translate_grep()
     esac
 }
 
-# ```
 # *Description*:
 # Project a JSONL stream to a subset of fields, reordering and optionally
 # renaming them (PowerShell Select-Object).
@@ -1048,7 +1008,6 @@ __bu_query_object_translate_grep()
 # *Notes*:
 # - Field order in the spec determines key order in the output records.
 # - Missing fields are emitted as null.
-# ```
 bu_out_select()
 {
     __bu_out_assert_jq || return 1
@@ -1144,7 +1103,6 @@ __bu_out_select_filter()
     BU_RET="{$prog}"
 }
 
-# ```
 # *Description*:
 # Sort a JSONL stream by a field (PowerShell Sort-Object). Buffers all input.
 # jq ordering rules apply: null < false < true < numbers < strings < arrays < objects.
@@ -1213,7 +1171,6 @@ __BU_OUT_JQ_DISTINCT='
             select(.emit) | $r);
 '
 
-# ```
 # *Description*:
 # Remove duplicate records from a JSONL stream (SELECT DISTINCT /
 # Select-Object -Unique). The first occurrence wins; original order is
@@ -1278,7 +1235,6 @@ def __table_rows($spec; $style; $colors; $reset; $rows):
     (if $style.bottom and ($rows | length) > 0 then __table_seg($spec; $style.bottom) else empty end);
 EOF
 
-# ```
 # *Description*:
 # Render a JSONL stream as an aligned table (PowerShell Format-Table).
 #
@@ -1302,7 +1258,6 @@ EOF
 #   widths, then shrinks the widest columns until the table fits the
 #   terminal width (ellipsis truncation). This mirrors Format-Table -AutoSize.
 # - The header is bold when stdout is a terminal.
-# ```
 bu_format_table()
 {
     __bu_out_assert_jq || return 1
@@ -1503,7 +1458,6 @@ bu_format_table()
         ' | $__bu_pager_pipe || cat
 }
 
-# ```
 # *Description*:
 # Render a JSONL stream as a list of key-value blocks (PowerShell Format-List).
 # Streams record-by-record with O(1) latency.
@@ -1563,7 +1517,6 @@ bu_format_list()
         '
 }
 
-# ```
 # *Description*:
 # Render a JSONL stream as a pretty-printed JSON array (ConvertTo-Json).
 # Buffers all input.
@@ -1573,14 +1526,12 @@ bu_format_list()
 #
 # *Returns*:
 # - stdout: JSON array
-# ```
 bu_format_json()
 {
     __bu_out_assert_jq || return 1
     "$BU_OUT_JQ" -s .
 }
 
-# ```
 # *Description*:
 # Normalize a JSONL stream (compact, one validated object per line).
 # Pure passthrough with O(1) latency.
@@ -1590,14 +1541,12 @@ bu_format_json()
 #
 # *Returns*:
 # - stdout: JSONL stream
-# ```
 bu_format_jsonl()
 {
     __bu_out_assert_jq || return 1
     "$BU_OUT_JQ" -c .
 }
 
-# ```
 # *Description*:
 # Render a JSONL stream as TSV for scripting. Streams record-by-record.
 # Embedded tabs/newlines in values are escaped by jq @tsv.
@@ -1608,7 +1557,6 @@ bu_format_jsonl()
 #
 # *Returns*:
 # - stdout: Tab-separated lines (no header row)
-# ```
 bu_format_tsv()
 {
     __bu_out_assert_jq || return 1
@@ -1647,7 +1595,6 @@ bu_format_tsv()
         '
 }
 
-# ```
 # *Description*:
 # Render a JSONL stream as a GitHub-flavoured Markdown table, for documents
 # rather than terminals (job summaries, wiki pages, chat messages). Unlike
@@ -1717,7 +1664,6 @@ bu_format_markdown()
         '
 }
 
-# ```
 # *Description*:
 # Render a JSONL stream as CSV (ConvertTo-Csv). Values are quoted per
 # RFC 4180 (jq @csv); nested objects/arrays are serialized to JSON text.
@@ -1732,7 +1678,6 @@ bu_format_markdown()
 #
 # *Returns*:
 # - stdout: Header row (unless `--no-header`), one row per record
-# ```
 bu_format_csv()
 {
     __bu_out_assert_jq || return 1
@@ -1789,7 +1734,6 @@ bu_format_csv()
     fi
 }
 
-# ```
 # *Description*:
 # Render a JSONL stream as an HTML `<table>` fragment, for e-mails, reports
 # and Markdown documents that accept inline HTML (GitHub job summaries).
@@ -1804,7 +1748,6 @@ bu_format_csv()
 #
 # *Returns*:
 # - stdout: `<table>` with a `<thead>` header row and one `<tbody>` row per record
-# ```
 bu_format_html()
 {
     __bu_out_assert_jq || return 1
@@ -1853,7 +1796,6 @@ bu_format_html()
         '
 }
 
-# ```
 # *Description*:
 # Group a JSONL stream by one or more key fields, emitting one flat record
 # per group (SQL GROUP BY with aggregates). Reads all input, retaining only
@@ -2036,7 +1978,6 @@ __bu_out_group_filter()
 
 # MARK: Pipeline field completion
 
-# ```
 # *Description*:
 # Register the record fields that a producer command emits, enabling
 # pipeline-aware field completion after a pipe (e.g. in bu select).
@@ -2048,7 +1989,6 @@ __bu_out_group_filter()
 # *Examples*:
 # ```bash
 # bu_register_output_fields "bu get-pokemon" name id type hp attack
-# ```
 # ```
 bu_register_output_fields()
 {
@@ -2067,7 +2007,6 @@ bu_register_output_fields()
     BU_OUT_PRODUCER_FIELDS[$producer]="$*"
 }
 
-# ```
 # *Description*:
 # Autocomplete helper (used via the `--ret` DSL): suggest record fields based
 # on the pipeline preceding the cursor (PowerShell-style pipeline awareness).
@@ -2096,7 +2035,6 @@ bu_register_output_fields()
 # - The COMP_WORDS fallback requires the pipe as a standalone word (`a | b`).
 # - The COMP_LINE fallback covers the plain bash completion path (fzf binding
 #   disabled), where COMP_WORDS only contains the post-pipe segment.
-# ```
 bu_complete_delimited()
 {
     local delim=,
@@ -2159,7 +2097,6 @@ bu_complete_delimited()
     ((${#BU_RET[@]})) && return 0 || return 1
 }
 
-# ```
 # *Description*:
 # Generate completions from a Fig spec JSON file.  Walks the spec tree
 # matching the command-line tokens against subcommands and options, then
@@ -2183,7 +2120,6 @@ bu_complete_delimited()
 # # In a command script that wraps a Fig-spec'd tool:
 # bu_parse_positional $# --ret bu_complete_from_fig --spec "$HOME/.fig/act.json" -- ret-- \
 #     --hint "arg"
-# ```
 # ```
 bu_complete_from_fig()
 {
@@ -2357,7 +2293,6 @@ bu_complete_from_fig()
     return 0
 }
 
-# ```
 # *Description*:
 # Bash completion function backed by a Fig spec.  Conforms to the standard
 # bash completion interface (command, cur_word, prev_word) and populates
@@ -2374,7 +2309,6 @@ bu_complete_from_fig()
 # - Sets `COMPREPLY` directly for bash'\''s completion machinery.
 #
 # *Spec lookup*: `$BU_FIG_SPEC_DIR/<command>.json`
-# ```
 
 # BashTab root directory, captured at definition time for Fig spec lookups
 __BU_FIG_ROOT=$(realpath -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." 2>/dev/null)
@@ -2429,7 +2363,6 @@ __bu_autocomplete_fig_completion_func()
     return 0
 }
 
-# ```
 # *Description*:
 # Autocompletion helper for pipeline producer fields.
 # Resolves the field names emitted by the upstream producer in a pipeline
@@ -2451,8 +2384,6 @@ __bu_autocomplete_fig_completion_func()
 # - The COMP_WORDS fallback requires the pipe as a standalone word (`a | b`).
 # - The COMP_LINE fallback covers the plain bash completion path (fzf binding
 #   disabled), where COMP_WORDS only contains the post-pipe segment.
-# ```
-# ```
 # *Description*:
 # Recover the producer pipeline from the raw command line. Used as a last
 # resort by `__bu_out_resolve_producer` in the plain bash completion path
@@ -2470,7 +2401,6 @@ __bu_autocomplete_fig_completion_func()
 # - `$BU_RET`: Producer pipeline text (trimmed)
 # - `$BU_RET_EVAL`: Same text, eval-able as typed
 # - exit 0 on success, 1 if no usable pipe was found
-# ```
 __bu_out_resolve_producer_from_comp_line()
 {
     BU_RET=
@@ -2608,7 +2538,6 @@ __bu_out_resolve_producer()
     BU_RET=$BU_CANONICAL_STAGE
 }
 
-# ```
 # *Description*:
 # Resolve a data file the CURRENT command reads via its own `--from`/`from`
 # clause (self-producer), for completion when there is no upstream pipe.
@@ -2620,7 +2549,6 @@ __bu_out_resolve_producer()
 # *Returns*:
 # - BU_RET: The file path (trimmed, unquoted)
 # - exit 0 on success, 1 if no --from file was found
-# ```
 __bu_out_resolve_self_from_file()
 {
     BU_RET=
@@ -2652,7 +2580,6 @@ __bu_out_resolve_self_from_file()
     return 1
 }
 
-# ```
 # *Description*:
 # Infer the record field names a data file would produce when read as a
 # stream. Detects the format from the file extension:
@@ -2671,7 +2598,6 @@ __bu_out_resolve_self_from_file()
 # *Returns*:
 # - exit 0 with fields populated, 1 if the file can't be inspected or has no
 #   recognizable schema
-# ```
 __bu_out_infer_file_fields()
 {
     local -r path=$1
@@ -2747,7 +2673,6 @@ __bu_out_infer_file_fields()
     return 0
 }
 
-# ```
 # *Description*:
 # Emit a data file as a JSONL stream (the runtime counterpart to
 # __bu_out_infer_file_fields). Detects the format by extension:
@@ -2764,7 +2689,6 @@ __bu_out_infer_file_fields()
 #   header.
 # - `$3` (optional): true to report runtime diagnostics and preserve converter
 #   failures with pipefail; false (default) for quiet completion sampling.
-# ```
 __bu_out_read_file_jsonl()
 (
     local -r path=$1
@@ -3058,7 +2982,6 @@ __bu_out_complete_pipeline_fields()
     fi
 }
 
-# ```
 # *Description*:
 # Capture the first N records from a tab-execute registered producer,
 # memoized per producer string and shared across the field-name and
@@ -3075,7 +2998,6 @@ __bu_out_complete_pipeline_fields()
 # - BU_RET: Captured rows (newline-separated JSONL), empty on failure
 # - exit 0 on success, 1 if the producer isn't registered for the selected
 #   gate, has no eval-able command, or produced no rows
-# ```
 __bu_out_tab_execute_capture()
 {
     local is_field_gate=false
@@ -3146,7 +3068,6 @@ __bu_out_tab_execute_capture()
     return 0
 }
 
-# ```
 # *Description*:
 # Complete distinct field VALUES from the live upstream pipeline at the
 # where/query value position. Gated per producer: the resolved producer must
@@ -3162,7 +3083,6 @@ __bu_out_tab_execute_capture()
 # - BU_RET: Array of distinct value candidates
 # - exit 0 on success, 1 if the producer isn't tab-execute registered or no
 #   values could be captured
-# ```
 __bu_out_complete_field_values()
 {
     local -r field=$1
@@ -3257,7 +3177,6 @@ declare -A -g BU_OUT_EFFECT_IO=(
 # matches (no Requires contract) get NO entry.
 declare -A -g BU_OUT_PIPE_MATCH_FIELDS=()
 
-# ```
 # *Description*:
 # Derive the (input, output) format tokens for a pipeline effect.  For a
 # `codec` the non-jsonl format comes from the command noun (e.g.
@@ -3271,7 +3190,6 @@ declare -A -g BU_OUT_PIPE_MATCH_FIELDS=()
 #
 # *Returns*:
 # - Always exits 0 (unknown effect yields empty tokens)
-# ```
 __bu_out_effect_io()
 {
     local -r effect=$1
@@ -3314,7 +3232,6 @@ __bu_out_effect_io()
     return 0
 }
 
-# ```
 # *Description*:
 # Resolve a command's pipeline stage effect.  Consulted in this order:
 # 1. The in-memory cache BU_OUT_STAGE_EFFECT (populated by
@@ -3328,7 +3245,6 @@ __bu_out_effect_io()
 #
 # *Returns*:
 # - Sets the named variable to the effect (empty if unknown); always exits 0
-# ```
 __bu_out_stage_effect_lookup()
 {
     local -r command_name=$1
@@ -3356,7 +3272,6 @@ __bu_out_stage_effect_lookup()
     return 0
 }
 
-# ```
 # *Description*:
 # Register a command's pipeline stage effect for static field analysis.
 #
@@ -3372,7 +3287,6 @@ __bu_out_stage_effect_lookup()
 # bu_register_stage_effect "bu where" query
 # bu_register_stage_effect "bu select" query
 # ```
-# ```
 bu_register_stage_effect()
 {
     local -r cmd=$1
@@ -3385,7 +3299,6 @@ bu_register_stage_effect()
     BU_OUT_STAGE_EFFECT[$cmd]=$effect
 }
 
-# ```
 # *Description*:
 # Report whether a pipeline command consuming `input` format can follow an
 # upstream stage emitting `output` format.  Unknown formats are treated as
@@ -3397,7 +3310,6 @@ bu_register_stage_effect()
 #
 # *Returns*:
 # - exit 0 if compatible, 1 if known-incompatible
-# ```
 __bu_out_format_compatible()
 {
     local -r input=$1
@@ -3409,7 +3321,6 @@ __bu_out_format_compatible()
     return 1
 }
 
-# ```
 # *Description*:
 # Compute the output format of a producer pipeline (the stream that would
 # reach the next stage after a pipe).  Walks each stage's effect and returns
@@ -3421,7 +3332,6 @@ __bu_out_format_compatible()
 #
 # *Returns*:
 # - exit 0 and sets the token; exit 1 if any stage's effect/format is unknown
-# ```
 __bu_out_pipeline_output_format()
 {
     local -r pipeline_text=$1
@@ -3451,7 +3361,6 @@ __bu_out_pipeline_output_format()
     return 0
 }
 
-# ```
 # *Description*:
 # Read a command's fixed input-field contract (`# Requires-All:` header —
 # every listed field must be present).
@@ -3459,7 +3368,6 @@ __bu_out_pipeline_output_format()
 # *Params*:
 # - `$1`: Command name without the `bu ` prefix
 # - `$2`: Name of the variable to receive the space-joined fields (nameref)
-# ```
 __bu_out_command_requires_all()
 {
     local -r command_name=$1
@@ -3473,7 +3381,6 @@ __bu_out_command_requires_all()
     return 0
 }
 
-# ```
 # *Description*:
 # Read a command's fallback input-field contract (`# Requires-Any:` header —
 # at least one listed field must be present).
@@ -3481,7 +3388,6 @@ __bu_out_command_requires_all()
 # *Params*:
 # - `$1`: Command name without the `bu ` prefix
 # - `$2`: Name of the variable to receive the space-joined fields (nameref)
-# ```
 __bu_out_command_requires_any()
 {
     local -r command_name=$1
@@ -3495,7 +3401,6 @@ __bu_out_command_requires_any()
     return 0
 }
 
-# ```
 # *Description*:
 # Report whether a field name is present in an array of field names.
 #
@@ -3505,7 +3410,6 @@ __bu_out_command_requires_any()
 #
 # *Returns*:
 # - exit 0 if present, 1 if absent
-# ```
 __bu_out_field_present()
 {
     local -r field=$1
@@ -3625,7 +3529,6 @@ __bu_out_strict_close()
     return "$status"
 }
 
-# ```
 # *Description*:
 # Statically resolve the record fields an upstream pipeline produces.  Uses
 # multi-stage analysis, the static registry, and the `# Fields:` header — but
@@ -3637,7 +3540,6 @@ __bu_out_strict_close()
 #
 # *Returns*:
 # - exit 0 if fields are known (array populated), 1 if unknown
-# ```
 __bu_out_static_pipeline_fields()
 {
     local -r pipeline_text=$1
@@ -3685,7 +3587,6 @@ __bu_out_static_pipeline_fields()
     return 0
 }
 
-# ```
 # *Description*:
 # Filter a list of candidate command names for the command position after a
 # pipe.  Hides commands whose input format is known-incompatible with the
@@ -3699,7 +3600,6 @@ __bu_out_static_pipeline_fields()
 #
 # *Params*:
 # - `$1`: Name of the candidate command array (nameref, filtered in place)
-# ```
 __bu_out_filter_compatible_commands()
 {
     local -n _fcc_in=$1
@@ -3797,7 +3697,6 @@ __bu_out_filter_compatible_commands()
     return 0
 }
 
-# ```
 # *Description*:
 # Split a pipeline text (everything before the cursor's pipe) into individual
 # stage texts. Uses `|` as the delimiter. The text comes from tree-sitter's
@@ -3807,7 +3706,6 @@ __bu_out_filter_compatible_commands()
 # *Params*:
 # - `$1`: Pipeline text (e.g. "bu get-command | bu select name")
 # - nameref `$2`: Output array of trimmed stage texts
-# ```
 __bu_out_split_pipeline()
 {
     local pipeline_text=$1
@@ -3833,7 +3731,6 @@ __bu_out_split_pipeline()
     done
 }
 
-# ```
 # *Description*:
 # Extract the command name from a pipeline stage text. Handles multi-word
 # verbs (BU_MULTI_WORD_VERBS) so "bu convert-from-tsv --columns a,b" returns
@@ -3844,7 +3741,6 @@ __bu_out_split_pipeline()
 #
 # *Returns*:
 # - stdout: The resolved command name
-# ```
 # *Description*:
 # Generate a pipeline context help string for use in bu_autohelp.
 # Describes the command's role in a JSONL pipeline and, when pipeline
@@ -3859,7 +3755,6 @@ __bu_out_split_pipeline()
 # *Returns*:
 # - Sets the nameref variable to the pipeline help text, or empty
 #   if the command has no known stage effect.
-# ```
 __bu_out_pipeline_help()
 {
     local -r cmd_name=$1
@@ -3979,7 +3874,6 @@ __bu_out_pipeline_help()
     _plh_out=$help_text
 }
 
-# ```
 # *Description*:
 # Canonicalize a pipeline stage text for registry key matching.
 # Rewrites a leading "<cli> " prefix to "bu " — where <cli> is either
@@ -3992,7 +3886,6 @@ __bu_out_pipeline_help()
 #
 # *Returns*:
 # - BU_CANONICAL_STAGE: Canonicalized stage text
-# ```
 __bu_out_canonicalize_stage()
 {
     local stage=$1
@@ -4060,7 +3953,6 @@ __bu_out_extract_command()
     printf '%s' "$cmd_name"
 }
 
-# ```
 # *Description*:
 # Parse the output field names from a project-effect stage's field spec
 # (e.g. compare-object). Handles "new=old" rename syntax — keeps the
@@ -4069,7 +3961,6 @@ __bu_out_extract_command()
 # *Params*:
 # - `$1`: Stage text (e.g. "bu compare-object name,ver=version")
 # - nameref `$2`: Output array of field names
-# ```
 __bu_out_parse_select_fields()
 {
     local stage_text=$1
@@ -4110,7 +4001,6 @@ __bu_out_parse_select_fields()
     return 1
 }
 
-# ```
 # *Description*:
 # Split a comma-separated field spec into output field names, keeping the
 # left-hand name of "new=old" rename pairs. Shared by compare-object and
@@ -4119,7 +4009,6 @@ __bu_out_parse_select_fields()
 # *Params*:
 # - `$1`: Field spec (e.g. "name,ver=version")
 # - nameref `$2`: Output array of field names
-# ```
 __bu_out_parse_field_spec()
 {
     local field_spec=$1
@@ -4150,7 +4039,6 @@ __bu_out_parse_field_spec()
 # reference this list.
 __bu_out_query_object_clause_keywords=(select expand from where grep group-by agg having order-by outfile desc distinct first format columns help debug explain)
 
-# ```
 # *Description*:
 # Collect a comma-separated field spec from a canonicalized stage's word list,
 # starting at _ccs_start. The spec may span multiple words with flexible comma
@@ -4161,7 +4049,6 @@ __bu_out_query_object_clause_keywords=(select expand from where grep group-by ag
 # - $1: nameref to the words array
 # - $2: index of the first spec word
 # - $3: nameref to the output spec (concatenated words)
-# ```
 __bu_out_collect_comma_spec()
 {
     local -n _ccs_words=$1
@@ -4197,7 +4084,6 @@ __bu_out_collect_comma_spec()
     done
 }
 
-# ```
 # *Description*:
 # Statically extract the output field names from a query-object stage that
 # carries a select clause (e.g. "bu query-object select name,ver=version").
@@ -4210,7 +4096,6 @@ __bu_out_collect_comma_spec()
 #
 # *Returns*:
 # - 0 if a select clause was found and parsed, 1 otherwise
-# ```
 __bu_out_parse_query_select_fields()
 {
     local stage_text=$1
@@ -4252,7 +4137,6 @@ __bu_out_parse_query_select_fields()
     return 1
 }
 
-# ```
 # *Description*:
 # Analyze a single pipeline stage: given its text and the input field names,
 # compute the output field names after this stage executes.
@@ -4264,7 +4148,6 @@ __bu_out_parse_query_select_fields()
 #
 # *Returns*:
 # - 0 on success, 1 if the stage effect is unknown and analysis should bail
-# ```
 __bu_out_analyze_stage()
 {
     local stage_text=$1
@@ -4492,7 +4375,6 @@ __bu_out_analyze_stage()
     return 0
 }
 
-# ```
 # *Description*:
 # Analyze a full pipeline (everything before the cursor's pipe) and compute
 # the record fields available at the current stage. Walks each stage in
@@ -4510,7 +4392,6 @@ __bu_out_analyze_stage()
 # - The first stage must be a producer (has entry in BU_OUT_PRODUCER_FIELDS)
 #   or the pipeline can't be statically analyzed.
 # - If any stage returns unknown, the whole analysis bails.
-# ```
 __bu_out_analyze_pipeline()
 {
     local pipeline_text=$1
@@ -4547,7 +4428,6 @@ __bu_out_analyze_pipeline()
 
 # MARK: Backward field analysis (which fields a stage reads)
 
-# ```
 # *Description*:
 # Split a comma-separated field spec into the INPUT field names a stage reads
 # (the right-hand "old" name of "new=old" renames).
@@ -4555,7 +4435,6 @@ __bu_out_analyze_pipeline()
 # *Params*:
 # - `$1`: Field spec (e.g. "name,ver=version")
 # - `$2`: Name of the array to receive the field names (nameref)
-# ```
 __bu_out_parse_field_spec_reads()
 {
     local field_spec=$1
@@ -4579,7 +4458,6 @@ __bu_out_parse_field_spec_reads()
     return 0
 }
 
-# ```
 # *Description*:
 # Extract the input field names a select/project-style stage reads: the first
 # non-flag positional after the command name, parsed as a field spec.
@@ -4587,7 +4465,6 @@ __bu_out_parse_field_spec_reads()
 # *Params*:
 # - `$1`: Stage text (e.g. "bu select name,ver=version")
 # - `$2`: Name of the array to receive the field names (nameref)
-# ```
 __bu_out_parse_select_reads()
 {
     local stage_text=$1
@@ -4615,7 +4492,6 @@ __bu_out_parse_select_reads()
     return 0
 }
 
-# ```
 # *Description*:
 # Extract the single field name a sort-style stage reads: the first non-flag
 # positional after the command name.
@@ -4623,7 +4499,6 @@ __bu_out_parse_select_reads()
 # *Params*:
 # - `$1`: Stage text (e.g. "bu sort name")
 # - `$2`: Name of the array to receive the field name (nameref)
-# ```
 __bu_out_first_field_arg()
 {
     local stage_text=$1
@@ -4649,7 +4524,6 @@ __bu_out_first_field_arg()
     return 0
 }
 
-# ```
 # *Description*:
 # Extract the field names a structured `where` clause reads (the first field
 # after each `where` keyword).  Raw-jq where expressions are skipped — they
@@ -4658,7 +4532,6 @@ __bu_out_first_field_arg()
 # *Params*:
 # - `$1`: Stage text (e.g. "bu where type -eq source")
 # - `$2`: Name of the array to receive the field names (nameref)
-# ```
 __bu_out_parse_where_reads()
 {
     local stage_text=$1
@@ -4688,7 +4561,6 @@ __bu_out_parse_where_reads()
     return 0
 }
 
-# ```
 # *Description*:
 # Extract the input field names a query-object stage reads from its clauses:
 # select/group-by field specs (right-hand names) and structured where fields.
@@ -4697,7 +4569,6 @@ __bu_out_parse_where_reads()
 # *Params*:
 # - `$1`: Stage text
 # - `$2`: Name of the array to receive the field names (nameref)
-# ```
 __bu_out_parse_query_reads()
 {
     local stage_text=$1
@@ -4739,7 +4610,6 @@ __bu_out_parse_query_reads()
     return 0
 }
 
-# ```
 # *Description*:
 # Determine which upstream fields a pipeline stage READS, from its effect and
 # command name:
@@ -4750,7 +4620,6 @@ __bu_out_parse_query_reads()
 # *Params*:
 # - `$1`: Stage text
 # - `$2`: Name of the array to receive the field names (nameref)
-# ```
 __bu_out_stage_reads()
 {
     local stage_text=$1
@@ -4793,7 +4662,6 @@ __bu_out_stage_reads()
     return 0
 }
 
-# ```
 # *Description*:
 # Statically validate a pipeline's field references.  Walks each stage,
 # tracking the fields available at each point, and collects the names of any
@@ -4807,7 +4675,6 @@ __bu_out_stage_reads()
 # *Returns*:
 # - BU_RET: array of missing field names (empty = pipeline is field-valid)
 # - Always exits 0
-# ```
 __bu_out_validate_pipeline()
 {
     local pipeline_text=$1
@@ -4880,7 +4747,6 @@ __bu_out_validate_pipeline()
 
 # MARK: Dispatcher (Out-Default)
 
-# ```
 # *Description*:
 # Format a JSONL stream, auto-detecting the best format (PowerShell Out-Default).
 #

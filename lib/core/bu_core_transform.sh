@@ -8,7 +8,6 @@
 # recognizes an already-wrapped line — so there is no toggle and no detection
 # heuristic.  See docs/line_transforms.md for the spec.
 
-# ```
 # *Description*:
 # Decompose a template into literal and placeholder segments.
 #
@@ -18,7 +17,6 @@
 # *Returns*:
 # - `BU_RET`: array of segments, each `LIT<text>` or `PH:<kind>` where kind is
 #   one of `line`, `prog`, `args`, or `unknown:<inner>`
-# ```
 __bu_transform_tokenize()
 {
     local -r template=$1
@@ -52,14 +50,12 @@ __bu_transform_tokenize()
     BU_RET=("${segs[@]}")
 }
 
-# ```
 # *Description*:
 # Return 0 if the template places a known placeholder inside quotes
 # (the only invalid quoting — literals may contain quotes freely).
 #
 # *Params*:
 # - `$1`: template string
-# ```
 __bu_transform_quoted_placeholder_present()
 {
     local -r template=$1
@@ -105,7 +101,6 @@ __bu_transform_quoted_placeholder_present()
     return 1
 }
 
-# ```
 # *Description*:
 # Validate a transform rule against the grammar from docs/line_transforms.md.
 #
@@ -116,7 +111,6 @@ __bu_transform_quoted_placeholder_present()
 #
 # *Returns*:
 # - 0 if valid, 1 otherwise (with a bu_log_err explaining why)
-# ```
 __bu_transform_validate()
 {
     local -r name=$1 match=$2 replace=$3
@@ -214,7 +208,6 @@ __bu_transform_validate()
     return 0
 }
 
-# ```
 # *Description*:
 # Strip the first N whitespace-delimited tokens from a line, returning the
 # raw remainder (interior spacing preserved; leading whitespace dropped).
@@ -225,7 +218,6 @@ __bu_transform_validate()
 #
 # *Returns*:
 # - `BU_RET`: raw remainder
-# ```
 __bu_transform_raw_rest_after_tokens()
 {
     local -r line=$1 n=$2
@@ -243,10 +235,8 @@ __bu_transform_raw_rest_after_tokens()
     BU_RET=$rest
 }
 
-# ```
 # *Description*:
 # String-mode match: `P {line} S` with {line} the only placeholder.
-# ```
 __bu_transform_match_string()
 {
     local -r template=$1 line=$2
@@ -281,10 +271,8 @@ __bu_transform_match_string()
     return 1
 }
 
-# ```
 # *Description*:
 # Token-mode match: literal words + {prog} + optional trailing {args}.
-# ```
 __bu_transform_match_tokens()
 {
     local -r template=$1 line=$2
@@ -315,10 +303,8 @@ __bu_transform_match_tokens()
     return 0
 }
 
-# ```
 # *Description*:
 # Mixed-mode match: token-sequence + trailing raw {line}.
-# ```
 __bu_transform_match_mixed()
 {
     local -r template=$1 line=$2
@@ -358,7 +344,6 @@ __bu_transform_match_mixed()
     return 0
 }
 
-# ```
 # *Description*:
 # Match a line against a template, capturing placeholders.
 #
@@ -366,7 +351,6 @@ __bu_transform_match_mixed()
 # - `$1`: match template
 # - `$2`: line
 # - `$3`: nameref to an associative array to fill with captures
-# ```
 __bu_transform_match()
 {
     local -r template=$1 line=$2
@@ -395,7 +379,6 @@ __bu_transform_match()
     fi
 }
 
-# ```
 # *Description*:
 # Render a replace template from captured placeholders.
 #
@@ -403,7 +386,6 @@ __bu_transform_match()
 # - `$1`: replace template
 # - `$2`: nameref to the captures map
 # - `$3`: nameref to an output variable
-# ```
 __bu_transform_render()
 {
     local -r template=$1
@@ -425,7 +407,6 @@ __bu_transform_render()
     _out=$result
 }
 
-# ```
 # *Description*:
 # Apply a registered transform to a line.
 #
@@ -436,7 +417,6 @@ __bu_transform_render()
 #
 # *Returns*:
 # - 0 on match, 1 on no match (output untouched on failure)
-# ```
 __bu_transform_apply()
 {
     local -r name=$1 line=$2
@@ -468,14 +448,12 @@ __bu_transform_apply()
     return 0
 }
 
-# ```
 # *Description*:
 # Readline binding: apply a named transform to the current line.
 # No-op when the transform does not match.
 #
 # *Params*:
 # - `$1`: transform name
-# ```
 __bu_bind_transform()
 {
     local -r name=$1
@@ -487,22 +465,18 @@ __bu_bind_transform()
     fi
 }
 
-# ```
 # *Description*:
 # fzf preview helper for the transform selector.  Exported so fzf's preview
 # subshell (a child bash) can call it.
-# ```
 __bu_bind_transform_preview_display()
 {
     printf '%s\n' "$1"
 }
 export -f __bu_bind_transform_preview_display
 
-# ```
 # *Description*:
 # Readline binding: open an fzf selector over all registered transforms and
 # apply the chosen one to the current line.
-# ```
 __bu_bind_transform_selector()
 {
     command -v fzf &>/dev/null || return 0

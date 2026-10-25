@@ -122,7 +122,6 @@ fi
 bu_scope_pop_function
 }
 
-# ```
 # *Description*:
 # Run a sample invocation of a jc parser and emit the field names of the
 # first record as a JSON query plan (same format as bu query-object --debug).
@@ -130,7 +129,6 @@ bu_scope_pop_function
 #
 # *Params*:
 # - `$1`: Parser name (e.g. ls, ps, df)
-# ```
 __bu_convert_from_jc_discover()
 {
     local -r parser=$1

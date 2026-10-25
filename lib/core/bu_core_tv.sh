@@ -307,14 +307,12 @@ __BU_TV_SPACES="                                                                
 __BU_TV_SPACES+=${__BU_TV_SPACES}${__BU_TV_SPACES}${__BU_TV_SPACES}
 __BU_TV_DASHES=${__BU_TV_SPACES// /-}
 
-# ```
 # *Description*:
 # Grow the space/dash padding pools (by doubling) until they hold at least
 # N characters.
 #
 # *Params*:
 # - `$1`: Required pool size
-# ```
 __bu_tv_ensure_pools()
 {
     local -i need=$1
@@ -327,7 +325,6 @@ __bu_tv_ensure_pools()
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 
-# ```
 # *Description*:
 # Strip ANSI escape sequences from a string in place.  Handles both CSI
 # sequences (ESC [ params letter — colors, bold, reverse) and charset
@@ -336,7 +333,6 @@ __bu_tv_ensure_pools()
 #
 # *Params*:
 # - `$1`: Nameref to the variable to strip
-# ```
 __bu_tv_strip_ansi()
 {
     local -n __bu_tv_strip_ref=$1
@@ -347,14 +343,12 @@ __bu_tv_strip_ansi()
     done
 }
 
-# ```
 # *Description*:
 # Number of data rows on screen: everything but the header, separator and
 # status rows.
 #
 # *Returns*:
 # - `_TV_DATA_ROWS`
-# ```
 declare -g -i _TV_DATA_ROWS=1
 __bu_tv_data_rows()
 {
@@ -363,13 +357,11 @@ __bu_tv_data_rows()
     return 0
 }
 
-# ```
 # *Description*:
 # Read all JSONL from stdin into _TV_ROWS.  Skips blank lines.
 #
 # *Returns*:
 # - Sets _TV_ROWS[] and _TV_NUM_ROWS.  _TV_NUM_ROWS = 0 on empty input.
-# ```
 __bu_tv_read_stdin()
 {
     _TV_ROWS=()
@@ -383,7 +375,6 @@ __bu_tv_read_stdin()
     done
 }
 
-# ```
 # *Description*:
 # Extract column keys and display labels.
 #
@@ -393,7 +384,6 @@ __bu_tv_read_stdin()
 #
 # *Returns*:
 # - Sets _TV_COLUMNS[], _TV_HEADERS[], _TV_NUM_COLS.
-# ```
 __bu_tv_extract_columns()
 {
     local spec=$1
@@ -423,7 +413,6 @@ __bu_tv_extract_columns()
     fi
 }
 
-# ```
 # *Description*:
 # Rebuild the cell cache and compute column widths in a single jq pass.
 #
@@ -450,7 +439,6 @@ __bu_tv_extract_columns()
 #   _TV_COL_FULL_WIDTHS[], _TV_COL_WIDTHS[] and the row view.
 # - 1 with all of them cleared if the parsed cell count is not rows x cols
 #   (a shifted table must never be rendered).
-# ```
 __bu_tv_rebuild_cache()
 {
     _TV_CELLS=()
@@ -533,7 +521,6 @@ __bu_tv_rebuild_cache()
     return 0
 }
 
-# ```
 # *Description*:
 # Untruncated column widths: the max of the content and the header, plus 2
 # on the sorted column for its header arrow.  Then re-derives the effective
@@ -542,7 +529,6 @@ __bu_tv_rebuild_cache()
 # *Returns*:
 # - Sets _TV_COL_FULL_WIDTHS[] and (via __bu_tv_compute_widths)
 #   _TV_COL_WIDTHS[].
-# ```
 __bu_tv_full_widths()
 {
     _TV_COL_FULL_WIDTHS=()
@@ -558,7 +544,6 @@ __bu_tv_full_widths()
     __bu_tv_compute_widths
 }
 
-# ```
 # *Description*:
 # Rebuild the row view from _TV_FILTER_QUERY: the data rows whose search
 # haystack (ANSI-stripped cells) contains it, in data order.  Literal
@@ -566,7 +551,6 @@ __bu_tv_full_widths()
 #
 # *Returns*:
 # - `_TV_VIEW` (view index → data row index) and `_TV_NUM_VIEW`
-# ```
 __bu_tv_apply_filter()
 {
     _TV_VIEW=()
@@ -596,7 +580,6 @@ __bu_tv_apply_filter()
     return 0
 }
 
-# ```
 # *Description*:
 # Position of a data row in the view, or of the first view row after it
 # (the view is in data order), or the last view row past the end.
@@ -606,7 +589,6 @@ __bu_tv_apply_filter()
 #
 # *Returns*:
 # - `_TV_FOUND_IDX`: View index (0 when the view is empty)
-# ```
 __bu_tv_view_find()
 {
     local -r -i data=$1
@@ -627,7 +609,6 @@ __bu_tv_view_find()
     return 0
 }
 
-# ```
 # *Description*:
 # Put the cursor back on a record after the view changed (filter, sort):
 # on its row if still in view, else the nearest one after it, at the same
@@ -636,7 +617,6 @@ __bu_tv_view_find()
 # *Params*:
 # - `$1`: Data row index (-1: first row)
 # - `$2`: Screen row of the cursor relative to the row offset
-# ```
 __bu_tv_place_record()
 {
     local -i -r data=$1 rel=$2
@@ -650,13 +630,11 @@ __bu_tv_place_record()
     __bu_tv_clamp_offsets
 }
 
-# ```
 # *Description*:
 # Data row under the cursor, or -1 when the view is empty.
 #
 # *Returns*:
 # - `_TV_FOUND_IDX`
-# ```
 __bu_tv_cursor_data()
 {
     _TV_FOUND_IDX=-1
@@ -664,7 +642,6 @@ __bu_tv_cursor_data()
     return 0
 }
 
-# ```
 # *Description*:
 # Derive the effective column widths: min(full, cap) with a floor of 4.
 # The cap is _TV_MAX_WIDTH, or the width left beside the scrollbar minus 2
@@ -674,7 +651,6 @@ __bu_tv_cursor_data()
 #
 # *Returns*:
 # - Sets _TV_COL_WIDTHS[] and _TV_MAX_EFF_W.
-# ```
 __bu_tv_compute_widths()
 {
     _TV_COL_WIDTHS=()
@@ -696,7 +672,6 @@ __bu_tv_compute_widths()
     return 0
 }
 
-# ```
 # *Description*:
 # Prepare the search needle from _TV_SEARCH_QUERY.  Smart case: a query
 # with an uppercase character matches case-sensitively, otherwise both the
@@ -704,7 +679,6 @@ __bu_tv_compute_widths()
 #
 # *Returns*:
 # - Sets _TV_SEARCH_NEEDLE and _TV_SEARCH_FOLD.
-# ```
 __bu_tv_query_prepare()
 {
     if [[ "$_TV_SEARCH_QUERY" == *[[:upper:]]* ]]
@@ -718,7 +692,6 @@ __bu_tv_query_prepare()
     return 0
 }
 
-# ```
 # *Description*:
 # Find every non-overlapping occurrence of the search needle in a string,
 # left to right.  Literal match (no glob or regex), smart case.  Pure bash.
@@ -728,7 +701,6 @@ __bu_tv_query_prepare()
 #
 # *Returns*:
 # - `_TV_HITS`: Ascending start offsets (empty without a query)
-# ```
 __bu_tv_find_hits()
 {
     _TV_HITS=()
@@ -752,7 +724,6 @@ __bu_tv_find_hits()
     return 0
 }
 
-# ```
 # *Description*:
 # Slice [from, to) of a string, drawing the parts covered by _TV_HITS in
 # the hit attribute (black on yellow).  Hits are clipped to the slice.  After each hit the
@@ -767,7 +738,6 @@ __bu_tv_find_hits()
 #
 # *Returns*:
 # - `_TV_PAINT`
-# ```
 __bu_tv_paint()
 {
     local -r text=$1 base=$4
@@ -788,7 +758,6 @@ __bu_tv_paint()
     return 0
 }
 
-# ```
 # *Description*:
 # Resolve the colour settings, honouring NO_COLOR (no-color.org): when it
 # is set and not empty, the default colour spec is "none" and search hits
@@ -800,7 +769,6 @@ __bu_tv_paint()
 #
 # *Returns*:
 # - `BU_RET`: The spec to build; sets `_TV_HIT_ATTR`
-# ```
 __bu_tv_resolve_colors()
 {
     local spec=$1
@@ -814,7 +782,6 @@ __bu_tv_resolve_colors()
     return 0
 }
 
-# ```
 # *Description*:
 # Build a colors map from a --colors spec or "auto" rainbow.
 #
@@ -824,7 +791,6 @@ __bu_tv_resolve_colors()
 #
 # *Returns*:
 # - Sets _TV_COLORS assoc array.
-# ```
 __bu_tv_build_colors()
 {
     local spec=$1
@@ -855,7 +821,6 @@ __bu_tv_build_colors()
 # Terminal management
 # ═══════════════════════════════════════════════════════════════════════════
 
-# ```
 # *Description*:
 # Install the viewer's full trap set.  Called at setup and again on resume
 # after a stop.  terminal_restore clears all of them.
@@ -866,7 +831,6 @@ __bu_tv_build_colors()
 # while the trap is still running, bash abandons the trap midway (e.g.
 # during a $(stty ...) fork, which is slow under load).  A single
 # assignment leaves nothing to abandon.
-# ```
 __bu_tv_install_traps()
 {
     # Standard TUI practice: ignore SIGTTOU for the viewer's lifetime so a
@@ -880,7 +844,6 @@ __bu_tv_install_traps()
     trap '_TV_RESUME_PENDING=true' SIGCONT
 }
 
-# ```
 # *Description*:
 # Enter raw terminal mode: alternate screen, hide cursor, mouse reporting
 # (unless toggled off), non-canonical input, install signal traps.
@@ -890,7 +853,6 @@ __bu_tv_install_traps()
 # *Returns*:
 # - 1 without touching the terminal if our process group is not the tty's
 #   foreground group (a loud failure instead of a silent SIGTTOU stop).
-# ```
 __bu_tv_terminal_setup()
 {
     # Foreground guard: if our pgid is not the tty's foreground pgid, the
@@ -921,14 +883,12 @@ __bu_tv_terminal_setup()
     return 0
 }
 
-# ```
 # *Description*:
 # Leave the TUI terminal state: mouse reporting off, show cursor, exit
 # alternate screen, restore saved stty settings.  Does NOT clear traps —
 # used by both the final restore (EXIT trap) and the SIGTSTP suspend path
 # (which must keep SIGCONT armed).  Mouse reporting is switched off even
 # when toggled off already, so a shell is never left in mouse mode.
-# ```
 __bu_tv_terminal_leave_tui()
 {
     printf '%s' "$__BU_TV_MOUSE_OFF"
@@ -941,11 +901,9 @@ __bu_tv_terminal_leave_tui()
     fi
 }
 
-# ```
 # *Description*:
 # Restore terminal to its original state on exit: clear every trap the
 # viewer installed (including TSTP/CONT/TTOU), then leave the TUI state.
-# ```
 __bu_tv_terminal_restore()
 {
     trap - SIGINT SIGTERM SIGWINCH SIGTSTP SIGCONT SIGTTOU EXIT
@@ -954,7 +912,6 @@ __bu_tv_terminal_restore()
     __bu_tv_terminal_leave_tui
 }
 
-# ```
 # *Description*:
 # Act on the flags the traps set.  Called from the event loop (and the
 # search prompt) before each render, outside any trap.  Each flag is
@@ -967,7 +924,6 @@ __bu_tv_terminal_restore()
 # - Resume (fg, or SIGCONT after an external stop): re-arm the traps,
 #   re-enter raw mode, alternate screen and mouse reporting, and re-measure.
 # - Resize: re-measure (size, widths, offsets, detail wrapping).
-# ```
 __bu_tv_process_signals()
 {
     if "$_TV_SUSPEND_PENDING"
@@ -997,16 +953,13 @@ __bu_tv_process_signals()
     return 0
 }
 
-# ```
 # *Description*:
 # EXIT trap handler — delegates to terminal restore.
-# ```
 __bu_tv_cleanup_exit()
 {
     __bu_tv_terminal_restore
 }
 
-# ```
 # *Description*:
 # Update _TV_TERM_ROWS and _TV_TERM_COLS from current terminal size.
 #
@@ -1014,7 +967,6 @@ __bu_tv_cleanup_exit()
 # discarded, tput sees no terminal on stdout or stderr and silently reports
 # the terminfo default (80x24 for xterm) with exit status 0.  COLUMNS/LINES
 # are unexported shell variables, so the cmdlet process rarely has them.
-# ```
 __bu_tv_update_dimensions()
 {
     _TV_TERM_COLS=80
@@ -1035,12 +987,10 @@ __bu_tv_update_dimensions()
     if (( _TV_TERM_ROWS < 10 )); then _TV_TERM_ROWS=24; fi
 }
 
-# ```
 # *Description*:
 # Re-read the terminal size and re-derive everything that depends on it:
 # column widths, offsets and, when the detail overlay is (or will be
 # returned to) on screen, its wrapping.  Used on resize, resume and Ctrl-L.
-# ```
 __bu_tv_remeasure()
 {
     __bu_tv_update_dimensions
@@ -1054,7 +1004,6 @@ __bu_tv_remeasure()
     return 0
 }
 
-# ```
 # *Description*:
 # Split the screen width between the table, the scrollbar and the column
 # sidebar, left to right, then work out the frozen prefix.  The scrollbar (a gap and the bar) is reserved
@@ -1066,7 +1015,6 @@ __bu_tv_remeasure()
 # *Returns*:
 # - Sets _TV_TABLE_COLS, _TV_SCROLLBAR_W, _TV_SIDEBAR_W (0 = hidden) and
 #   _TV_SIDEBAR_NAME_W.
-# ```
 declare -g -r -i __BU_TV_SIDEBAR_MAX_NAME=20
 __bu_tv_update_layout()
 {
@@ -1102,7 +1050,6 @@ __bu_tv_update_layout()
     return 0
 }
 
-# ```
 # *Description*:
 # Put the frozen prefix [0, _TV_FROZEN_N) in effect when it leaves room
 # for the widest scrolling column beside it; otherwise suspend it (the
@@ -1110,7 +1057,6 @@ __bu_tv_update_layout()
 #
 # *Returns*:
 # - `_TV_FROZEN_EFF`, `_TV_FROZEN_COST`
-# ```
 __bu_tv_update_frozen()
 {
     _TV_FROZEN_EFF=0
@@ -1132,14 +1078,12 @@ __bu_tv_update_frozen()
     return 0
 }
 
-# ```
 # *Description*:
 # Reserve two screen columns (a gap and the bar) for the scrollbar while
 # the rows overflow the data area; nothing otherwise.
 #
 # *Returns*:
 # - `_TV_SCROLLBAR_W`: 2 or 0
-# ```
 __bu_tv_scrollbar_width()
 {
     __bu_tv_data_rows
@@ -1148,7 +1092,6 @@ __bu_tv_scrollbar_width()
     return 0
 }
 
-# ```
 # *Description*:
 # Scrollbar thumb geometry on a track of the data rows.  Height is
 # data_rows^2 / total_rows, at least 1 and never the whole track; the top
@@ -1157,7 +1100,6 @@ __bu_tv_scrollbar_width()
 # *Returns*:
 # - `_TV_SB_TOP`, `_TV_SB_HEIGHT`, `_TV_SB_ROOM` (track rows the top can
 #   move over) and `_TV_SB_MAX_OFF` (largest row offset)
-# ```
 __bu_tv_scrollbar_thumb()
 {
     __bu_tv_data_rows
@@ -1179,7 +1121,6 @@ __bu_tv_scrollbar_thumb()
 
 # ── Cursor and viewport ──────────────────────────────────────────────────
 
-# ```
 # *Description*:
 # Clamp the cursor into the view, then derive _TV_ROW_OFFSET and
 # _TV_COL_OFFSET so the cursor cell is on screen, scrolling the minimum
@@ -1189,7 +1130,6 @@ __bu_tv_scrollbar_thumb()
 # offset right until the cursor column fits (each column takes its width
 # plus a 2-column gap, as in the renderer), then left while everything
 # from the new left edge to the last column still fits.
-# ```
 __bu_tv_clamp_offsets()
 {
     __bu_tv_data_rows
@@ -1248,14 +1188,12 @@ __bu_tv_clamp_offsets()
     return 0
 }
 
-# ```
 # *Description*:
 # Move the cursor by a row and column delta, then re-clamp.
 #
 # *Params*:
 # - `$1`: Row delta
 # - `$2`: Column delta
-# ```
 __bu_tv_move()
 {
     _TV_CUR_ROW=$((_TV_CUR_ROW + $1))
@@ -1263,13 +1201,11 @@ __bu_tv_move()
     __bu_tv_clamp_offsets
 }
 
-# ```
 # *Description*:
 # Page rows: move the cursor and the viewport together by a delta.
 #
 # *Params*:
 # - `$1`: Row delta (a page is ±_TV_DATA_ROWS)
-# ```
 __bu_tv_page_rows()
 {
     _TV_CUR_ROW=$((_TV_CUR_ROW + $1))
@@ -1277,7 +1213,6 @@ __bu_tv_page_rows()
     __bu_tv_clamp_offsets
 }
 
-# ```
 # *Description*:
 # Offset-driven scrolling (wheel, scrollbar): clamp the row offset to its
 # range first, then drag the cursor into the visible window — the reverse
@@ -1285,7 +1220,6 @@ __bu_tv_page_rows()
 #
 # *Params*:
 # - `$1`: New row offset (clamped)
-# ```
 __bu_tv_scroll_to()
 {
     __bu_tv_data_rows
@@ -1299,13 +1233,11 @@ __bu_tv_scroll_to()
     __bu_tv_clamp_offsets
 }
 
-# ```
 # *Description*:
 # Page the columns right: the first column cut off on the right becomes the
 # new left edge and the cursor lands on it.  With nothing cut off this is
 # End (cursor on the last column, minimum scroll).  The clamp may pull the
 # offset back near the end so the tail fills the screen.
-# ```
 __bu_tv_page_cols_right()
 {
     # _TV_VIS_COLS is only refreshed per frame
@@ -1322,14 +1254,12 @@ __bu_tv_page_cols_right()
     __bu_tv_clamp_offsets
 }
 
-# ```
 # *Description*:
 # Page the columns left: the current first visible column becomes the
 # rightmost visible one and the cursor lands on the new left edge.  An
 # over-wide first column that cannot share the screen with its left
 # neighbour still moves one column left.  At column 0 (or the first
 # column after the frozen ones) the cursor goes there.
-# ```
 __bu_tv_page_cols_left()
 {
     (( _TV_NUM_COLS == 0 )) && return 0
@@ -1353,11 +1283,9 @@ __bu_tv_page_cols_left()
     __bu_tv_clamp_offsets
 }
 
-# ```
 # *Description*:
 # Widen (or restore) the cursor column: an expanded column is capped at the
 # terminal width minus 2 instead of _TV_MAX_WIDTH.
-# ```
 __bu_tv_toggle_wide()
 {
     (( _TV_NUM_COLS == 0 )) && return 0
@@ -1371,10 +1299,8 @@ __bu_tv_toggle_wide()
     __bu_tv_clamp_offsets
 }
 
-# ```
 # *Description*:
 # Expand every column, or collapse them all if all are already expanded.
-# ```
 __bu_tv_toggle_wide_all()
 {
     local value=false
@@ -1399,14 +1325,12 @@ __bu_tv_toggle_wide_all()
 # Rendering
 # ═══════════════════════════════════════════════════════════════════════════
 
-# ```
 # *Description*:
 # Compute the column indices visible in the current viewport, once per
 # frame: the frozen columns, then the scrolling ones from the offset.
 #
 # *Returns*:
 # - `_TV_VIS_COLS`: Array of visible column indices
-# ```
 __bu_tv_compute_visible_cols()
 {
     __bu_tv_update_layout
@@ -1428,7 +1352,6 @@ __bu_tv_compute_visible_cols()
     return 0
 }
 
-# ```
 # *Description*:
 # Build the formatted text and visible width for a single data cell.
 # Pure bash, no forks: reads _TV_CELLS[] directly.
@@ -1449,7 +1372,6 @@ __bu_tv_compute_visible_cols()
 # - `_TV_FC_TEXT`: Cell text with ANSI styling (color, search highlight)
 # - `_TV_FC_VIS_LEN`: Visible width (ANSI excluded); equals the column
 #   width when truncated.  Search highlighting does not change it.
-# ```
 __bu_tv_format_cell()
 {
     local -i -r row_idx=$1 col_idx=$2
@@ -1536,7 +1458,6 @@ __bu_tv_format_cell()
     return 0
 }
 
-# ```
 # *Description*:
 # Render a single table line (header, separator, or data row).
 #
@@ -1556,7 +1477,6 @@ __bu_tv_format_cell()
 #
 # *Returns*:
 # - `$3`: Formatted row string
-# ```
 __bu_tv_render_line()
 {
     local -i -r row_idx=$1
@@ -1644,7 +1564,6 @@ __bu_tv_render_line()
     fi
 }
 
-# ```
 # *Description*:
 # Append "◂ N" / "N ▸" markers to the separator row for the columns
 # scrolled off the left (after any frozen ones) and right of the viewport.
@@ -1652,7 +1571,6 @@ __bu_tv_render_line()
 #
 # *Params*:
 # - `$1`: Nameref to the frame variable (appended to)
-# ```
 __bu_tv_render_col_markers()
 {
     local -n __cm_frame=$1
@@ -1672,7 +1590,6 @@ __bu_tv_render_col_markers()
     return 0
 }
 
-# ```
 # *Description*:
 # Build the sidebar's list, top to bottom: the frozen columns, a divider
 # (only while some are frozen), the scrolling columns, a "Hidden" title
@@ -1683,7 +1600,6 @@ __bu_tv_render_col_markers()
 # - `_TV_SIDEBAR_LIST_KIND`: per row: col, div, title or hid
 # - `_TV_SIDEBAR_LIST_ARG`: column index (col), hidden-stack index (hid),
 #   else -1
-# ```
 __bu_tv_sidebar_list()
 {
     _TV_SIDEBAR_LIST_KIND=()
@@ -1709,7 +1625,6 @@ __bu_tv_sidebar_list()
     return 0
 }
 
-# ```
 # *Description*:
 # Label of a hidden column (the fourth field of its _TV_HIDDEN entry).
 #
@@ -1718,7 +1633,6 @@ __bu_tv_sidebar_list()
 #
 # *Returns*:
 # - `_TV_FOUND_LABEL`
-# ```
 __bu_tv_hidden_label()
 {
     local rest=${_TV_HIDDEN[$1]}
@@ -1728,7 +1642,6 @@ __bu_tv_hidden_label()
     _TV_FOUND_LABEL=${rest%%$'\x1f'*}
 }
 
-# ```
 # *Description*:
 # Append the column sidebar to a frame: a "Columns" title and separator on
 # screen rows 1-2, then the list (__bu_tv_sidebar_list) on the data rows.
@@ -1755,7 +1668,6 @@ __bu_tv_hidden_label()
 #   drawn, and `_TV_SIDEBAR_NROWS` the list length
 # - `_TV_SIDEBAR_ROW_IDX`: per data row, the list row drawn there, -1 for
 #   "↑ N more", -2 for "↓ N more", -3 for blank — for mouse hit-testing
-# ```
 __bu_tv_render_sidebar()
 {
     local -n __sb_frame=$1
@@ -1935,14 +1847,12 @@ __bu_tv_render_sidebar()
     done
 }
 
-# ```
 # *Description*:
 # Append the scrollbar to a frame: on each data row, in the column after
 # the table's gap, a dim track or the solid thumb.
 #
 # *Params*:
 # - `$1`: Nameref to the frame variable (appended to)
-# ```
 __bu_tv_render_scrollbar()
 {
     local -n __sbar_frame=$1
@@ -1960,7 +1870,6 @@ __bu_tv_render_scrollbar()
     done
 }
 
-# ```
 # *Description*:
 # Join informational status parts with " | " and append the key hints that
 # fit.  Hint words are dropped one at a time from the right, skipping the
@@ -1979,7 +1888,6 @@ __bu_tv_render_scrollbar()
 # - `_TV_STATUS`: Dimmed status line
 # - `_TV_STATUS_HINTS`, `_TV_STATUS_HINTS_X`: the hints shown and their
 #   first screen column, for clicks
-# ```
 __bu_tv_compose_status()
 {
     local -r full=$1 short=$2
@@ -2032,14 +1940,12 @@ __bu_tv_compose_status()
     _TV_STATUS=$__BU_TV_DIM$result$__BU_TV_RESET
 }
 
-# ```
 # *Description*:
 # Build the search part of the status line: `/q k/n [col]` when the cursor
 # is on the match last moved to, `/q n matches` otherwise, `/q no match`.
 #
 # *Returns*:
 # - `_TV_SEARCH_STATUS`: Empty without a query
-# ```
 __bu_tv_search_status()
 {
     _TV_SEARCH_STATUS=
@@ -2061,7 +1967,6 @@ __bu_tv_search_status()
     return 0
 }
 
-# ```
 # *Description*:
 # Build the table status line: `Row r/N | Col name (c/n)[ wide][ frozen]
 # | K hidden | &filter v/N | Sorted: key ↑ | <search> | <hints>`, the
@@ -2071,7 +1976,6 @@ __bu_tv_search_status()
 #
 # *Returns*:
 # - `_TV_STATUS`
-# ```
 __bu_tv_render_status()
 {
     local -a parts=()
@@ -2118,11 +2022,9 @@ __bu_tv_render_status()
     __bu_tv_compose_status "$hints$__BU_TV_HINTS_TABLE" 'H:help' "${parts[@]}"
 }
 
-# ```
 # *Description*:
 # Full table frame: header, separator, data rows, sidebar, status line (or
 # the search prompt), written with one printf.
-# ```
 __bu_tv_render_frame()
 {
     # Screen layout:
@@ -2195,12 +2097,10 @@ __bu_tv_render_frame()
     printf '%s' "$frame"
 }
 
-# ```
 # *Description*:
 # Full overlay frame (record detail or help): a bold title, a separator,
 # the overlay's lines from its scroll offset, and a status line.  Detail
 # lines are pre-wrapped to the width; help lines are plain text, clipped.
-# ```
 __bu_tv_render_overlay()
 {
     __bu_tv_data_rows
@@ -2257,11 +2157,9 @@ __bu_tv_render_overlay()
     printf '%s' "$frame"
 }
 
-# ```
 # *Description*:
 # Draw the screen for the current mode.  Called by the event loop and the
 # search prompt.
-# ```
 __bu_tv_render()
 {
     case "$_TV_MODE" in
@@ -2278,10 +2176,8 @@ __bu_tv_render()
 # Overlays
 # ═══════════════════════════════════════════════════════════════════════════
 
-# ```
 # *Description*:
 # Clamp both overlay scroll offsets to their content.
-# ```
 __bu_tv_overlay_clamp()
 {
     __bu_tv_data_rows
@@ -2294,7 +2190,6 @@ __bu_tv_overlay_clamp()
     return 0
 }
 
-# ```
 # *Description*:
 # Fetch the untruncated values of one record from its raw JSON in a single
 # jq pass (the display cache is @tsv-escaped: nested JSON with quotes or
@@ -2308,7 +2203,6 @@ __bu_tv_overlay_clamp()
 #
 # *Returns*:
 # - `_TV_DETAIL_VALUES`: One value per column
-# ```
 __bu_tv_detail_values()
 {
     local -r -i row=$1
@@ -2338,7 +2232,6 @@ __bu_tv_detail_values()
     return 0
 }
 
-# ```
 # *Description*:
 # Word-wrap a line: break at the last space that fits, hard-break words
 # longer than the width.  The space a line breaks at is dropped.
@@ -2349,7 +2242,6 @@ __bu_tv_detail_values()
 #
 # *Returns*:
 # - `_TV_SEGS`: (start length) pairs, at least one (an empty line is 0 0)
-# ```
 __bu_tv_wrap()
 {
     local -r text=$1
@@ -2389,7 +2281,6 @@ __bu_tv_wrap()
     return 0
 }
 
-# ```
 # *Description*:
 # Build the record-detail overlay for the cursor row: every column as
 # `key  value`, keys padded to the longest header (the cursor column's key
@@ -2399,7 +2290,6 @@ __bu_tv_wrap()
 #
 # *Returns*:
 # - `_TV_DETAIL_LINES`, `_TV_DETAIL_COL_LINE`
-# ```
 __bu_tv_build_detail()
 {
     _TV_DETAIL_LINES=()
@@ -2469,10 +2359,8 @@ __bu_tv_build_detail()
     return 0
 }
 
-# ```
 # *Description*:
 # Scroll the detail overlay so the cursor column's first line is on screen.
-# ```
 __bu_tv_detail_show_col()
 {
     __bu_tv_data_rows
@@ -2484,10 +2372,8 @@ __bu_tv_detail_show_col()
     __bu_tv_overlay_clamp
 }
 
-# ```
 # *Description*:
 # Open the record-detail overlay for the cursor row.
-# ```
 __bu_tv_open_detail()
 {
     (( _TV_NUM_VIEW == 0 )) && return 0
@@ -2497,10 +2383,8 @@ __bu_tv_open_detail()
     __bu_tv_detail_show_col
 }
 
-# ```
 # *Description*:
 # Open the help overlay; closing it returns to the current mode.
-# ```
 __bu_tv_open_help()
 {
     _TV_HELP_RETURN=$_TV_MODE
@@ -2508,13 +2392,11 @@ __bu_tv_open_help()
     _TV_HELP_OFFSET=0
 }
 
-# ```
 # *Description*:
 # Move the detail overlay to the next / previous record.
 #
 # *Params*:
 # - `$1`: Row delta
-# ```
 __bu_tv_detail_record()
 {
     local -r -i before=$_TV_CUR_ROW
@@ -2527,13 +2409,11 @@ __bu_tv_detail_record()
     fi
 }
 
-# ```
 # *Description*:
 # Move the detail overlay to the next / previous search match.
 #
 # *Params*:
 # - `$1`: forward or backward
-# ```
 __bu_tv_detail_match()
 {
     __bu_tv_search_step "$1" || return 0
@@ -2545,7 +2425,6 @@ __bu_tv_detail_match()
 # Search
 # ═══════════════════════════════════════════════════════════════════════════
 
-# ```
 # *Description*:
 # Recompute _TV_MATCHED_ROWS (view indices) and _TV_MATCHED_COLS (first
 # matching column of each row) from the current query, over the rows the
@@ -2553,7 +2432,6 @@ __bu_tv_detail_match()
 # matched on ANSI-stripped text.  Rows are prefiltered on their joined
 # text; only matching rows are scanned cell by cell.  Never moves the
 # cursor: sorting with an active query must keep it on its record.
-# ```
 __bu_tv_update_search_matches()
 {
     _TV_MATCHED_ROWS=()
@@ -2590,7 +2468,6 @@ __bu_tv_update_search_matches()
     return 0
 }
 
-# ```
 # *Description*:
 # Find the first match at/after (forward) or at/before (backward) a row,
 # wrapping around.  The row may be out of range (cursor ± 1).
@@ -2602,7 +2479,6 @@ __bu_tv_update_search_matches()
 # *Returns*:
 # - `_TV_FOUND_IDX`: Index into _TV_MATCHED_ROWS
 # - 1 if there are no matches
-# ```
 __bu_tv_search_from()
 {
     local -r -i row=$1 n=${#_TV_MATCHED_ROWS[@]}
@@ -2639,14 +2515,12 @@ __bu_tv_search_from()
     return 0
 }
 
-# ```
 # *Description*:
 # Move the cursor row and column to a match; centre the row if it was off
 # screen.
 #
 # *Params*:
 # - `$1`: Index into _TV_MATCHED_ROWS
-# ```
 __bu_tv_goto_match()
 {
     local -r -i idx=$1
@@ -2663,7 +2537,6 @@ __bu_tv_goto_match()
     __bu_tv_clamp_offsets
 }
 
-# ```
 # *Description*:
 # n / N: go to the next match after the cursor row, or the previous one
 # before it (position-based, wrapping).
@@ -2673,7 +2546,6 @@ __bu_tv_goto_match()
 #
 # *Returns*:
 # - 1 if there are no matches
-# ```
 __bu_tv_search_step()
 {
     local -i from=$((_TV_CUR_ROW + 1))
@@ -2692,7 +2564,6 @@ __bu_tv_search_clear()
     _TV_MATCH_IDX=-1
 }
 
-# ```
 # *Description*:
 # Set the row filter and keep the cursor on its record (or the nearest row
 # after it) at the same screen row; search matches follow the new view.
@@ -2701,7 +2572,6 @@ __bu_tv_search_clear()
 # - `$1`: Filter (empty: every row)
 # - `$2`: Data row of the cursor's record (-1: first row)
 # - `$3`: Screen row of the cursor relative to the row offset
-# ```
 __bu_tv_filter_to()
 {
     _TV_FILTER_QUERY=$1
@@ -2710,7 +2580,6 @@ __bu_tv_filter_to()
     __bu_tv_update_search_matches
 }
 
-# ```
 # *Description*:
 # Incremental prompt on the status row, in raw mode, for search (/ ?) or
 # the row filter (&).  Printable characters append, Backspace deletes,
@@ -2730,7 +2599,6 @@ __bu_tv_filter_to()
 #
 # *Params*:
 # - `$1`: "/" (search forward), "?" (search backward) or "&" (filter)
-# ```
 __bu_tv_prompt()
 {
     local -r pchar=$1
@@ -2843,16 +2711,13 @@ __bu_tv_prompt()
 # Input handling
 # ═══════════════════════════════════════════════════════════════════════════
 
-# ```
 # *Description*:
 # Succeed if a trap has set a flag the event loop must act on.
-# ```
 __bu_tv_signal_pending()
 {
     "$_TV_QUIT" || "$_TV_RESIZE_PENDING" || "$_TV_SUSPEND_PENDING" || "$_TV_RESUME_PENDING"
 }
 
-# ```
 # *Description*:
 # Read a single keypress into _TV_KEY.  Handles multi-byte escape sequences.
 #
@@ -2875,7 +2740,6 @@ __bu_tv_signal_pending()
 #     (no-op; the event loop processes the flags, NOT quit by itself)
 #   - an unrecognised escape sequence -> "none"
 # - Exit 1 only in probe mode when no input was available.
-# ```
 __bu_tv_read_key()
 {
     local -i blocking=${1:-1}
@@ -2933,14 +2797,12 @@ __bu_tv_read_key()
     return 0
 }
 
-# ```
 # *Description*:
 # Parse the rest of an escape sequence after ESC (each byte read with a
 # short timeout; a lone ESC is the Escape key).
 #
 # *Returns*:
 # - `_TV_KEY`
-# ```
 __bu_tv_read_escape()
 {
     local seq=
@@ -3007,7 +2869,6 @@ __bu_tv_read_escape()
     return 0
 }
 
-# ```
 # *Description*:
 # Decode an SGR mouse report after `\e[<`: `btn;x;y` then M (press, drag,
 # wheel) or m (release), each byte read with the parser's short timeout and
@@ -3020,7 +2881,6 @@ __bu_tv_read_escape()
 # - `_TV_KEY`: "mouse" (or "none")
 # - `_TV_MOUSE_EVENT`, `_TV_MOUSE_BUTTON`, `_TV_MOUSE_X`, `_TV_MOUSE_Y`
 #   (1-based screen coordinates)
-# ```
 __bu_tv_read_mouse()
 {
     _TV_KEY=none
@@ -3060,7 +2920,6 @@ __bu_tv_read_mouse()
     return 0
 }
 
-# ```
 # *Description*:
 # Parse `<mod><final>` after `\e[1;`.  Modifier 2 (Shift), 5 (Ctrl) and 6
 # (Ctrl+Shift) on an arrow give shift_<dir> (terminals and multiplexers
@@ -3070,7 +2929,6 @@ __bu_tv_read_mouse()
 #
 # *Returns*:
 # - `_TV_KEY`
-# ```
 __bu_tv_read_modified()
 {
     local mod= fin= dir=
@@ -3104,7 +2962,6 @@ __bu_tv_read_modified()
 
 # ── Column order: freeze, hide, move ─────────────────────────────────────
 
-# ```
 # *Description*:
 # Rearrange the columns: keys, labels and widen flags follow a list of
 # current indices (an index left out is dropped), then the cache is rebuilt
@@ -3112,7 +2969,6 @@ __bu_tv_read_modified()
 #
 # *Params*:
 # - `$@`: Current column indices, in their new order
-# ```
 __bu_tv_reorder_cols()
 {
     local -a keys=() headers=() expanded=()
@@ -3136,13 +2992,11 @@ __bu_tv_reorder_cols()
     return 0
 }
 
-# ```
 # *Description*:
 # Install a column list (keys, labels, widen flags) and rebuild the cache.
 #
 # *Params*:
 # - `$1`, `$2`, `$3`: Names of the key, label and widen-flag arrays
-# ```
 __bu_tv_set_cols()
 {
     local -n __sc_keys=$1 __sc_headers=$2 __sc_expanded=$3
@@ -3156,14 +3010,12 @@ __bu_tv_set_cols()
     return 0
 }
 
-# ```
 # *Description*:
 # Move a column to another position.
 #
 # *Params*:
 # - `$1`: Current index
 # - `$2`: New index
-# ```
 __bu_tv_move_col()
 {
     local -r -i from=$1 to=$2
@@ -3177,14 +3029,12 @@ __bu_tv_move_col()
     __bu_tv_reorder_cols "${order[@]}"
 }
 
-# ```
 # *Description*:
 # < / >: move the cursor column one place left or right, within its block
 # (frozen columns among themselves, scrolling ones among themselves).
 #
 # *Params*:
 # - `$1`: -1 (left) or 1 (right)
-# ```
 __bu_tv_shift_col()
 {
     (( _TV_NUM_COLS < 2 )) && return 0
@@ -3201,13 +3051,11 @@ __bu_tv_shift_col()
     __bu_tv_clamp_offsets
 }
 
-# ```
 # *Description*:
 # f: freeze the cursor column (it joins the frozen columns pinned at the
 # left, which stay on screen while the rest scroll), or unfreeze it (it
 # becomes the first scrolling column).  At least one column keeps
 # scrolling.
-# ```
 __bu_tv_toggle_freeze()
 {
     (( _TV_NUM_COLS < 2 )) && return 0
@@ -3226,7 +3074,6 @@ __bu_tv_toggle_freeze()
     __bu_tv_clamp_offsets
 }
 
-# ```
 # *Description*:
 # -: hide the cursor column, or the given one (search and filter skip it
 # too).  The last column can't be hidden.  + brings hidden columns back.
@@ -3234,7 +3081,6 @@ __bu_tv_toggle_freeze()
 #
 # *Params*:
 # - `$1` (optional): Column index (default: the cursor column)
-# ```
 __bu_tv_hide_col()
 {
     (( _TV_NUM_COLS < 2 )) && return 0
@@ -3262,14 +3108,12 @@ __bu_tv_hide_col()
     __bu_tv_clamp_offsets
 }
 
-# ```
 # *Description*:
 # Put the cursor on the column with the given key (unchanged if none has
 # it).
 #
 # *Params*:
 # - `$1`: Column key
-# ```
 __bu_tv_cursor_to_key()
 {
     local -i j
@@ -3284,7 +3128,6 @@ __bu_tv_cursor_to_key()
     return 0
 }
 
-# ```
 # *Description*:
 # Bring one hidden column back (a click or drop on its sidebar entry) and
 # put the cursor on it: by default at the index it was hidden from and
@@ -3296,7 +3139,6 @@ __bu_tv_cursor_to_key()
 # - `$1`: Hidden-stack index
 # - `$2` (optional): Index to insert at
 # - `$3` (optional): true to freeze it, false not to
-# ```
 __bu_tv_restore_col()
 {
     local -r -i h=$1
@@ -3344,12 +3186,10 @@ __bu_tv_restore_col()
     __bu_tv_clamp_offsets
 }
 
-# ```
 # *Description*:
 # +: bring every hidden column back, latest first, each at the index it
 # was hidden from (so a run of hides undoes exactly).  The cursor stays on
 # its column.
-# ```
 __bu_tv_restore_cols()
 {
     (( ${#_TV_HIDDEN[@]} )) || return 0
@@ -3380,14 +3220,12 @@ __bu_tv_restore_cols()
 
 # ── Mouse ────────────────────────────────────────────────────────────────
 
-# ```
 # *Description*:
 # Current time in milliseconds: EPOCHREALTIME when available, else
 # `date +%s%N` when it prints digits (GNU), else whole seconds.
 #
 # *Returns*:
 # - `_TV_NOW_MS`
-# ```
 __bu_tv_now_ms()
 {
     local t=
@@ -3408,11 +3246,9 @@ __bu_tv_now_ms()
     return 0
 }
 
-# ```
 # *Description*:
 # m: toggle mouse reporting.  The terminal's own click-drag text selection
 # only works while it is off.
-# ```
 __bu_tv_toggle_mouse()
 {
     if "$_TV_MOUSE"
@@ -3428,7 +3264,6 @@ __bu_tv_toggle_mouse()
     return 0
 }
 
-# ```
 # *Description*:
 # Column under a screen x in the last frame's visible columns.  The gap
 # after a column counts as that column.
@@ -3438,7 +3273,6 @@ __bu_tv_toggle_mouse()
 #
 # *Returns*:
 # - `_TV_FOUND_IDX`: Column index, or -1 right of the last visible column
-# ```
 __bu_tv_col_at()
 {
     local -r -i x=$1
@@ -3456,7 +3290,6 @@ __bu_tv_col_at()
     return 0
 }
 
-# ```
 # *Description*:
 # Left press in the column sidebar, hit-tested against the rows the last
 # frame drew.  On the cursor column's entry, ⇤ (and the cell before it)
@@ -3469,7 +3302,6 @@ __bu_tv_col_at()
 # *Params*:
 # - `$1`: 1-based screen column
 # - `$2`: 1-based screen row
-# ```
 __bu_tv_sidebar_press()
 {
     local -r -i x=$1 i=$(($2 - 3))
@@ -3528,11 +3360,9 @@ __bu_tv_sidebar_press()
     return 0
 }
 
-# ```
 # *Description*:
 # Drag of a pressed sidebar entry: once the pointer leaves the entry's row
 # it tracks the row under it (drawn underlined as the drop target).
-# ```
 __bu_tv_sidebar_drag()
 {
     local -r -i row=$((_TV_MOUSE_Y - 3))
@@ -3541,13 +3371,11 @@ __bu_tv_sidebar_drag()
     return 0
 }
 
-# ```
 # *Description*:
 # Release after a sidebar press.  Without a drag, a hidden entry comes
 # back (__bu_tv_restore_col); a column entry was already selected by the
 # press.  After a drag, the entry is dropped on the row released over
 # (__bu_tv_sidebar_drop).
-# ```
 __bu_tv_sidebar_release()
 {
     [[ -n "$_TV_SIDEBAR_DRAG" ]] || return 0
@@ -3565,7 +3393,6 @@ __bu_tv_sidebar_release()
     return 0
 }
 
-# ```
 # *Description*:
 # Drop a dragged sidebar entry on a data row (as the last frame drew it).
 # The row picks a block and a place in it: a frozen column's row, or the
@@ -3581,7 +3408,6 @@ __bu_tv_sidebar_release()
 # - `$1`: col or hid
 # - `$2`: Column key (col) or hidden-stack index (hid)
 # - `$3`: Data row (< 0 for the title rows)
-# ```
 __bu_tv_sidebar_drop()
 {
     local -r kind=$1 id=$2
@@ -3682,7 +3508,6 @@ __bu_tv_sidebar_drop()
     __bu_tv_clamp_offsets
 }
 
-# ```
 # *Description*:
 # Key of the status-line hint under a screen column, as last drawn: the
 # key before the ":" ("Enter" and "Esc" by name), for "a/b" pairs the one
@@ -3693,7 +3518,6 @@ __bu_tv_sidebar_drop()
 #
 # *Returns*:
 # - `_TV_KEY`: The key, or "none" off the hints
-# ```
 __bu_tv_status_hint_key()
 {
     _TV_KEY=none
@@ -3722,14 +3546,12 @@ __bu_tv_status_hint_key()
     return 0
 }
 
-# ```
 # *Description*:
 # Left press on the scrollbar: above the thumb pages up, below pages down,
 # on it grabs the thumb (remembering the pointer's distance from its top).
 #
 # *Params*:
 # - `$1`: 1-based screen row
-# ```
 __bu_tv_scrollbar_press()
 {
     local -r -i r=$(($1 - 3))
@@ -3748,11 +3570,9 @@ __bu_tv_scrollbar_press()
     return 0
 }
 
-# ```
 # *Description*:
 # Drag of the grabbed thumb: its top follows the pointer (clamped to the
 # track) and the row offset is the inverse of the thumb mapping.
-# ```
 __bu_tv_scrollbar_drag()
 {
     __bu_tv_scrollbar_thumb
@@ -3763,14 +3583,12 @@ __bu_tv_scrollbar_drag()
     __bu_tv_scroll_to $(((top * _TV_SB_MAX_OFF + _TV_SB_ROOM / 2) / _TV_SB_ROOM))
 }
 
-# ```
 # *Description*:
 # Left press in table mode, by screen region: a status-line hint presses
 # its key; sidebar and scrollbar as above; header or separator selects the column under x;
 # a data cell moves the cursor there (right of the last visible column the
 # cursor column stays), and a second press on the same row within
 # __BU_TV_DOUBLE_CLICK_MS opens the record-detail overlay.
-# ```
 __bu_tv_mouse_press()
 {
     local -r -i x=$_TV_MOUSE_X y=$_TV_MOUSE_Y
@@ -3822,14 +3640,12 @@ __bu_tv_mouse_press()
     return 0
 }
 
-# ```
 # *Description*:
 # A mouse event (key "mouse") in table mode: the wheel scrolls three rows
 # (offset-driven), or the sidebar list over a sidebar taller than the
 # screen; a left press acts by region; drags move a grabbed scrollbar
 # thumb or a pressed sidebar entry; a release ends the grab or drops the
 # entry.  Other buttons are ignored.
-# ```
 __bu_tv_mouse_table()
 {
     local -i step=3
@@ -3865,7 +3681,6 @@ __bu_tv_mouse_table()
 
 # ── Sort ─────────────────────────────────────────────────────────────────
 
-# ```
 # *Description*:
 # Sort rows by the given column key.  Toggles direction if already sorted
 # by this column, unless a direction is given.  The previous sort state is
@@ -3874,7 +3689,6 @@ __bu_tv_mouse_table()
 # *Params*:
 # - `$1`: Column key
 # - `$2` (optional): Force direction ("asc" or "desc")
-# ```
 __bu_tv_sort_by_column()
 {
     local col_key=$1
@@ -3902,20 +3716,17 @@ __bu_tv_sort_by_column()
     return 0
 }
 
-# ```
 # *Description*:
 # Sort by the cursor column (s / S).
 #
 # *Params*:
 # - `$1` (optional): Force direction
-# ```
 __bu_tv_sort_cursor_col()
 {
     (( _TV_NUM_COLS == 0 )) && return 0
     __bu_tv_sort_by_column "${_TV_COLUMNS[_TV_CUR_COL]}" "${1:-}" || true
 }
 
-# ```
 # *Description*:
 # Apply current sort to _TV_ROWS via jq and rebuild the cache.  Sorting raw
 # values (not cell strings) orders numbers numerically and null first.
@@ -3928,7 +3739,6 @@ __bu_tv_sort_cursor_col()
 # - 1 with rows untouched if jq's output is not one permutation line plus
 #   one line per row; 1 with rows, cursor and offsets restored (and the
 #   old cache rebuilt) if the cache rebuild fails.
-# ```
 __bu_tv_apply_sort()
 {
     [[ -z "$_TV_SORT_COL" ]] && return 0
@@ -3981,7 +3791,6 @@ __bu_tv_apply_sort()
 
 # ── Row actions ──────────────────────────────────────────────────────────
 
-# ```
 # *Description*:
 # Bind a row action: KEY runs COMMAND, eval'd in the viewer's own shell (so
 # what it changes stays visible to later actions and to --reload) with the
@@ -3996,7 +3805,6 @@ __bu_tv_apply_sort()
 #
 # *Returns*:
 # - 1 (with an error logged) for an invalid or reserved key
-# ```
 bu_tv_set_action()
 {
     local -r key=$1 label=$2 cmd=$3
@@ -4034,14 +3842,12 @@ __bu_tv_build_help()
     return 0
 }
 
-# ```
 # *Description*:
 # Run the row action bound to KEY on the cursor record, then reload the rows
 # if a reload command is set.
 #
 # *Params*:
 # - `$1`: Action key
-# ```
 __bu_tv_run_action()
 {
     local -r key=$1
@@ -4089,7 +3895,6 @@ __bu_tv_eval_action()
     eval "$1"
 }
 
-# ```
 # *Description*:
 # Replace the rows with the reload command's JSONL output (run in the
 # viewer's shell, after the action), keep the sort, filter and columns, and
@@ -4099,7 +3904,6 @@ __bu_tv_eval_action()
 # *Params*:
 # - `$1`: Data row of the cursor before the action
 # - `$2`: Its key column value (empty: none)
-# ```
 __bu_tv_reload()
 {
     local -r -i prev_data=$1
@@ -4150,7 +3954,6 @@ __bu_tv_reload()
     return 0
 }
 
-# ```
 # *Description*:
 # For row actions: ask for a value on the status line (Enter accepts, Esc
 # cancels, Backspace / Ctrl-U edit).
@@ -4162,7 +3965,6 @@ __bu_tv_reload()
 # *Returns*:
 # - `BU_RET`: the value entered
 # - 1 if cancelled
-# ```
 bu_tv_prompt()
 {
     __bu_tv_prompt_value "$@" </dev/tty >/dev/tty
@@ -4212,7 +4014,6 @@ __bu_tv_prompt_value()
 
 # ── Preview pane ─────────────────────────────────────────────────────────
 
-# ```
 # *Description*:
 # Find the terminal multiplexer that can hold a preview pane, once: tmux or
 # zellij.  Nested, the innermost one owns the viewer's terminal: tmux when
@@ -4220,7 +4021,6 @@ __bu_tv_prompt_value()
 #
 # *Returns*:
 # - `_TV_PREVIEW_MUX`: tmux, zellij or none
-# ```
 __bu_tv_preview_mux()
 {
     [[ -n "$_TV_PREVIEW_MUX" ]] && return 0
@@ -4249,11 +4049,9 @@ __bu_tv_preview_mux()
     return 0
 }
 
-# ```
 # *Description*:
 # Whether a preview pane can open: a --preview command, inside tmux or
 # zellij.
-# ```
 __bu_tv_preview_available()
 {
     [[ -n "$_TV_PREVIEW_CMD" ]] || return 1
@@ -4261,11 +4059,9 @@ __bu_tv_preview_available()
     [[ "$_TV_PREVIEW_MUX" != none ]]
 }
 
-# ```
 # *Description*:
 # Open the preview pane, or close it if open.  Without a --preview command,
 # or outside tmux and zellij, only say why on the status line.
-# ```
 __bu_tv_preview_toggle()
 {
     if [[ -n "$_TV_PREVIEW_PANE" ]]
@@ -4283,13 +4079,11 @@ __bu_tv_preview_toggle()
     return 0
 }
 
-# ```
 # *Description*:
 # Open a pane to the right of the viewer's, keeping the focus in the
 # viewer.  The pane runs only a placeholder, which writes its tty and pid
 # to _TV_PREVIEW_TTY_FILE (neither multiplexer reports both the same way):
 # __bu_tv_preview_sync draws on that tty.
-# ```
 __bu_tv_preview_open()
 {
     local pane=
@@ -4319,10 +4113,8 @@ __bu_tv_preview_open()
     return 0
 }
 
-# ```
 # *Description*:
 # Close the preview pane (if open) and stop its pending job.
-# ```
 __bu_tv_preview_close()
 {
     [[ -n "$_TV_PREVIEW_PANE" ]] || return 0
@@ -4338,13 +4130,11 @@ __bu_tv_preview_close()
     return 0
 }
 
-# ```
 # *Description*:
 # After a render: when the cursor record changed (or the pane was resized),
 # start a background job drawing its preview, superseding any job still
 # running.  The event loop renders once per drained batch of keys, so a
 # held key starts one job per frame, not one per row.
-# ```
 __bu_tv_preview_sync()
 {
     [[ -n "$_TV_PREVIEW_PANE" ]] || return 0
@@ -4365,7 +4155,6 @@ __bu_tv_preview_sync()
     return 0
 }
 
-# ```
 # *Description*:
 # Background job: run the preview command on a record and draw its output
 # on the preview pane's tty, clipped to the pane.  Gives up as soon as a
@@ -4375,7 +4164,6 @@ __bu_tv_preview_sync()
 # *Params*:
 # - `$1`: Generation of this job
 # - `$2`: Record (JSON; empty: no rows, clear the pane)
-# ```
 __bu_tv_preview_job()
 {
     local -r gen=$1 record=$2
@@ -4418,7 +4206,6 @@ __bu_tv_preview_job()
     printf '%s\e[0m' "$frame" > "$tty"
 }
 
-# ```
 # *Description*:
 # For row actions: run an interactive program (e.g. $EDITOR) on the real
 # terminal, leaving the viewer's screen while it runs.
@@ -4428,7 +4215,6 @@ __bu_tv_preview_job()
 #
 # *Returns*:
 # - The command's exit status
-# ```
 bu_tv_interactive()
 {
     local -i rc=0
@@ -4449,11 +4235,9 @@ bu_tv_interactive()
 
 # ── Dispatch ─────────────────────────────────────────────────────────────
 
-# ```
 # *Description*:
 # Dispatch one table-mode keypress (in _TV_KEY) to its action.  Sets
 # _TV_QUIT=true on q.
-# ```
 __bu_tv_dispatch_key()
 {
     # A key hands the sidebar list back to following the viewport
@@ -4545,11 +4329,9 @@ __bu_tv_dispatch_key()
     return 0
 }
 
-# ```
 # *Description*:
 # Close the open overlay: help returns to where it was opened from, detail
 # to the table.
-# ```
 __bu_tv_overlay_close()
 {
     if [[ "$_TV_MODE" == help ]]
@@ -4561,13 +4343,11 @@ __bu_tv_overlay_close()
     _TV_HELP_RETURN=table
 }
 
-# ```
 # *Description*:
 # Dispatch one keypress in the detail or help overlay.  Both scroll (also
 # with the wheel); the detail overlay also steps through records (J / K)
 # and matches (n / N) without closing.  q, Q, Esc, Enter and a left click
 # go back, except on a status-line hint, which presses its key.
-# ```
 __bu_tv_dispatch_overlay()
 {
     __bu_tv_data_rows
@@ -4630,10 +4410,8 @@ __bu_tv_dispatch_overlay()
     return 0
 }
 
-# ```
 # *Description*:
 # Dispatch one keypress (in _TV_KEY) by mode.  tty EOF quits from anywhere.
-# ```
 __bu_tv_dispatch()
 {
     if "$_TV_EOF"
@@ -4656,14 +4434,12 @@ __bu_tv_dispatch()
 # Main entry point
 # ═══════════════════════════════════════════════════════════════════════════
 
-# ```
 # *Description*:
 # Make bash count characters, not bytes.  Under a non-UTF-8 locale (e.g. LANG
 # unset) ${#var}, substring slicing and read -n 1 work on bytes while the jq
 # width pass counts codepoints, so any non-ASCII cell (or the sidebar's │)
 # misaligns padding and truncation.  Process-local: the cmdlet runs in its
 # own process.  LC_ALL must be cleared or it overrides LC_CTYPE.
-# ```
 __bu_tv_ensure_utf8_ctype()
 {
     local -r loc=${LC_ALL:-${LC_CTYPE:-${LANG:-}}}
@@ -4678,7 +4454,6 @@ __bu_tv_ensure_utf8_ctype()
     return 0
 }
 
-# ```
 # *Description*:
 # Entry point for the interactive table viewer.
 #
@@ -4692,7 +4467,6 @@ __bu_tv_ensure_utf8_ctype()
 # *Notes*:
 # - Reads JSONL from stdin.
 # - Blocks until the user presses q.
-# ```
 bu_tv_enter()
 {
     local columns_spec=$1

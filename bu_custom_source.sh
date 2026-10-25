@@ -2,21 +2,13 @@
 # define a custom source func ahead of other functions
 # e.g. to ensure the correctness of --__bu-once
 
-# ```
 # The bu repo base directory
-# ```
 export BU_DIR=$PWD
-# ```
 # The directory where non user defined executables are placed
-# ```
 BU_LIB_BIN_DIR=$BU_DIR/lib/bin
-# ```
 # The directory where non user defined sourceable shell scripts are placed
-# ```
 BU_LIB_BINSRC_DIR=$BU_DIR/lib/binsrc
-# ```
 # The directory of the core library
-# ```
 BU_LIB_CORE_DIR=$BU_DIR/lib/core
 
 BU_LIB_TEMPLATE_DIR=$BU_DIR/lib/templates
@@ -24,7 +16,6 @@ BU_LIB_TEMPLATE_DIR=$BU_DIR/lib/templates
 BU_BUILTIN_COMMANDS_DIR=$BU_DIR/commands
 
 
-# ```
 # Traditionally, bash has 3 states for a scalar variable
 # 1. Undefined: `[[ ! -v VAR ]]` will be true
 # 2. Empty: `[[ -v VAR && -z "$VAR" ]]` will be true
@@ -36,10 +27,8 @@ BU_BUILTIN_COMMANDS_DIR=$BU_DIR/commands
 # 1. NULL: `bu_is_null "$VAR"` will be true
 # 2. Empty: Same as above
 # 3. Non-empty: Same as above
-# ```
 BU_NULL=BU_NULL
 
-# ```
 # *Description*:
 # Log a message with a given log level prefix
 #
@@ -51,7 +40,6 @@ BU_NULL=BU_NULL
 # ```bash
 # __bu_basic_log INFO "This is an info message"
 # ```
-# ```
 __bu_basic_log()
 {
     local log_prefix=$1
@@ -60,13 +48,11 @@ __bu_basic_log()
     printf '%s %s\n' "$log_prefix" "$*" >&2
 }
 
-# ```
 # *Description*:
 # Log a debug message
 #
 # *Params*:
 # - `...`: message to log
-# ```
 bu_basic_log_debug()
 {
     # Bootstrap debug logs (e.g. "sourcing(--__bu-once) ...") fire before the
@@ -76,43 +62,36 @@ bu_basic_log_debug()
     __bu_basic_log DEBUG "$*"
 }
 
-# ```
 # *Description*:
 # Log an info message
 #
 # *Params*:
 # - `...`: message to log
-# ```
 bu_basic_log_info()
 {
     __bu_basic_log INFO "$*"
 }
 
-# ```
 # *Description*:
 # Log a warning message
 #
 # *Params*:
 # - `...`: message to log
-# ```
 bu_basic_log_warn()
 {
     __bu_basic_log WARN "$*"
 }
 
-# ```
 # *Description*:
 # Log an error message
 #
 # *Params*:
 # - `...`: message to log
-# ```
 bu_basic_log_err()
 {
     __bu_basic_log ERR "$*"
 }
 
-# ```
 # *Description*:
 # Check if a variable is BU_NULL
 #
@@ -125,13 +104,11 @@ bu_basic_log_err()
 # ```bash
 # bu_is_null "$VAR"
 # ```
-# ```
 bu_is_null()
 {
     [[ "$1" = BU_NULL ]]
 }
 
-# ```
 # *Description*:
 # Check if a variable is BU_NULL or empty
 #
@@ -144,13 +121,11 @@ bu_is_null()
 # ```bash
 # bu_is_null_or_empty "$VAR"
 # ```
-# ```
 bu_is_null_or_empty()
 {
     [[ -z "$1" || "$1" = BU_NULL ]]
 }
 
-# ```
 # *Description*:
 # Check if a variable is not BU_NULL
 #
@@ -163,13 +138,11 @@ bu_is_null_or_empty()
 # ```bash
 # bu_is_not_null "$VAR"
 # ```
-# ```
 bu_is_not_null()
 {
     [[ "$1" != BU_NULL ]]
 }
 
-# ```
 # *Description*:
 # Check if a variable is not BU_NULL and not empty
 #
@@ -182,13 +155,11 @@ bu_is_not_null()
 # ```bash
 # bu_is_not_null_or_empty "$VAR"
 # ```
-# ```
 bu_is_not_null_or_empty()
 {
     [[ -n "$1" && "$1" != BU_NULL ]]
 }
 
-# ```
 # *Description*:
 # Get directory name of a filepath. Similar to `dirname` except that no process is spawned.
 #
@@ -201,7 +172,6 @@ bu_is_not_null_or_empty()
 # *Examples*:
 # ```bash
 # bu_dirname /a/b/c.txt # $BU_RET=/a/b
-# ```
 # ```
 bu_dirname()
 {
@@ -218,7 +188,6 @@ bu_pushd_current()
     pushd "$BU_RET" &>/dev/null
 }
 
-# ```
 # *Description*:
 # Get base name of a filepath. Similar to `basename` except that no process is spawned.
 #
@@ -232,7 +201,6 @@ bu_pushd_current()
 # ```bash
 # bu_basename /a/b/c.txt # $BU_RET=c.txt
 # ```
-# ```
 bu_basename()
 {
     case "$1" in
@@ -241,7 +209,6 @@ bu_basename()
     esac
 }
 
-# ```
 # *Description*:
 # Split a string into an array by a given separator
 #
@@ -285,9 +252,7 @@ then
     )
 fi
 
-# ```
 # Whether the current source function is the custom one defined by bu_def_source
-# ```
 BU_SOURCE_IS_CUSTOM=false
 
 BU_SOURCE_IS_FORCE=${BU_SOURCE_IS_FORCE:-false}
@@ -295,7 +260,6 @@ BU_SOURCE_IS_AUTOPUSHD=${BU_SOURCE_IS_AUTOPUSHD:-false}
 BU_SOURCE_IS_INLINE=${BU_SOURCE_IS_INLINE:-false}
 BU_SOURCE_INLINE_OUTPUT=${BU_SOURCE_INLINE_OUTPUT:-}
 
-# ```
 # *Description*:
 # Define a custom source function that supports additional options
 #
@@ -313,7 +277,6 @@ BU_SOURCE_INLINE_OUTPUT=${BU_SOURCE_INLINE_OUTPUT:-}
 #
 # *Bug*:
 # Top level `declare` (without `-g`) in a script is broken because we are inside a function
-# ```
 bu_def_source()
 {
     # Set BU_SOURCE_IS_CUSTOM to indicate that we have defined a custom source function
@@ -483,22 +446,18 @@ bu_def_source()
     }
 }
 
-# ```
 # *Description*:
 # Undefine the custom source function and restore the builtin source
-# ```
 bu_undef_source()
 {
     unset -f source
     BU_SOURCE_IS_CUSTOM=false
 }
 
-# ```
 # *Description*:
 # If the custom source function is defined, use it to source the given file(s).
 # Otherwise, temporarily define the custom source function, use it to source the given file(s),
 # and then undefine the custom source function.
-# ```
 bu_source()
 {
     if "$BU_SOURCE_IS_CUSTOM"
@@ -513,7 +472,6 @@ bu_source()
     fi
 }
 
-# ```
 # *Description*:
 # If the custom source function is defined, undefine it, use the builtin source to source the given file(s),
 # and then redefine the custom source function.
@@ -521,7 +479,6 @@ bu_source()
 #
 # *Bug*:
 # Top level `declare` (without `-g`) in a script is broken because we are inside a function
-# ```
 bu_ext_source()
 {
     if "$BU_SOURCE_IS_CUSTOM"
@@ -536,10 +493,8 @@ bu_ext_source()
     fi
 }
 
-# ```
 # *Description*:
 # Source multiple files using the custom source function, ensuring each file is sourced only once.
-# ```
 bu_source_multi_once()
 {
     if ! "$BU_SOURCE_IS_CUSTOM" && (($#))
@@ -556,10 +511,8 @@ bu_source_multi_once()
     fi
 }
 
-# ```
 # *Description*:
 # Source multiple files.
-# ```
 bu_source_multi()
 {
     local filepath

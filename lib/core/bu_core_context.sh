@@ -1,4 +1,3 @@
-# ```
 # Context-variable origin tracking and consumption logging.
 #
 # Commands take defaults from ambient "context" variables (environment /
@@ -24,17 +23,14 @@
 #   record to $BU_OUT_DIR/context/<YYYY-MM-DD>.jsonl.
 #
 # See docs/context_variables.md for the full guide.
-# ```
 
 # ---------------------------------------------------------------------------
 # Global state.  Guard-declared so re-activation is idempotent and, in the
 # write direction, `declare -p` checks avoid tripping `set -u` on arrays.
 # ---------------------------------------------------------------------------
 
-# ```
 # Origin map: variable NAME -> "file:line" of the last tracked assignment.
 # Populated by the DEBUG trap installed by bu_var_origin_enable.
-# ```
 if ! declare -p BU_VARIABLE_ORIGIN &>/dev/null
 then
     declare -A -g BU_VARIABLE_ORIGIN=()
@@ -59,7 +55,6 @@ declare -g BU_VAR_ORIGIN_PREFIX_REGEX='[A-Z_][A-Z0-9_]*'
 # Write side — origin tracking
 # ---------------------------------------------------------------------------
 
-# ```
 # Arm origin tracking: record "file:line" of every executed assignment to a
 # variable whose name matches the prefix regex (default CAPS names only).
 #
@@ -73,7 +68,6 @@ declare -g BU_VAR_ORIGIN_PREFIX_REGEX='[A-Z_][A-Z0-9_]*'
 #   by bu_var_origin_disable, so this composes with other DEBUG users.
 # - Enable-while-armed is a no-op (never nests).
 # - Windows accumulate into BU_VARIABLE_ORIGIN unless --reset is given.
-# ```
 bu_var_origin_enable()
 {
     local is_reset=false
@@ -129,10 +123,8 @@ bu_var_origin_enable()
     return 0
 }
 
-# ```
 # Disarm origin tracking: restore the pre-existing DEBUG trap and functrace
 # flag captured by bu_var_origin_enable.  Idempotent when not armed.
-# ```
 bu_var_origin_disable()
 {
     if [[ $BU_VAR_ORIGIN_ARMED != true ]]
@@ -167,14 +159,12 @@ declare -ft bu_var_origin_enable bu_var_origin_disable
 # Read side — consumption logging
 # ---------------------------------------------------------------------------
 
-# ```
 # Flatten a value for single-line display: newlines/tabs become spaces, CR is
 # stripped.  Pure bash, no subprocess.
 #
 # Params:
 # - $1: Value to flatten
 # - $2: Name of the caller variable to receive the result (nameref)
-# ```
 __bu_context_flatten()
 {
     local s=$1
@@ -185,7 +175,6 @@ __bu_context_flatten()
     _out=$s
 }
 
-# ```
 # JSON-escape a value for embedding in a JSON string: backslash and double
 # quote are escaped; newlines/tabs flattened to spaces; CR stripped.
 # Pure bash, no subprocess per record.
@@ -193,7 +182,6 @@ __bu_context_flatten()
 # Params:
 # - $1: Value to escape
 # - $2: Name of the caller variable to receive the result (nameref)
-# ```
 __bu_context_json_escape()
 {
     local s=$1
@@ -206,7 +194,6 @@ __bu_context_json_escape()
     _out=$s
 }
 
-# ```
 # Emit one consumption event: a compact stderr line and one JSONL record
 # appended to $BU_OUT_DIR/context/<YYYY-MM-DD>.jsonl.  Never fails the
 # caller: an unwritable record path degrades silently to stderr-only, and
@@ -219,7 +206,6 @@ __bu_context_json_escape()
 # - $4: Value actually used by the command (stderr display value)
 # - $5: source field — context | flag | read
 # - $6: Consuming script basename, .sh stripped (command field)
-# ```
 __bu_context_log()
 {
     local _var=$1
@@ -281,7 +267,6 @@ __bu_context_log()
     return 0
 }
 
-# ```
 # Idiomatic replacement for the flag-default boilerplate
 # `[[ -n "$x" ]] || x=${CONTEXT_VAR:-}`.  If the named local is already
 # non-empty (an explicit argument won), keep it and log source=flag (the
@@ -295,7 +280,6 @@ __bu_context_log()
 # Params:
 # - $1: Local variable NAME (caller-declared `local name=`), passed by name
 # - $2: CONTEXT_VAR name (ambient variable providing the default)
-# ```
 bu_context_default()
 {
     local -n _lref=$1
@@ -321,7 +305,6 @@ bu_context_default()
     return 0
 }
 
-# ```
 # Unconditional read of a context variable.  Value is returned in BU_RET[0]
 # and logged with source=read.
 #
@@ -335,7 +318,6 @@ bu_context_default()
 #
 # Returns:
 # - BU_RET: The context variable's value (BU_RET[0]; empty when unset)
-# ```
 bu_context_use()
 {
     local _ctx_var=$1

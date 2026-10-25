@@ -1,4 +1,3 @@
-# ```
 # Command-registry caching.
 #
 # When BU_TOP_LEVEL_MODULE is set before sourcing bu_entrypoint.sh, the
@@ -17,7 +16,6 @@
 # Cache files: $BU_CACHE_DIR/commands-<key>.cache
 # Serialization: declare -p for each associative array (eval-safe).
 # Invalidation: delete the cache file, or use `bu cache-invalidate`.
-# ```
 
 # bash-ide source=./bu_core_base.sh
 
@@ -49,13 +47,11 @@ declare -g __BU_PROMPT_ORIGINAL_PROMPT_COMMAND=
 # The module name currently shown in the prompt (empty if none).
 declare -g __BU_PROMPT_MODULE_DISPLAYED=
 
-# ```
 # PROMPT_COMMAND hook that prepends the active module indicator to PS1
 # on every prompt display.  Works with dynamic PS1 (e.g. users whose
 # PROMPT_COMMAND rebuilds PS1 from scratch each time).
 #
 # Chains to the original PROMPT_COMMAND after prepending.
-# ```
 __bu_prompt_command_hook()
 {
     local indicator="[\[${BU_TPUT_GREEN}\]${BU_TOP_LEVEL_MODULE}\[${BU_TPUT_RESET}\]] "
@@ -71,7 +67,6 @@ __bu_prompt_command_hook()
     fi
 }
 
-# ```
 # Prepend the active top-level module name to the prompt.
 #
 # Only runs in interactive shells.  Saves the original PROMPT_COMMAND
@@ -82,7 +77,6 @@ __bu_prompt_command_hook()
 # with dynamic prompts that are rebuilt on every display.
 #
 # Params: None
-# ```
 __bu_prompt_show_module()
 {
     # `return 0`, not `return`: a bare return propagates the failed [[ ]] status
@@ -104,12 +98,10 @@ __bu_prompt_show_module()
     __BU_PROMPT_MODULE_DISPLAYED=$module
 }
 
-# ```
 # Remove the module indicator from the prompt and restore the original
 # PROMPT_COMMAND.
 #
 # Params: None
-# ```
 __bu_prompt_hide_module()
 {
     local indicator="[\[${BU_TPUT_GREEN}\]${BU_TOP_LEVEL_MODULE}\[${BU_TPUT_RESET}\]] "
@@ -118,20 +110,17 @@ __bu_prompt_hide_module()
     __BU_PROMPT_MODULE_DISPLAYED=
 }
 
-# ```
 # Resolve the command-cache file path for a top-level module key.
 #
 # Params:
 # - $1: top-level module key
 #
 # Returns: BU_RET = cache file path
-# ```
 __bu_command_cache_file()
 {
     BU_RET=$BU_CACHE_DIR/commands-$1.cache
 }
 
-# ```
 # Try to load the command registry from cache.
 #
 # Called during early init (after builtin dirs are registered, before
@@ -141,7 +130,6 @@ __bu_command_cache_file()
 # scan (PATH setup still runs).
 #
 # Returns: always 0 (cache miss is normal; never abort under set -e)
-# ```
 __bu_try_load_command_cache()
 {
     if ! "$BU_COMMAND_CACHE_ENABLED"; then
@@ -188,7 +176,6 @@ __bu_try_load_command_cache()
     return 0
 }
 
-# ```
 # Serialize the expensive-to-recompute parts of the command registry.
 #
 # Only BU_COMMAND_SEARCH_DIRS (directory list) and BU_COMMAND_UNAVAILABLE
@@ -197,7 +184,6 @@ __bu_try_load_command_cache()
 #
 # Params:
 # - $1: top-level module key
-# ```
 __bu_save_command_cache()
 {
     local key=$1
@@ -224,7 +210,6 @@ __bu_save_command_cache()
     bu_log_info "Command cache saved to ${cache_file##*/}"
 }
 
-# ```
 # *Description*:
 # Mark module loading as complete and cache the command registry.
 #
@@ -246,7 +231,6 @@ __bu_save_command_cache()
 # export BU_TOP_LEVEL_MODULE="myproject"
 # source /path/to/bash-tab/bu_entrypoint.sh
 # bu_mark_load_complete
-# ```
 # ```
 bu_mark_load_complete()
 {
@@ -275,14 +259,12 @@ bu_mark_load_complete()
     fi
 }
 
-# ```
 # Invalidate the command cache for one or all top-level module keys.
 #
 # Params:
 # - $1: key to invalidate, or "--all" to invalidate all command caches
 #
 # Returns: 0 on success
-# ```
 __bu_invalidate_command_cache()
 {
     local key=$1
@@ -311,11 +293,9 @@ __bu_invalidate_command_cache()
     fi
 }
 
-# ```
 # List cached command registries with their project keys and timestamps.
 #
 # Returns: BU_RET = array of "key  date  size" lines
-# ```
 __bu_command_cache_list()
 {
     BU_RET=()

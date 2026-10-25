@@ -1,4 +1,3 @@
-# ```
 # Capability detection and platform identification.
 #
 # Probes the environment once at init time and produces a canonical picture
@@ -14,7 +13,6 @@
 #   BU_CAP_MISS_RESOLVER   optional function name invoked on a probe miss (site glue)
 #   BU_PKG_MAP             associative array: binary → "distro:pkg distro:pkg … pip:pkg"
 #   BU_COMMAND_UNAVAILABLE associative array: command → reason (populated by registration)
-# ```
 
 # bash-ide source=./bu_core_base.sh
 
@@ -56,7 +54,6 @@ bu_cap_detect_platform()
 
 # ── Binary probing ────────────────────────────────────────────────────
 
-# ```
 # Probe for a single capability binary.
 #
 # Params:
@@ -67,7 +64,6 @@ bu_cap_detect_platform()
 # Returns: 0 always. Presence/absence is recorded in BU_CAP[$cap] instead of
 # the exit status, because this runs while bu_entrypoint.sh is being sourced —
 # a non-zero return here would abort the whole activation under `set -e`.
-# ```
 bu_cap_probe()
 {
     local cap=$1 binary=$2 fallback=${3:-}
@@ -99,9 +95,7 @@ bu_cap_probe()
     return 0
 }
 
-# ```
 # Probe all known capabilities.  Called once at init.
-# ```
 bu_cap_probe_all()
 {
     bu_log_debug "Init probe"
@@ -149,7 +143,6 @@ declare -A -g BU_PKG_MAP=(
     [gfind]="debian:findutils ubuntu:findutils fedora:findutils arch:findutils alpine:findutils"
 )
 
-# ```
 # Return a human-readable install instruction for a capability.
 #
 # Params:
@@ -157,7 +150,6 @@ declare -A -g BU_PKG_MAP=(
 #
 # Returns:
 # - BU_RET: install hint string, or empty if the cap is already present
-# ```
 bu_install_hint()
 {
     local cap=$1
@@ -260,7 +252,6 @@ BU_COMPAT_CACHE_HASH=
 # Active cache file (set after fingerprint is computed)
 BU_COMPAT_CACHE_FILE=
 
-# ```
 # Generate a fingerprint of the environment: kernel, distro, bash version,
 # and the actual paths of all probed capabilities (from BU_CAP).
 #
@@ -270,7 +261,6 @@ BU_COMPAT_CACHE_FILE=
 # changing a command's --is-compatible dependencies.
 #
 # Returns: BU_RET = md5 hash string (empty if md5sum unavailable)
-# ```
 bu_cap_cache_fingerprint()
 {
     BU_RET=
@@ -309,20 +299,17 @@ bu_cap_cache_fingerprint()
     BU_RET=$(echo "$hash_input" | md5sum | cut -d' ' -f1)
 }
 
-# ```
 # Resolve the cache file path for a given fingerprint hash.
 #
 # Params:
 # - $1: fingerprint hash
 #
 # Returns: BU_RET = cache file path
-# ```
 bu_cap_cache_file_for()
 {
     BU_RET=$BU_CACHE_DIR/compat-$1.cache
 }
 
-# ```
 # Load the cached --is-compatible results from a per-hash cache file.
 # Populates BU_COMMAND_UNAVAILABLE.  The hash is in the filename so no
 # header validation is needed — file existence is the cache hit.
@@ -331,7 +318,6 @@ bu_cap_cache_file_for()
 # - $1: fingerprint hash that identifies the cache file
 #
 # Returns: 0 if cache was loaded, 1 if the file doesn't exist
-# ```
 bu_cap_cache_load()
 {
     local fp=$1
@@ -357,14 +343,12 @@ bu_cap_cache_load()
     return 0
 }
 
-# ```
 # Save the current --is-compatible results to a per-hash cache file.
 # Reads BU_COMMAND_UNAVAILABLE (populated by the registration loop) and
 # writes tab-separated entries.  Also cleans up the legacy compat.cache.
 #
 # Params:
 # - $1: fingerprint hash for the cache file name
-# ```
 bu_cap_cache_save()
 {
     local fp=$1
@@ -402,14 +386,12 @@ bu_cap_cache_save()
     bu_log_info "Compat cache saved to ${cache_file##*/} ($(grep -cv '^#' "$cache_file" || true) entries)"
 }
 
-# ```
 # Force-invalidate ALL compat caches so the next activation re-probes.
 # Safe to run anytime — just deletes the per-hash cache files.
 #
 # Usage:
 #   bu_cap_cache_invalidate          # clear all cached environments
 #   bu_cap_cache_invalidate --stale  # clear only caches older than 7 days
-# ```
 bu_cap_cache_invalidate()
 {
     local mode=${1:-all}
@@ -441,7 +423,6 @@ bu_cap_cache_invalidate()
     esac
 }
 
-# ```
 # *Description*:
 # Settle a deferred --is-compatible probe for one command.  Only acts when the
 # command carries the compat_pending marker written by the deferred scan; it
@@ -457,7 +438,6 @@ bu_cap_cache_invalidate()
 #
 # *Returns*:
 # - 0 if the command is available (or not pending), 1 if unavailable
-# ```
 bu_cap_ensure_compat()
 {
     local -r cmd=$1
@@ -481,7 +461,6 @@ bu_cap_ensure_compat()
     return 1
 }
 
-# ```
 # *Description*:
 # Re-run --is-compatible probes for unavailable commands that have a
 # recorded script path.  On success, the command is registered, removed
@@ -493,7 +472,6 @@ bu_cap_ensure_compat()
 #
 # *Returns*:
 # - 0 if at least one command was recovered, 1 otherwise
-# ```
 bu_cap_reprobe_unavailable()
 {
     local target=${1:-}

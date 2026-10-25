@@ -14,34 +14,26 @@ BU_LOG_LVL_SILENCE=99
 BU_TERMINAL_EDITOR_PREFERENCE=(vi nano vim emacs)
 BU_VISUAL_EDITOR_PREFERENCE=(code codium)
 
-# ```
 # Root output directory. BU_CACHE_DIR, BU_LOG_DIR, BU_TMP_DIR, and
 # BU_HISTORY all derive from this (see bu_core_base.sh).
-# ```
 bu_config_register BU_OUT_DIR --default "/tmp/bu/$USER" \
     --hint "Root output directory (cache, logs, tmp, history)"
 
-# ```
 # Verbose bootstrap logging ("sourcing ..." lines during activation).
-# ```
 bu_config_register BU_BOOTSTRAP_VERBOSE --bool --default false \
     --hint "Verbose logging during activation bootstrap"
 
 bu_config_register BU_EXIT_HANDLER_VSCODE_POPUP --bool --default false \
     --hint "Offer a VS Code popup for the failing frame when a command fails"
 
-# ```
 # Set to false to force a full command scan on every activation.
 # Use in environments where available commands change per shell
 # (dynamic module systems, rapid development).
-# ```
 bu_config_register BU_COMMAND_CACHE_ENABLED --bool --default true \
     --hint "Cache the command registry between activations (false: scan every time)"
 
-# ```
 # Bootstrap inputs: they choose the settings files and modules themselves, so
 # only the environment (or the activate script) can set them.
-# ```
 bu_config_register BU_CONFIG_LOCAL_FILE --env-only \
     --hint "Settings file written by bu set-config (default: config/bu_config_local.sh)"
 bu_config_register BU_TOP_LEVEL_MODULE --env-only \

@@ -1,20 +1,17 @@
 # bash-ide source=./bu_core_autocomplete.sh
 
 # MARK: Top-level CLI
-# ```
 # *Description*:
 # Sorts keys alphabetically
 # *Params*:
 # - stdin: Keys (space or line separated)
 # *Returns*:
 # - stdout: Sorted keys (one per line)
-# ```
 __bu_cli_sort_keys()
 {
     tr ' ' '\n' | sort
 }
 
-# ```
 # *Description*:
 # Gets the properties of a bu sub-command
 #
@@ -23,7 +20,6 @@ __bu_cli_sort_keys()
 #
 # *Returns*
 # - `$BU_RET`: Properties of the command. One of `function`, `source`, `execute`, or `no-default-found`.
-# ```
 __bu_cli_command_type()
 {
     local bu_command=$1
@@ -65,7 +61,6 @@ __bu_cli_command_type()
     BU_RET=$properties
 }
 
-# ```
 # *Description*:
 # Format a command name with verb and noun colorized separately.
 # When the command has parsed verb/noun properties, the verb is colored blue,
@@ -77,7 +72,6 @@ __bu_cli_command_type()
 # - `$2`: column width (default 30)
 #
 # *Returns*: stdout: padded, colorized command name
-# ```
 __bu_cli_colorize_command_name()
 {
     local -r key=$1
@@ -103,7 +97,6 @@ __bu_cli_colorize_command_name()
     printf '%s%*s' "$display" "$padding" ''
 }
 
-# ```
 # *Description*:
 # Convert a readline key-binding escape sequence to a human-readable
 # label (e.g. `\C-x` → `Ctrl-X`, `\ea` → `Alt-A`).
@@ -112,7 +105,6 @@ __bu_cli_colorize_command_name()
 # - `$1`: Raw key sequence as stored in BU_KEY_BINDINGS
 #
 # *Returns*: stdout: colored human-readable label
-# ```
 __bu_cli_format_keybinding()
 {
     local -r raw=$1
@@ -136,7 +128,6 @@ __bu_cli_format_keybinding()
     fi
 }
 
-# ```
 # *Description*:
 # Render the environment diagnostics section for the top-level help.
 # Shows platform, bash version, key capability status, and a summary
@@ -145,7 +136,6 @@ __bu_cli_format_keybinding()
 # *Params*: None
 #
 # *Returns*: None
-# ```
 __bu_cli_environment_section()
 {
     local -r dim="${BU_TPUT_GREY}"
@@ -247,14 +237,12 @@ __bu_cli_environment_section()
     echo
 }
 
-# ```
 # *Description*:
 # Displays help information for the master command
 #
 # *Params*: None
 #
 # *Returns*: None
-# ```
 __bu_cli_help()
 {
     # Render the page as one uninterrupted document: shadow the pager setting
@@ -395,7 +383,6 @@ __bu_cli_help()
     fi
 } >&2
 
-# ```
 # *Description*:
 # Generates automatic help documentation for a CLI script
 #
@@ -404,7 +391,6 @@ __bu_cli_help()
 # - `--example <purpose> <command-line>`: Example command line and its purpose. Can be specified multiple times.
 #
 # *Returns*: None
-# ```
 bu_autohelp()
 {
     set +e
@@ -654,7 +640,6 @@ bu_autohelp()
     return "$exit_code"
 }
 
-# ```
 # *Description*:
 # The top-level CLI command `$BU_CLI_COMMAND_NAME` (default `bu`)
 #
@@ -664,7 +649,6 @@ bu_autohelp()
 #
 # *Returns*:
 # - Exit code of the sub-command
-# ```
 # `command source` bypasses our source wrapper while preserving the caller's
 # errexit exemption (e.g. `bu ... || ...`). Nested `builtin source` calls can
 # lose that exemption on Bash 5.2 and abort even when the failure is caught.
@@ -698,11 +682,9 @@ fi
 # The `set -o` options the CLI wrapper resets for the duration of a command.
 declare -g -a BU_CLI_RESET_SHELL_OPTIONS=(errexit nounset pipefail)
 
-# ```
 # *Description*:
 # Save the caller's errexit/nounset/pipefail into the wrapper's
 # `__bu_cli_caller_opts` and turn them off. Always returns 0.
-# ```
 __bu_cli_shell_opts_enter()
 {
     local opt
@@ -719,7 +701,6 @@ __bu_cli_shell_opts_enter()
     return 0
 }
 
-# ```
 # *Description*:
 # Restore the options saved by __bu_cli_shell_opts_enter (including any
 # change a command made through bu_cli_set_caller_shell_option)
@@ -729,7 +710,6 @@ __bu_cli_shell_opts_enter()
 #
 # *Returns*:
 # - `$1`, unchanged
-# ```
 __bu_cli_shell_opts_leave()
 {
     local opt
@@ -745,7 +725,6 @@ __bu_cli_shell_opts_leave()
     return "$1"
 }
 
-# ```
 # *Description*:
 # Read a `set -o` option as the caller of the `bu` command sees it. Inside a
 # command, errexit/nounset/pipefail are always off (the CLI wrapper resets
@@ -757,7 +736,6 @@ __bu_cli_shell_opts_leave()
 #
 # *Returns*:
 # - `BU_RET`: on or off
-# ```
 bu_cli_get_caller_shell_option()
 {
     if [[ -n "${__bu_cli_caller_opts[$1]+set}" ]]
@@ -772,7 +750,6 @@ bu_cli_get_caller_shell_option()
     return 0
 }
 
-# ```
 # *Description*:
 # Set a `set -o` option in the shell of the `bu` command's caller. For the
 # options the CLI wrapper resets, the change is recorded so the wrapper
@@ -785,7 +762,6 @@ bu_cli_get_caller_shell_option()
 #
 # *Returns*:
 # - Exit code of `set`: non-zero for an unknown option
-# ```
 bu_cli_set_caller_shell_option()
 {
     local -r opt=$1
@@ -803,7 +779,6 @@ bu_cli_set_caller_shell_option()
     fi
 }
 
-# ```
 # *Description*:
 # Row action for `bu show-command`, run inside bu view-table (its own
 # process) with the cursor record in BU_TV_RECORD. The last line printed
@@ -818,7 +793,6 @@ bu_cli_set_caller_shell_option()
 #
 # *Returns*:
 # - Non-zero shows as a failure on the status line
-# ```
 __bu_cli_show_command_action()
 {
     local -r mode=$1

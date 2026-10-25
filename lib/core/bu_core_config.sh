@@ -92,7 +92,6 @@ declare -a -g __BU_CONFIG_ENUM_HAND_KEPT_LINES=()
 declare -a -g __BU_CONFIG_VALIDATE_ROWS=()
 declare -a -g __BU_CONFIG_REFRESH_ROWS=()
 
-# ```
 # *Description*:
 # Validate a setting name against the configured name prefixes.
 # Returns 0 if the name starts with one of the prefixes listed in
@@ -104,7 +103,6 @@ declare -a -g __BU_CONFIG_REFRESH_ROWS=()
 #
 # *Returns*:
 # - 0 if the name is valid, 1 otherwise
-# ```
 bu_config_name_is_valid()
 {
     local -r name=$1
@@ -119,7 +117,6 @@ bu_config_name_is_valid()
     return 1
 }
 
-# ```
 # *Description*:
 # Register a named persistence layer with a resolver function.
 # The resolver is called by bu_config_layer_file and should print
@@ -129,7 +126,6 @@ bu_config_name_is_valid()
 # - `$1`: Layer name (must be usable as a shell identifier)
 # - `$2`: Resolver function name (called with any extra args passed to
 #   bu_config_layer_file)
-# ```
 bu_config_register_layer()
 {
     local name=$1
@@ -138,7 +134,6 @@ bu_config_register_layer()
     return 0
 }
 
-# ```
 # *Description*:
 # Resolve a named layer to its settings file path.
 # The "local" layer (and empty name) resolve to the machine-local file.
@@ -150,7 +145,6 @@ bu_config_register_layer()
 # *Returns*:
 # - `BU_RET`: the resolved file path
 # - Exit code: 0 on success, 1 if the layer name is unknown
-# ```
 bu_config_layer_file()
 {
     local name=$1
@@ -177,7 +171,6 @@ bu_config_layer_file()
     return 0
 }
 
-# ```
 # *Description*:
 # Register a runtime setting with metadata.
 #
@@ -220,7 +213,6 @@ bu_config_layer_file()
 #
 # Nothing validates settings-file values at activation: run
 # bu_config_require_valid (or `bu validate-config`) where a bad value matters.
-# ```
 bu_config_register()
 {
     local name=$1
@@ -423,7 +415,6 @@ bu_config_register()
     return 0
 }
 
-# ```
 # *Description*:
 # List the names of the settings registered in a config phase.
 #
@@ -432,7 +423,6 @@ bu_config_register()
 #
 # *Returns*:
 # - `BU_RET`: the setting names, sorted
-# ```
 __bu_config_phase_settings()
 {
     local -r phase=$1
@@ -459,7 +449,6 @@ __bu_config_phase_settings()
     return 0
 }
 
-# ```
 # *Description*:
 # Open a config phase: settings registered until bu_config_phase_end belong
 # to it. Running a phase again (re-activation) first drops its previous
@@ -490,7 +479,6 @@ __bu_config_phase_settings()
 #   --settings-file profile:profiles/$P.sh`
 #
 # *Returns*: None (always 0; errors are logged)
-# ```
 bu_config_phase_begin()
 {
     local -r phase=$1
@@ -582,7 +570,6 @@ bu_config_phase_begin()
     return 0
 }
 
-# ```
 # *Description*:
 # Drop a config phase's registrations, unsetting their values unless
 # exported (the user's).
@@ -591,7 +578,6 @@ bu_config_phase_begin()
 # - `$1`: Phase name
 #
 # *Returns*: None (always 0)
-# ```
 __bu_config_phase_drop()
 {
     local -r phase=$1
@@ -619,7 +605,6 @@ __bu_config_phase_drop()
     return 0
 }
 
-# ```
 # *Description*:
 # Unload a (non-static) config phase, e.g. to deactivate a profile: drop its
 # registrations and unset its values, except exported ones.
@@ -628,7 +613,6 @@ __bu_config_phase_drop()
 # - `$1`: Phase name
 #
 # *Returns*: None (always 0; errors are logged)
-# ```
 bu_config_phase_unload()
 {
     local -r phase=$1
@@ -644,7 +628,6 @@ bu_config_phase_unload()
     return 0
 }
 
-# ```
 # *Description*:
 # List a config phase's built-in settings files, in order (later files win).
 # For each level, the checkout's file comes first, then the embedder's
@@ -659,7 +642,6 @@ bu_config_phase_unload()
 #
 # *Returns*:
 # - `BU_RET`: "ORIGIN:PATH" entries
-# ```
 __bu_config_phase_builtin_files()
 {
     local -r phase=$1
@@ -702,7 +684,6 @@ __bu_config_phase_builtin_files()
     return 0
 }
 
-# ```
 # *Description*:
 # List the settings files a config phase reads, in the order
 # bu_config_phase_end sources them (later files win): its extra files
@@ -716,7 +697,6 @@ __bu_config_phase_builtin_files()
 #
 # *Returns*:
 # - `BU_RET`: "ORIGIN:PATH" entries
-# ```
 bu_config_phase_files()
 {
     local -r phase=$1
@@ -739,7 +719,6 @@ bu_config_phase_files()
     return 0
 }
 
-# ```
 # *Description*:
 # The settings files a config phase sources (bu_config_phase_files), only
 # those that exist.
@@ -749,7 +728,6 @@ bu_config_phase_files()
 #
 # *Returns*:
 # - `BU_RET`: "ORIGIN:PATH" entries for the files that exist
-# ```
 __bu_config_phase_files()
 {
     local entry
@@ -763,7 +741,6 @@ __bu_config_phase_files()
     return 0
 }
 
-# ```
 # *Description*:
 # Origin label of a file a config phase reads (bu_config_phase_files), for
 # `bu set-config`: "local" for its built-in files, ORIGIN for a file declared
@@ -776,7 +753,6 @@ __bu_config_phase_files()
 # *Returns*:
 # - `BU_RET`: the file's ORIGIN, or empty if the phase does not read it
 #   (the last entry wins if it is listed more than once)
-# ```
 __bu_config_phase_file_origin()
 {
     local -r phase=$1
@@ -791,7 +767,6 @@ __bu_config_phase_file_origin()
     return 0
 }
 
-# ```
 # *Description*:
 # First half of resolving a config phase: save the phase's exported values,
 # reset its unexported ones (a static phase keeps them as the user's too), and
@@ -804,7 +779,6 @@ __bu_config_phase_file_origin()
 # - `$1`: Phase name (must be the open phase)
 #
 # *Returns*: None (always 0)
-# ```
 __bu_config_phase_prepare()
 {
     local -r phase=$1
@@ -851,7 +825,6 @@ __bu_config_snapshot()
     return 0
 }
 
-# ```
 # *Description*:
 # After sourcing one settings file for the phase being resolved: attribute
 # the phase's settings it assigned to it, and revert (with a warning) any
@@ -862,7 +835,6 @@ __bu_config_snapshot()
 # - `$2`: Origin to record (`local`, `site` or `callback`)
 #
 # *Returns*: None (always 0)
-# ```
 __bu_config_phase_track()
 {
     local -r file=$1
@@ -914,7 +886,6 @@ __bu_config_phase_track()
     return 0
 }
 
-# ```
 # *Description*:
 # Second half of resolving a config phase: restore the saved exported
 # values, then apply registered defaults by generating the phase's vars file
@@ -925,7 +896,6 @@ __bu_config_phase_track()
 # - `$1`: Phase name (must be the open phase)
 #
 # *Returns*: None (always 0)
-# ```
 __bu_config_phase_complete()
 {
     local -r phase=$1
@@ -964,7 +934,6 @@ __bu_config_phase_complete()
     return 0
 }
 
-# ```
 # *Description*:
 # Path of a config phase's generated vars file:
 # $BU_OUT_DIR/cache/config-vars/<top-level module>/<BashTab dir>/<phase>[.<variant>].sh
@@ -976,7 +945,6 @@ __bu_config_phase_complete()
 #
 # *Returns*:
 # - `BU_RET`: the file path
-# ```
 __bu_config_vars_file()
 {
     local -r phase=$1
@@ -985,7 +953,6 @@ __bu_config_vars_file()
     return 0
 }
 
-# ```
 # *Description*:
 # Generate the vars file of a config phase from the registry, rewriting it
 # only when its content changes (so it stays stable for editors and the
@@ -997,7 +964,6 @@ __bu_config_vars_file()
 # *Returns*:
 # - `BU_RET`: the file path (__bu_config_vars_file), or empty if it could not
 #   be written
-# ```
 __bu_config_write_vars_file()
 {
     local -r phase=$1
@@ -1053,7 +1019,6 @@ __bu_config_write_vars_file()
     return 0
 }
 
-# ```
 # *Description*:
 # Close and resolve a config phase: save exported values, source the phase's
 # settings files (bu_config_phase_files: its --settings-file files and its
@@ -1065,7 +1030,6 @@ __bu_config_write_vars_file()
 # - `$1`: Phase name (must be the open phase)
 #
 # *Returns*: None (always 0; errors are logged)
-# ```
 bu_config_phase_end()
 {
     local -r phase=$1
@@ -1093,7 +1057,6 @@ bu_config_phase_end()
     return 0
 }
 
-# ```
 # *Description*:
 # Re-check a final static phase (re-activation): its values are final for
 # the shell, so any that changed since are restored, with a warning.
@@ -1102,7 +1065,6 @@ bu_config_phase_end()
 # - `$1`: Phase name
 #
 # *Returns*: None (always 0)
-# ```
 __bu_config_static_recheck()
 {
     local -r phase=$1
@@ -1123,7 +1085,6 @@ __bu_config_static_recheck()
     return 0
 }
 
-# ```
 # *Description*:
 # Make the static phases resolvable again, for re-initializing a shell
 # (`bu import-environment --reset-source`): unset the static values BashTab
@@ -1132,7 +1093,6 @@ __bu_config_static_recheck()
 # *Params*: None
 #
 # *Returns*: None (always 0)
-# ```
 __bu_config_static_reset()
 {
     local phase name
@@ -1151,7 +1111,6 @@ __bu_config_static_reset()
     return 0
 }
 
-# ```
 # *Description*:
 # Record a value `bu set-config` just applied in this shell, so provenance
 # follows it instead of reporting a change in the shell.
@@ -1162,7 +1121,6 @@ __bu_config_static_reset()
 # - `$3`: Settings file written (ignored for `default`)
 #
 # *Returns*: None (always 0)
-# ```
 __bu_config_mark_applied()
 {
     local -r name=$1
@@ -1180,7 +1138,6 @@ __bu_config_mark_applied()
     return 0
 }
 
-# ```
 # *Description*:
 # Row action of `bu edit-config`, run inside `bu view-table` (a separate
 # process) on the cursor record in BU_TV_RECORD: change the setting with
@@ -1197,7 +1154,6 @@ __bu_config_mark_applied()
 #
 # *Returns*:
 # - The `bu set-config` status (non-zero shows as a failure)
-# ```
 __bu_config_edit_action()
 {
     local -r mode=$1
@@ -1291,7 +1247,6 @@ __bu_config_edit_queue()
     return 0
 }
 
-# ```
 # *Description*:
 # Apply a change queued by __bu_config_edit_action to this shell: the value
 # (already stored in its settings file) and its provenance.
@@ -1300,7 +1255,6 @@ __bu_config_edit_queue()
 # - `NAME VALUE [FILE]`, or `--unset NAME` (the registered default)
 #
 # *Returns*: None (always 0)
-# ```
 __bu_config_apply_live()
 {
     if [[ "$1" == --unset ]]
@@ -1316,7 +1270,6 @@ __bu_config_apply_live()
     return 0
 }
 
-# ```
 # *Description*:
 # Validate a value against a registered setting and map it to its stored form.
 # Unregistered settings (or registered ones without --bool/--enum) pass through.
@@ -1328,7 +1281,6 @@ __bu_config_apply_live()
 # *Returns*:
 # - `BU_RET`: the value to store (mapped form for name:mapped enum entries)
 # - Exit code: 0 if valid, 1 if rejected
-# ```
 bu_config_validate_value()
 {
     local name=$1 value=$2
@@ -1362,7 +1314,6 @@ bu_config_validate_value()
 
 # MARK: File-backed enums
 
-# ```
 # *Description*:
 # Join enum values into the space-separated form of
 # BU_CONFIG_PROPERTIES[NAME,enum], dropping repeats (first one wins).
@@ -1372,7 +1323,6 @@ bu_config_validate_value()
 #
 # *Returns*:
 # - `BU_RET`: the joined values
-# ```
 __bu_config_enum_join()
 {
     local value joined=
@@ -1387,7 +1337,6 @@ __bu_config_enum_join()
     return 0
 }
 
-# ```
 # *Description*:
 # The value on one line of an enum file or of an --enum-source's output: the
 # first word, or nothing for a blank line or a `#` comment.
@@ -1397,7 +1346,6 @@ __bu_config_enum_join()
 #
 # *Returns*:
 # - `BU_RET`: the value, or empty
-# ```
 __bu_config_enum_line_value()
 {
     local line=$1
@@ -1411,7 +1359,6 @@ __bu_config_enum_line_value()
     return 0
 }
 
-# ```
 # *Description*:
 # Read an --enum-file into its sections (the __BU_CONFIG_ENUM_* scratch
 # arrays): the header (leading comment and blank lines), the values after
@@ -1423,7 +1370,6 @@ __bu_config_enum_line_value()
 # - `$1`: file path (a missing file reads as empty)
 #
 # *Returns*: None (always 0)
-# ```
 __bu_config_parse_enum_file()
 {
     local -r file=$1
@@ -1480,7 +1426,6 @@ __bu_config_parse_enum_file()
     return 0
 }
 
-# ```
 # *Description*:
 # Refresh a setting's --enum-file from its --enum-source: run the source,
 # compare its values with the file's generated section, and print what
@@ -1498,7 +1443,6 @@ __bu_config_parse_enum_file()
 #   action `would-write`, `written` or `unchanged`
 # - Exit code: 0 on success, 1 when the setting has no source, the source
 #   fails or prints nothing, or the file cannot be written
-# ```
 bu_config_refresh_enum_file()
 {
     __BU_CONFIG_REFRESH_ROWS=()
@@ -1628,7 +1572,6 @@ __bu_config_refresh_enum_rows()
 
 # MARK: Validating settings
 
-# ```
 # *Description*:
 # Where a setting's current value came from, as `bu get-config` reports it:
 # `shell` when it changed since its phase ran (or the last `bu set-config`),
@@ -1640,7 +1583,6 @@ __bu_config_refresh_enum_rows()
 #
 # *Returns*:
 # - `BU_RET`: the origin
-# ```
 __bu_config_origin()
 {
     local -r name=$1
@@ -1653,7 +1595,6 @@ __bu_config_origin()
     return 0
 }
 
-# ```
 # *Description*:
 # Check settings' current values against their registered rules, into
 # __BU_CONFIG_VALIDATE_ROWS (TSV `name value origin status detail`), for
@@ -1663,7 +1604,6 @@ __bu_config_origin()
 #
 # *Returns*:
 # - Exit code: 0 when all pass, 1 when any is invalid
-# ```
 __bu_config_validate_rows()
 {
     local -a names=() allowed=() entry_names=()
@@ -1783,7 +1723,6 @@ __bu_config_sort_names()
     return 0
 }
 
-# ```
 # *Description*:
 # Check settings' current values against their registered --enum / --bool
 # rules. Settings files are not validated at activation; call this (or the
@@ -1801,7 +1740,6 @@ __bu_config_sort_names()
 # - stdout: TSV rows `name value origin status detail`; origin as
 #   `bu get-config` reports it, status `ok` or `invalid`
 # - Exit code: 0 when all pass, 1 when any is invalid
-# ```
 bu_config_validate_settings()
 {
     local status=0
@@ -1810,7 +1748,6 @@ bu_config_validate_settings()
     return "$status"
 }
 
-# ```
 # *Description*:
 # Gate on bu_config_validate_settings: log every invalid setting with
 # bu_log_err and return 1; silent when all pass.
@@ -1819,7 +1756,6 @@ bu_config_validate_settings()
 #
 # *Returns*:
 # - Exit code: 0 when all pass, 1 when any is invalid
-# ```
 bu_config_require_valid()
 {
     __bu_config_validate_rows "$@" && return 0

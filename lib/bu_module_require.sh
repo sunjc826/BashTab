@@ -14,7 +14,6 @@
 #   - Safe under `set -e` and `set -u` (embedder activates run with both).
 # ─────────────────────────────────────────────────────────────────────────────
 
-# ```
 # *Description*:
 # Emit a padded INFO/WARN/ERR line to stderr.  Stand-in for bu_log_*, which is
 # unavailable before bu_entrypoint.sh.  The 7-char padding matches the core
@@ -23,7 +22,6 @@
 # *Params*:
 # - $1: Log level (INFO, WARN, ERR)
 # - ...: Message
-# ```
 __bu_module_require_log()
 {
     local level=$1
@@ -31,7 +29,6 @@ __bu_module_require_log()
     printf '%-7s %s\n' "$level" "$*" >&2
 }
 
-# ```
 # *Description*:
 # Test whether NAME is already registered in BU_MODULE_LIST.  The match is
 # anchored on the entry boundary (start-of-list or after ';') so a name that is
@@ -42,7 +39,6 @@ __bu_module_require_log()
 #
 # *Returns*:
 # - 0 if registered, 1 otherwise
-# ```
 __bu_module_require_registered()
 {
     local -r name=$1
@@ -55,7 +51,6 @@ __bu_module_require_registered()
 # re-sourcing this file mid-require.
 declare -p __BU_MODULE_REQUIRE_STACK &>/dev/null || __BU_MODULE_REQUIRE_STACK=()
 
-# ```
 # *Description*:
 # Record that module PARENT requires module DEP in BU_MODULE_DEPS, an exported
 # "parent>dep;..." list. bu_entrypoint.sh orders modules (config files and
@@ -65,7 +60,6 @@ declare -p __BU_MODULE_REQUIRE_STACK &>/dev/null || __BU_MODULE_REQUIRE_STACK=()
 # *Params*:
 # - $1: Requiring module (empty: nothing to record)
 # - $2: Required module
-# ```
 __bu_module_require_add_dep()
 {
     local -r parent=$1
@@ -79,7 +73,6 @@ __bu_module_require_add_dep()
     return 0
 }
 
-# ```
 # *Description*:
 # Register a library module by sourcing its *_bu_module.sh script (which
 # appends a `name:version:preinit_path;` entry to BU_MODULE_LIST).
@@ -113,7 +106,6 @@ __bu_module_require_add_dep()
 # - 0 on success (or when an optional module is skipped)
 # - 1 on usage errors, required-module failures, or ambiguous globs under
 #   --required
-# ```
 bu_module_require()
 {
     local name=

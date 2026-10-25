@@ -3,7 +3,6 @@
 # bash-ide source=./bu_core_cli.sh
 
 
-# ```
 # *Description*:
 # Register a user-defined key binding for the shell
 #
@@ -26,7 +25,6 @@
 # - When BU_CURRENT_MODULE is non-empty (i.e. registered from a module preinit
 #   callback), the owning module is stamped in BU_KEY_BINDING_MODULES so the
 #   help table can attribute the binding.
-# ```
 bu_preinit_register_user_defined_key_binding()
 {
     local -r key=$1
@@ -42,7 +40,6 @@ bu_preinit_register_user_defined_key_binding()
     fi
 }
 
-# ```
 # *Description*:
 # Register a command-line transform (a `match -> replace` rewrite rule over
 # READLINE_LINE).  See docs/line_transforms.md.
@@ -62,7 +59,6 @@ bu_preinit_register_user_defined_key_binding()
 #   swapped rule is itself valid.
 # - The owning module is stamped in BU_LINE_TRANSFORM_PROPERTIES so `bu
 #   get-transform` can attribute the entry.
-# ```
 bu_preinit_register_line_transform()
 {
     local -r name=$1
@@ -124,7 +120,6 @@ bu_preinit_register_line_transform()
     return 0
 }
 
-# ```
 # *Description*:
 # Register a user-defined completion function for a command
 #
@@ -141,7 +136,6 @@ bu_preinit_register_line_transform()
 #
 # *Notes*:
 # - This adds the mapping to the `BU_AUTOCOMPLETE_COMPLETION_FUNCS` associative array, which is later passed to `complete -F`
-# ```
 bu_preinit_register_user_defined_completion_func()
 {
     local completion_command=$1
@@ -149,7 +143,6 @@ bu_preinit_register_user_defined_completion_func()
     BU_AUTOCOMPLETE_COMPLETION_FUNCS[$completion_command]=$completion_func
 }
 
-# ```
 # *Description*:
 # Register a directory containing user-defined subcommands
 #
@@ -176,7 +169,6 @@ bu_preinit_register_user_defined_completion_func()
 #   line, # comments and blank lines ignored). Files whose path-relative-to-dir
 #   or basename match any pattern are skipped.
 # - If no conversion function is provided, file names are used as-is (after removing .sh extension)
-# ```
 bu_preinit_register_user_defined_subcommand_dir()
 {
     local dir=$1
@@ -203,7 +195,6 @@ bu_preinit_register_user_defined_subcommand_dir()
     fi
 }
 
-# ```
 # *Description*:
 # Stamp the owning module onto a registered command.  When the command's
 # namespace is empty (no filename-converter namespace), default it to the
@@ -213,7 +204,6 @@ bu_preinit_register_user_defined_subcommand_dir()
 # *Params*:
 # - `$1`: command name
 # - `$2`: owning module name
-# ```
 __bu_stamp_command_module()
 {
     local command=$1
@@ -226,7 +216,6 @@ __bu_stamp_command_module()
     fi
 }
 
-# ```
 # *Description*:
 # Resolve the precedence rank for a module name.  Lower rank wins the bare
 # command name.  Rank 0 = no module (interactive/session registration, beats
@@ -238,7 +227,6 @@ __bu_stamp_command_module()
 #
 # *Returns*:
 # - BU_RET: numeric rank
-# ```
 __bu_module_rank()
 {
     local -r m=$1
@@ -251,7 +239,6 @@ __bu_module_rank()
     return 0
 }
 
-# ```
 # *Description*:
 # Single write funnel for the command registry.  Every definition write goes
 # through here so that registering a definition always settles its dispatch
@@ -279,7 +266,6 @@ __bu_module_rank()
 #   back to the default).
 #
 # *Returns*: None
-# ```
 __bu_command_register()
 {
     local -r name=$1
@@ -426,7 +412,6 @@ __bu_command_register()
 }
 
 
-# ```
 # *Description*:
 # Register a single user-defined subcommand file
 #
@@ -446,7 +431,6 @@ __bu_command_register()
 # *Notes*:
 # - If no command name is provided, it is derived from the file name (with .sh extension removed)
 # - The command is added to the `BU_COMMANDS` associative array
-# ```
 bu_preinit_register_user_defined_subcommand_file()
 {
     local -r file=$1
@@ -489,7 +473,6 @@ bu_preinit_register_user_defined_subcommand_file()
     fi
 }
 
-# ```
 # *Description*:
 # Register a user-defined subcommand function
 #
@@ -509,7 +492,6 @@ bu_preinit_register_user_defined_subcommand_file()
 # *Notes*:
 # - If no command name is provided, the function name is used as the command name
 # - The command is added to the `BU_COMMANDS` associative array
-# ```
 bu_preinit_register_user_defined_subcommand_function()
 {
     local -r fn=$1
@@ -550,7 +532,6 @@ bu_preinit_register_user_defined_subcommand_function()
     fi
 }
 
-# ```
 # *Description*:
 # Convert a file name to a command name using prefix style with delimiter
 #
@@ -570,8 +551,6 @@ bu_preinit_register_user_defined_subcommand_function()
 # - This parses the file name (without .sh extension) and extracts verb and noun components
 # - Updates the global `BU_COMMAND_VERBS` and `BU_COMMAND_NOUNS` sets
 # - Stores verb/noun properties in `BU_COMMAND_PROPERTIES`
-# ```
-# ```
 # *Description*:
 # Split a command name (without namespace) into verb and remainder,
 # honoring multi-word verbs registered in `BU_MULTI_WORD_VERBS`.
@@ -587,7 +566,6 @@ bu_preinit_register_user_defined_subcommand_function()
 # - Multi-word verbs are matched longest-first as a `verb-` prefix
 # - A name that is exactly a multi-word verb (no noun) is not special-cased;
 #   it falls back to single-word splitting
-# ```
 __bu_preinit_split_verb()
 {
     local -r no_namespace=$1
@@ -632,7 +610,6 @@ bu_convert_file_to_command_prefix()
     BU_RET=$command
 }
 
-# ```
 # *Description*:
 # Convert a file name to a command name using PowerShell style naming convention
 #
@@ -652,7 +629,6 @@ bu_convert_file_to_command_prefix()
 # - Extracts the verb and noun components, discarding the namespace
 # - Updates the global `BU_COMMAND_VERBS` and `BU_COMMAND_NOUNS` sets
 # - Stores verb/noun properties in `BU_COMMAND_PROPERTIES`
-# ```
 bu_convert_file_to_command_powershell()
 {
     local -r file_path=$1
@@ -673,7 +649,6 @@ bu_convert_file_to_command_powershell()
     BU_RET=$command
 }
 
-# ```
 # *Description*:
 # Convert a file name to a command name using a specified naming style
 #
@@ -695,7 +670,6 @@ bu_convert_file_to_command_powershell()
 # - `none`, `prefix-keep`, and `powershell-keep` styles preserve the file name (without .sh extension)
 # - `prefix` style delegates to `bu_convert_file_to_command_prefix` with `-` as delimiter
 # - `powershell` style delegates to `bu_convert_file_to_command_powershell`
-# ```
 bu_convert_file_to_command_namespace()
 {
     local -r style=$1

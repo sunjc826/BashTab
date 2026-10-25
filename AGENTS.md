@@ -575,17 +575,17 @@ bu_mark_load_complete                     # saves cache (no-op if loaded)
 
 ## Code Documentation
 
-Use triple backtick markdown format for bash-language-server compatibility:
+Write the comment block above a function as Markdown; bash-language-server
+renders it in hovers as is (see `docs/technical_reference.md`):
 ```bash
-# ```md
+# *Description*:
 # Description of function
 #
-# Params:
-# - $1: description
+# *Params*:
+# - `$1`: description
 #
-# Returns:
-# - BU_RET: description
-# ```
+# *Returns*:
+# - `$BU_RET`: description
 function bu_example() { ... }
 ```
 

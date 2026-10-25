@@ -1,6 +1,5 @@
 # bash-ide source=./bu_core_base.sh
 
-# ```
 # *Description*:
 # Internal function to resolve tmux split mode into tmux command arguments
 #
@@ -22,7 +21,6 @@
 # - `vertical` splits the current pane vertically
 # - `horizontal` splits the current pane horizontally
 # - Returns pane ID using stable format `#{pane_id}` instead of window index
-# ```
 __bu_spawn_tmux_resolve_split_mode()
 {
     local split_mode=$1
@@ -49,7 +47,6 @@ __bu_spawn_tmux_resolve_split_mode()
     BU_RET=(tmux "${tmux_args[@]}" bash --init-file)
 }
 
-# ```
 # *Description*:
 # Stops the commands running in the given tmux panes
 #
@@ -57,7 +54,6 @@ __bu_spawn_tmux_resolve_split_mode()
 # - `...`: Tmux pane ids
 #
 # *Returns*: None
-# ```
 bu_spawn_tmux_stop_commands()
 {
     # q: To exit tmux scroll mode
@@ -84,7 +80,6 @@ bu_spawn_tmux_stop_commands()
     done
 }
 
-# ```
 # *Description*:
 # Waits for the commands associated with the ret file fds to finish, and checks their exit codes
 #
@@ -95,7 +90,6 @@ bu_spawn_tmux_stop_commands()
 # - Exit code:
 #   - 0: all commands returned 0
 #   - Non-zero: The exit code of the last command that returned a non-zero exit code
-# ```
 bu_spawn_tmux_join_commands()
 {
     bu_log_info "Joining fds[$*]"
@@ -128,7 +122,6 @@ bu_spawn_tmux_join_commands()
     return "$exit_code"
 }
 
-# ```
 # *Description*:
 # Combines `bu_spawn_tmux_stop_commands` and `bu_spawn_tmux_join_commands`. Stops the given panes, and joins the ret files.
 #
@@ -140,7 +133,6 @@ bu_spawn_tmux_join_commands()
 # - Exit code:
 #   - 0: all commands returned 0
 #   - Non-zero: The exit code of the last command that returned a non-zero exit code
-# ```
 bu_spawn_tmux_stop_join_commands()
 {
     local stop_options=()

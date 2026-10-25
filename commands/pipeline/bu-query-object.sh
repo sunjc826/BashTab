@@ -2,7 +2,6 @@
 # Pipeline: query
 # Dispatch: source
 # Synopsis: Apply SQL-style clauses (where, group-by, select, order-by) to a JSONL stream
-# ```
 # *Description*:
 # Tokenize a comma-separated list that may span multiple words with flexible
 # comma placement ("a,b", "a, b", "a ,b", "a , b"). The list words begin at
@@ -20,7 +19,6 @@
 # - $5: nameref to the output consumed count (finalized list words)
 # - $6: nameref to the output used-set (associative array)
 # - $7: nameref to the output continues flag (true/false)
-# ```
 __bu_query_object_parse_comma_list()
 {
     local -n _cl_words=$1

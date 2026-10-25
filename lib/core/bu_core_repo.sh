@@ -6,7 +6,6 @@
 #   bu get-repo               # fleet dashboard
 #   bu get-pull-request myrepo --state open
 
-# ```
 # *Description*:
 # Register a repo: delegates to bu_location_register (kind dir, tagged
 # "repo") and stores git extras in the same property table.
@@ -24,7 +23,6 @@
 # *Returns*:
 # - BU_RET: storage key
 # - 0 on success, 1 on error
-# ```
 bu_repo_register()
 {
     local name=$1
@@ -77,10 +75,8 @@ bu_repo_register()
     return 0
 }
 
-# ```
 # *Description*:
 # Names of registered repos (newline on stdout).
-# ```
 bu_repo_names()
 {
     bu_location_names --tag repo --no-stubs
@@ -166,7 +162,6 @@ __bu_repo_worktree_resolve()
     return 1
 }
 
-# ```
 # *Description*:
 # Resolve a repo location and verify it is a git worktree.
 #
@@ -176,7 +171,6 @@ __bu_repo_worktree_resolve()
 # *Returns*:
 # - BU_RET: repo path
 # - 0 on success, 1 if missing or not a worktree
-# ```
 bu_repo_resolve()
 {
     local name=$1
@@ -190,7 +184,6 @@ bu_repo_resolve()
     return 0
 }
 
-# ```
 # *Description*:
 # Parse a git remote URL into owner/repo and host.
 #
@@ -201,7 +194,6 @@ bu_repo_resolve()
 # - BU_RET: owner/repo
 # - BU_RET_MAP[host]: host
 # - 0 on success, 1 if unparseable
-# ```
 bu_repo_parse_remote_url()
 {
     local url=$1
@@ -268,7 +260,6 @@ bu_repo_parse_remote_url()
     return 1
 }
 
-# ```
 # *Description*:
 # Resolve a repo's GitHub slug (OWNER/REPO) and host.
 #
@@ -279,7 +270,6 @@ bu_repo_parse_remote_url()
 # - BU_RET: owner/repo
 # - BU_RET_MAP[host]: effective host (registered --gh-host beats derived)
 # - 0 on success, 1 if no slug/remote is available
-# ```
 bu_repo_resolve_slug()
 {
     local name=$1

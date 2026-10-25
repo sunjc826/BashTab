@@ -2,7 +2,6 @@
 # bash-ide source=./bu_core_out.sh
 # bash-ide source=./bu_core_preinit.sh
 
-# ```
 # Remote command execution over ssh, with a local short-circuit for this
 # machine.  The whole design keeps two structural properties so the code is
 # testable with zero network:
@@ -18,7 +17,6 @@
 # Specs are `[user@]host`; they are normalized to `user@host` with each part
 # restricted to [A-Za-z0-9._-] so that ControlMaster socket filenames are
 # BIJECTIVE with (normalized) specs.
-# ```
 
 # jq program that tags each JSONL line with the originating host.  Kept in a
 # named constant so tests exercise exactly what ships.
@@ -27,14 +25,12 @@ then
     declare -g -r BU_REMOTE_JQ_HOST_FILTER='. as $l | try ($l | fromjson | .host = $host | tojson) catch $l'
 fi
 
-# ```
 # *Description*:
 # Resolve the local username ($USER, falling back to `id -un` in stripped
 # environments where USER is unset).
 #
 # *Returns*:
 # - `BU_RET`: local username
-# ```
 __bu_remote_local_user()
 {
     BU_RET=${USER:-}
@@ -44,7 +40,6 @@ __bu_remote_local_user()
     fi
 }
 
-# ```
 # *Description*:
 # Normalize a remote spec `[user@]host` into `user@host`.  A bare host gets
 # the local $USER.  Each part is validated against [A-Za-z0-9._-] so socket
@@ -58,7 +53,6 @@ __bu_remote_local_user()
 # - `BU_RET_MAP[user]`: user part
 # - `BU_RET_MAP[host]`: host part
 # - Exit code 0 on success, 1 on an invalid spec
-# ```
 bu_remote_spec_normalize()
 {
     local -r spec=$1
@@ -107,20 +101,17 @@ bu_remote_spec_normalize()
     return 0
 }
 
-# ```
 # *Description*:
 # The directory holding ControlMaster sockets (a helper so every consumer
 # agrees on the same `$BU_REMOTE_SSH_DIR`/`$BU_OUT_DIR/ssh` resolution).
 #
 # *Returns*:
 # - `BU_RET`: the ssh socket directory
-# ```
 __bu_remote_ssh_dir()
 {
     BU_RET=${BU_REMOTE_SSH_DIR:-$BU_OUT_DIR/ssh}
 }
 
-# ```
 # *Description*:
 # Compute the ControlMaster socket path for a spec: `<dir>/cm-<normalized>`.
 #
@@ -131,7 +122,6 @@ __bu_remote_ssh_dir()
 # - `BU_RET`: socket path
 # - Exit code 0 on success, 1 when the path exceeds ~100 bytes (unix
 #   sun_path is 104/108 bytes and ssh fails obscurely past it)
-# ```
 bu_remote_socket()
 {
     local -r spec=$1
@@ -153,7 +143,6 @@ bu_remote_socket()
     return 0
 }
 
-# ```
 # *Description*:
 # True when a live ControlMaster exists for the spec: the socket file exists
 # AND `ssh -o ControlPath=<sock> -O check <spec>` succeeds.  The socket
@@ -164,7 +153,6 @@ bu_remote_socket()
 # - `$1`: spec
 #
 # *Returns*: Exit code 0 (alive) or 1 (not alive)
-# ```
 bu_remote_session_alive()
 {
     local -r spec=$1
@@ -176,7 +164,6 @@ bu_remote_session_alive()
     ssh -o "ControlPath=$sock" -O check "$spec" &>/dev/null
 }
 
-# ```
 # *Description*:
 # Resolve the master pid from `ssh -O check` stderr (e.g.
 # `Master running (pid=1234)`).
@@ -187,7 +174,6 @@ bu_remote_session_alive()
 # *Returns*:
 # - `BU_RET`: master pid
 # - Exit code 0 on success, 1 when the check fails or yields no pid
-# ```
 __bu_remote_master_pid()
 {
     local -r spec=$1
@@ -204,7 +190,6 @@ __bu_remote_master_pid()
     return 1
 }
 
-# ```
 # *Description*:
 # Build the ssh options for a non-interactive command invocation: always
 # `-o BatchMode=yes` (fail fast, never prompt), plus `-o ControlPath=<sock>`
@@ -215,7 +200,6 @@ __bu_remote_master_pid()
 # - `$2`: nameref to an array to populate
 #
 # *Returns*: Exit code 0 on success
-# ```
 bu_remote_ssh_opts()
 {
     local -r spec=$1
@@ -231,14 +215,12 @@ bu_remote_ssh_opts()
     return 0
 }
 
-# ```
 # *Description*:
 # Default remote bootstrap (used when BU_REMOTE_BOOTSTRAP_CALLBACK is unset):
 # defines `__bu_remote_dispatch()` as a thin wrapper over the CLI command
 # name, then type-checks that the CLI is actually available remotely (rc
 # files that activate the project provide it), erroring with guidance when
 # it is not.
-# ```
 __bu_remote_default_bootstrap()
 {
     local -r cli=$BU_CLI_COMMAND_NAME
@@ -249,7 +231,6 @@ __bu_remote_default_bootstrap()
     printf 'fi\n'
 }
 
-# ```
 # *Description*:
 # Print the full remote payload for a spec.
 #
@@ -270,7 +251,6 @@ __bu_remote_default_bootstrap()
 # - `...`: command argv (command mode) or a single script block (script mode)
 #
 # *Returns*: stdout: the remote payload
-# ```
 bu_remote_build_script()
 {
     local -r remote_dir=$1
@@ -299,7 +279,6 @@ bu_remote_build_script()
     fi
 }
 
-# ```
 # *Description*:
 # True when a host is this machine (`localhost` or $HOSTNAME) so the runner
 # can short-circuit to `env -i ... bash -s` instead of ssh.
@@ -308,7 +287,6 @@ bu_remote_build_script()
 # - `$1`: host
 #
 # *Returns*: Exit code 0 (local) or 1 (not local)
-# ```
 __bu_remote_is_local_host()
 {
     local -r host=$1
@@ -319,7 +297,6 @@ __bu_remote_is_local_host()
     return 1
 }
 
-# ```
 # *Description*:
 # Run a marshaled payload on one or more hosts, sequentially.
 #
@@ -341,7 +318,6 @@ __bu_remote_is_local_host()
 # - `...`: specs
 #
 # *Returns*: Exit code: last non-zero host rc (0 if all succeed)
-# ```
 bu_remote_invoke()
 {
     local -r script_file=$1
@@ -404,7 +380,6 @@ bu_remote_invoke()
     return "$overall_rc"
 }
 
-# ```
 # *Description*:
 # Remove one remote session: send `-O exit` when a master answers, else
 # just clear the stale socket.  Emits one JSONL record with action
@@ -415,7 +390,6 @@ bu_remote_invoke()
 # - `$1`: spec
 #
 # *Returns*: Exit code 0 on success (including absent), 1 on an invalid spec
-# ```
 __bu_remote_remove_spec()
 {
     local -r spec=$1
