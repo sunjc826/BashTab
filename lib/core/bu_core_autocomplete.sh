@@ -239,12 +239,37 @@ __bu_autocomplete_glob_word()
     BU_RET=("$pattern" "$is_exposed")
 }
 
+# Sort the array named $1 in place, in byte order (insertion sort, no
+# forks). LC_ALL=C keeps the order the same on every host: `[[ < ]]`
+# otherwise collates by locale, which differs between libcs.
+#
+# @arg $1 string Name of the array variable to sort
+__bu_autocomplete_sort_bytewise()
+{
+    local -n _sort_arr=$1
+    local LC_ALL=C
+    local i j item
+    for ((i = 1; i < ${#_sort_arr[@]}; i++))
+    do
+        item=${_sort_arr[i]}
+        j=$((i - 1))
+        while ((j >= 0)) && [[ "${_sort_arr[j]}" > "$item" ]]
+        do
+            _sort_arr[j + 1]=${_sort_arr[j]}
+            j=$((j - 1))
+        done
+        _sort_arr[j + 1]=$item
+    done
+    return 0
+}
+
 # Replace the candidates of a `--glob` parameter, whose word is a pattern,
 # by a hint listing the candidates the pattern matches. The hint is shown
 # without touching the word (see the hint handling in
 # `__bu_autocomplete_completion_func_master_impl`), so the pattern stays on
 # the command line. If bash would expand the pattern against files here,
-# the hint says so and shows the quoted form.
+# the hint says so and shows the quoted form. Matches are listed in byte
+# order, whatever order `COMPREPLY` had.
 #
 # @arg $1 string Pattern (quotes removed)
 # @arg $2 string Raw word as typed
@@ -276,6 +301,9 @@ __bu_autocomplete_glob_hint()
         seen[$candidate]=1
         bu_glob_match "$candidate" "$pattern" && matches+=("$candidate")
     done
+    # Candidates arrive in whatever order the generator collected them
+    # (directory scan, associative-array iteration): sort for a stable hint.
+    __bu_autocomplete_sort_bytewise matches
 
     local summary
     case ${#matches[@]} in

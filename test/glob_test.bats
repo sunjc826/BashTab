@@ -111,7 +111,14 @@ function test_glob_hint_no_match_and_overflow { #@test
     for i in {1..12}; do COMPREPLY+=("n$i"); done
     bu_autocomplete_hint=
     __bu_autocomplete_glob_hint 'n*' "'n*'" false false
-    assert_equal "$bu_autocomplete_hint" "'n*' matches 12: n1 n2 n3 n4 n5 n6 n7 n8 n9 n10 … (+2 more)"
+    assert_equal "$bu_autocomplete_hint" "'n*' matches 12: n1 n10 n11 n12 n2 n3 n4 n5 n6 n7 … (+2 more)"
+}
+
+function test_glob_hint_sorts_matches { #@test
+    local bu_autocomplete_hint=
+    local -a COMPREPLY=(zeta alpha mid)
+    __bu_autocomplete_glob_hint '*' "'*'" false false
+    assert_equal "$bu_autocomplete_hint" "'*' matches 3: alpha mid zeta"
 }
 
 function test_glob_hint_warns_when_bash_would_expand { #@test
@@ -131,7 +138,7 @@ function test_glob_completion_end_to_end { #@test
     local COMPREPLY=() BU_COMPREPLY_METADATA=()
     bu_autocomplete_get_autocompletions bu get-command --verb "'conv*" 2>/dev/null
     assert_equal "${#COMPREPLY[@]}" 2
-    assert_equal "${COMPREPLY[0]}" "Hint: Command verb or pattern · 'conv*' matches 2: convert-to convert-from"
+    assert_equal "${COMPREPLY[0]}" "Hint: Command verb or pattern · 'conv*' matches 2: convert-from convert-to"
 
     # A plain prefix still completes normally
     COMPREPLY=()
