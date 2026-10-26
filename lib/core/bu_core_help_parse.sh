@@ -294,13 +294,10 @@ __bu_help_parse_usage()
 
 # ═══════════════════════════════════════════════════════════════════════
 # Strategy: fig — extract options from a Fig completion spec JSON file
-# Reads the bundled spec from fig_specs/build/<cmd>.json, walks the
-# subcommand tree using the provided tokens, and extracts option
-# descriptions.
+# Reads the spec __bu_fig_spec_path finds (BU_FIG_SPEC_DIRS, then the
+# bundled fig_specs/build/<cmd>.json), walks the subcommand tree using the
+# provided tokens, and extracts option descriptions.
 # ═══════════════════════════════════════════════════════════════════════
-
-# Root for Fig spec lookups, captured at source time
-__BU_HELP_PARSE_FIG_ROOT=$(realpath -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." 2>/dev/null)
 
 # bash-ide parse-func-sig
 __bu_help_parse_fig()
@@ -309,9 +306,8 @@ __bu_help_parse_fig()
     shift
     local -a subpath=("$@")
 
-    local root="${BU_BASH_TAB_HOME:-${__BU_HELP_PARSE_FIG_ROOT}}"
-    local spec_path="${BU_FIG_SPEC_DIR:-${root}/fig_specs/build}/${cmd}.json"
-    [[ -f "$spec_path" ]] || return 1
+    __bu_fig_spec_path "$cmd" || return 1
+    local spec_path=$BU_RET
 
     # Walk the subcommand tree to find the right node, then extract
     # option definitions as name→description pairs.
@@ -394,8 +390,7 @@ __bu_help_parse_resolve_strategy()
     fi
 
     # Check for Fig spec
-    local root="${BU_BASH_TAB_HOME:-${__BU_HELP_PARSE_FIG_ROOT}}"
-    if [[ -f "${BU_FIG_SPEC_DIR:-${root}/fig_specs/build}/${cmd}.json" ]]
+    if __bu_fig_spec_path "$cmd"
     then
         printf 'fig'
         return 0
@@ -425,9 +420,8 @@ __bu_help_parse_hash()
     local help_text
     case "$strategy" in
     fig)
-        local root="${BU_BASH_TAB_HOME:-${__BU_HELP_PARSE_FIG_ROOT}}"
-        local spec_path="${BU_FIG_SPEC_DIR:-${root}/fig_specs/build}/${cmd}.json"
-        [[ -f "$spec_path" ]] || return 1
+        __bu_fig_spec_path "$cmd" || return 1
+        local spec_path=$BU_RET
         # Hash the spec file path + mtime so updates invalidate cache
         local _mtime
         _mtime=$(stat -c %Y "$spec_path" 2>/dev/null || stat -f %m "$spec_path" 2>/dev/null)

@@ -532,6 +532,25 @@ The `__bu_fzf_compute_dimensions` function handles dropdown positioning (tested 
 - Preview panel: 40-char side window via `--preview` when metadata overflows
 - **Alias merging**: case-pattern alternatives that are equal modulo leading `-`/`+` and case (`--select`, `select`, `SELECT`) collapse into a single row — the first form, unless the user typed another form's prefix (keeps the row alive through compgen's prefix filter). Using any form excludes the whole group. Alternatives that differ after normalization (`-v|--verb`, `--json|--yaml`) stay separate rows; the legacy short/long used-option exclusion still applies.
 
+### Fig completion specs
+
+Commands with no bash completion of their own (and, on macOS, ones whose
+only completion parses GNU `--help`) complete from a Fig spec, and the `fig`
+help strategy reads option descriptions from it. `__bu_fig_spec_path CMD`
+finds `CMD.json`, the first that exists in:
+
+| Variable | Type | Description |
+|---|---|---|
+| `BU_FIG_SPEC_DIRS` | `String` (colon-separated directories) | Searched in order before the bundle, for specs of your own (in-house binaries) without touching the bundled set. Empty or unset adds nothing; a missing directory, or one without `CMD.json`, falls through to the next. |
+| `BU_FIG_SPEC_DIR` | `AbsPath` (directory) | The bundle: replaces `fig_specs/build` under the BashTab root (`BU_BASH_TAB_HOME`, by default the checkout). |
+
+```bash
+export BU_FIG_SPEC_DIRS=$HOME/.config/myapp/fig:/opt/myapp/share/fig
+```
+
+A spec in `BU_FIG_SPEC_DIRS` shadows a bundled one of the same name.
+`bu get-fig-status` still reports on the bundle only.
+
 ### Structured output (JSONL pipeline)
 
 PowerShell-inspired structured output: **JSONL (one JSON object per line) is the object stream**, jq is the backend. Commands emit records, transforms shape them, and a sink formatter decides presentation at the end of the pipeline (Out-Default: table on a terminal, JSONL when piped).

@@ -2214,18 +2214,48 @@ bu_complete_from_fig()
 #   `COMP_WORDS` / `COMP_CWORD` to reconstruct the full token list.
 # - Sets `COMPREPLY` directly for bash'\''s completion machinery.
 #
-# *Spec lookup*: `$BU_FIG_SPEC_DIR/<command>.json`
+# *Spec lookup*: `__bu_fig_spec_path`
 
 # BashTab root directory, captured at definition time for Fig spec lookups
 __BU_FIG_ROOT=$(realpath -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." 2>/dev/null)
+
+# *Description*:
+# Find the Fig spec of a command: the first `<dir>/<cmd>.json` that exists,
+# searching the colon-separated `BU_FIG_SPEC_DIRS` in order, then the bundle
+# (`BU_FIG_SPEC_DIR`, by default `fig_specs/build` under the BashTab root).
+# Empty entries and missing directories are skipped.
+#
+# *Params*:
+# - `$1`: Command name
+#
+# *Returns*:
+# - `$BU_RET`: Path of the spec
+# - Exit code: 1 when no directory has one
+__bu_fig_spec_path()
+{
+    local -r cmd=$1
+    local -r root="${BU_BASH_TAB_HOME:-${__BU_FIG_ROOT}}"
+    local -a dirs=()
+    local dir
+    IFS=: read -r -a dirs <<< "${BU_FIG_SPEC_DIRS:-}"
+    dirs+=("${BU_FIG_SPEC_DIR:-${root}/fig_specs/build}")
+    for dir in "${dirs[@]}"
+    do
+        if [[ -n "$dir" && -f "$dir/$cmd.json" ]]
+        then
+            BU_RET=$dir/$cmd.json
+            return 0
+        fi
+    done
+    return 1
+}
 
 # bash-ide parse-func-sig
 __bu_autocomplete_fig_completion_func()
 {
     local cmd=$1 cur_word=$2
-    local root="${BU_BASH_TAB_HOME:-${__BU_FIG_ROOT}}"
-    local spec_path="${BU_FIG_SPEC_DIR:-${root}/fig_specs/build}/${cmd}.json"
-    [[ -f "$spec_path" ]] || return 1
+    __bu_fig_spec_path "$cmd" || return 1
+    local spec_path=$BU_RET
 
     local -a results
     bu_complete_from_fig --spec "$spec_path" -- "$cur_word" || return 1
