@@ -492,6 +492,39 @@ whole completion. The completion function cannot write to the terminal
 - bash's `COMP_*` variables are hidden, so the engine does not take itself for
   a completion function.
 
+#### Candidates without a terminal
+
+Editors and language servers hold a command line as text and have no
+readline and no fzf. `bu_get_completion_candidates WORD...` runs the same
+engine on those words and prints what Tab would offer:
+
+```bash
+bu_get_completion_candidates bu get-command ""   # get-command's options
+bu_get_completion_candidates b                   # command names
+```
+
+The arguments are the words of the command line with the cursor at the end
+of the last one; an empty last word is the cursor after a space, and no
+arguments is one empty word. The output is line-oriented:
+
+```text
+==BEGIN AUTOCOMPLETE==
+--verb	verb Glob pattern to filter by verb
+...
+==END AUTOCOMPLETE==
+```
+
+- one candidate per line, `candidate<TAB>metadata` when the engine gave it
+  metadata; the two sentinel lines are printed even when there is none;
+- ANSI/SGR sequences are stripped from candidates and metadata;
+- exit status `0` with candidates, `2` when the engine ran and found none
+  (a `--glob` hint alone counts as none), `1` when it failed;
+- nothing is written to `/dev/tty`: the engine's log lines go to stderr, and
+  `compopt` only records options, as in the readline backend;
+- errexit, nounset and pipefail are turned off while the engine runs and
+  restored on return (`local -`), so `set -eu` callers work; under errexit,
+  catch the `2` (`bu_get_completion_candidates ... || rc=$?`).
+
 ### fzf autocomplete display
 
 The `__bu_fzf_compute_dimensions` function handles dropdown positioning (tested across 40–200 column terminals). Metadata formatting is shared between the legacy and tree-sitter autocomplete paths, with:

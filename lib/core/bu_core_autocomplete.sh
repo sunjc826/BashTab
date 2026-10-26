@@ -4706,6 +4706,80 @@ __bu_autocomplete_readline_collect()
 }
 
 # *Description*:
+# Print the candidates Tab would offer for a command line, for callers with no
+# readline and no terminal (editors, language servers). Runs the same engine
+# as the Tab backends, without colour, and never writes to `/dev/tty`: the
+# engine's log lines go to stderr.
+#
+# *Params*:
+# - `$@`: Words of the command line, the cursor at the end of the last one. An
+#   empty last word is the cursor after a space; no words is one empty word.
+#
+# *Returns*:
+# - stdout: `==BEGIN AUTOCOMPLETE==`, one candidate per line
+#   (`candidate<TAB>metadata` when there is metadata), `==END AUTOCOMPLETE==`;
+#   the two sentinel lines are printed even when there is no candidate
+# - Exit code: 0 with candidates, 2 when there are none, 1 when the engine
+#   failed
+#
+# @example
+# ```bash
+# bu_get_completion_candidates bu get-command ""  # get-command's options
+# bu_get_completion_candidates b                  # command names
+# ```
+bu_get_completion_candidates()
+{
+    # The engine is written for errexit, nounset and pipefail off, as the CLI
+    # wrapper runs commands; `local -` gives the caller's options back on
+    # return
+    local -
+    set +e +u +o pipefail
+    local -a command_line=("$@")
+    if ((!${#command_line[@]}))
+    then
+        command_line=("")
+    fi
+    local -a COMPREPLY=()
+    local BU_COMPREPLY_HINT=
+    local -a BU_COMPREPLY_METADATA=()
+    local completion_func_has_ansi_colors=false
+    local is_nospace=false
+    local is_dynamic_nospace=false
+    local is_filenames=false
+    local rc=0
+    local i
+    # stdout is a pipe, not the terminal
+    local BU_TPUT_COLORS=0
+    # As in __bu_autocomplete_readline_stash_func: when called from a
+    # completion function, the engine must not take itself for it, nor change
+    # that completion's options
+    local COMP_LINE COMP_POINT COMP_WORDS COMP_CWORD COMP_TYPE COMP_KEY
+    unset -v COMP_LINE COMP_POINT COMP_WORDS COMP_CWORD COMP_TYPE COMP_KEY
+    local __BU_COMPOPT_RECORD_ONLY=true
+    # The engine logs to /dev/tty while it completes
+    local __BU_LOG_AUTOCOMPLETE_OUT=/dev/stderr
+
+    __bu_autocomplete_tab_collect || rc=$?
+    if ((rc == 0))
+    then
+        __bu_autocomplete_strip_ansi_arrays COMPREPLY BU_COMPREPLY_METADATA
+    fi
+
+    printf '%s\n' '==BEGIN AUTOCOMPLETE=='
+    for i in "${!COMPREPLY[@]}"
+    do
+        if [[ -n "${BU_COMPREPLY_METADATA[i]:-}" ]]
+        then
+            printf '%s\t%s\n' "${COMPREPLY[i]}" "${BU_COMPREPLY_METADATA[i]}"
+        else
+            printf '%s\n' "${COMPREPLY[i]}"
+        fi
+    done
+    printf '%s\n' '==END AUTOCOMPLETE=='
+    return "$rc"
+}
+
+# *Description*:
 # Compspec function that `__bu_bind_readline_tab_prepare` puts on the command
 # being completed for one readline `complete` (or `possible-completions`). It
 # puts the original compspec back, runs the engine on the line the handler
