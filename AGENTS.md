@@ -140,6 +140,7 @@ command that reports or changes the caller's options uses
 `bu_cli_get_caller_shell_option` / `bu_cli_set_caller_shell_option` (see
 `bu get-shell-option`, `bu set-shell-option`), never `set -o` directly.
 Minimum supported Bash: 4.4 (checked at the top of `bu_entrypoint.sh`).
+`local -` does not restore pipefail before Bash 5.0; save and restore it by hand.
 
 Only files whose extension is in `BU_COMMAND_FILE_EXTENSIONS` (default `(sh py)`;
 set it before the entrypoint runs) are command candidates in a registered

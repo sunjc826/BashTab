@@ -4730,10 +4730,10 @@ __bu_autocomplete_readline_collect()
 bu_get_completion_candidates()
 {
     # The engine is written for errexit, nounset and pipefail off, as the CLI
-    # wrapper runs commands; `local -` gives the caller's options back on
-    # return
-    local -
-    set +e +u +o pipefail
+    # wrapper runs commands. Save and restore them by hand: `local -` does
+    # not restore pipefail before Bash 5.0.
+    local -A __bu_cli_caller_opts=()
+    __bu_cli_shell_opts_enter
     local -a command_line=("$@")
     if ((!${#command_line[@]}))
     then
@@ -4776,7 +4776,7 @@ bu_get_completion_candidates()
         fi
     done
     printf '%s\n' '==END AUTOCOMPLETE=='
-    return "$rc"
+    __bu_cli_shell_opts_leave "$rc"
 }
 
 # *Description*:
