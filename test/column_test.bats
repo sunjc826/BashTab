@@ -447,7 +447,8 @@ function test_columns_from_registry_and_help { #@test
     bu_register_output_columns_from 'bu get-virtual-thing' __column_test_virtual_columns
     run __column_test_static 'get-virtual-thing serial'
     assert_output 'serial|int||Chosen key|declared'
-    out=$(bu get-gadget --help | sed $'s/\033\\[[0-9;]*m//g;s/\017//g;s/\033(B//g')
+    # The fixture parses no options, so render its help section directly.
+    out=$(__bu_column_help 'bu get-gadget' '' | sed $'s/\033\\[[0-9;]*m//g;s/\017//g;s/\033(B//g')
     [[ "$out" == *'OUTPUT COLUMNS'* ]]
     [[ "$out" == *"depends on the arguments: bu get-column 'get-gadget ARGS...'"* ]]
 }
