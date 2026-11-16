@@ -123,6 +123,7 @@ bu_register_output_fields "bu get-pokemon" name id type hp attack
 | ConvertFrom-Csv | `bu convert-from-tsv`, `bu convert-from-lines` |
 | Where-Object | `bu where '<jq expr>'` (or raw `jq`) |
 | Select-Object | `bu select a,b=version` |
+| Select-Object -ExpandProperty | `bu select path --expand` — bare values print as plain text unless `--format` or `BU_OUTPUT_FORMAT` is given, so `cd "$(bu select path --expand)"` works. |
 | Sort-Object | `bu sort key [--desc]` |
 | Group-Object + Measure-Object | `group-by` + `agg` (flat records, not nested) |
 | Measure-Object | `bu count` (= `query-object agg count`; `--format tsv` prints the bare number), `agg sum:f,max:f` without `group-by`, `bu measure-object [field]` |

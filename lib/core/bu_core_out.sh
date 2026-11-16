@@ -4686,6 +4686,9 @@ bu_out()
     local colors=
     local style=
     local is_stream=false
+    local is_auto_resolved=false
+    local first_line=
+    local -a formatter_args=()
     local shift_by=1
     while (($#))
     do
@@ -4731,9 +4734,31 @@ bu_out()
         elif [[ -t 1 ]]
         then
             format=table
+            is_auto_resolved=true
         else
             format=jsonl
+            is_auto_resolved=true
         fi
+    fi
+
+    # Out-Default prints bare values (e.g. select path --expand) as plain text
+    # on a terminal or a pipe so cd "$(... select path --expand)" works;
+    # explicit formats keep JSON.
+    if "$is_auto_resolved"
+    then
+        IFS= read -r first_line || [[ -n "$first_line" ]] || return 0
+        if [[ ! "$first_line" =~ ^[[:space:]]*\{ ]]
+        then
+            { printf '%s\n' "$first_line"; cat; } | jq -r 'if type == "string" then . else tojson end'
+            return $?
+        fi
+        formatter_args=(--format "$format")
+        [[ -n "$columns" ]] && formatter_args+=(--columns "$columns")
+        [[ -n "$colors" ]] && formatter_args+=(--colors "$colors")
+        [[ -n "$style" ]] && formatter_args+=(--style "$style")
+        "$is_stream" && formatter_args+=(--stream)
+        { printf '%s\n' "$first_line"; cat; } | bu_out "${formatter_args[@]}"
+        return $?
     fi
 
     # Auto-colour table columns on a terminal when no explicit --colors given
@@ -4742,7 +4767,6 @@ bu_out()
         colors=auto
     fi
 
-    local -a formatter_args=()
     case "$format" in
     table)
         [[ -n "$columns" ]] && formatter_args+=(--columns "$columns")

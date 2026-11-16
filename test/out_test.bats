@@ -251,6 +251,46 @@ function test_bu_out_explicit_format_beats_env { #@test
     assert_equal "$out" '1'
 }
 
+function test_bu_out_bare_values_print_raw { #@test
+    local out
+    out=$(printf '%s\n' '"/a b"' '3' | bu_out)
+    assert_equal "$out" $'/a b\n3'
+}
+
+function test_bu_out_bare_values_explicit_jsonl_keeps_json { #@test
+    local out
+    out=$(printf '%s\n' '"/a b"' '3' | bu_out --format jsonl)
+    assert_equal "$out" $'"/a b"\n3'
+}
+
+function test_bu_select_expand_scalar_for_command_substitution { #@test
+    local out
+    local records="$BATS_TEST_TMPDIR/expand.jsonl"
+    printf '%s\n' '{"name":"a","path":"/x y"}' '{"name":"b","path":"/z"}' > "$records"
+    out=$(cat "$records" | BU_QUERY_EXECUTOR=pipeline bu query-object where name -eq a select path expand)
+    assert_equal "$out" '/x y'
+    out=$(BU_QUERY_EXECUTOR=combined bu query-object --from "$records" where name -eq a select path expand)
+    assert_equal "$out" '/x y'
+}
+
+function test_bu_out_bare_values_auto_types_and_empty_input { #@test
+    local out
+    out=$(printf '%s\n' '  "/a b"' 'true' 'false' 'null' '[1, 2]' '{"a": 1}' | bu_out --format auto)
+    assert_equal "$out" $'/a b\ntrue\nfalse\nnull\n[1,2]\n{"a":1}'
+    out=$(bu_out </dev/null)
+    assert_equal "$out" ''
+    out=$(printf '%s' '"/a b"' | bu_out)
+    assert_equal "$out" '/a b'
+}
+
+function test_bu_out_bare_values_env_keeps_json { #@test
+    local out
+    out=$(printf '%s\n' '"/a b"' '3' | BU_OUTPUT_FORMAT=jsonl bu_out --format auto)
+    assert_equal "$out" $'"/a b"\n3'
+    out=$(printf '%s\n' '"/a b"' '3' | bu_out --format json | jq -c .)
+    assert_equal "$out" '["/a b",3]'
+}
+
 function test_bu_format_csv_columns_labels { #@test
     local out
     out=$(printf '%s\n' '{"name":"a,b","n":3,"tags":["x"]}' '5' '{"name":"say \"hi\"","n":null}' \
