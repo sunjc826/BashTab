@@ -698,6 +698,57 @@ in command help. Field Tab completions, including comma lists in `select`,
 Renamed fields retain their original descriptions. The completion DSL's
 `--field-enum ... field-enum--` adds these hints to enumerated field names.
 
+#### `# Columns-From:` — columns that depend on the arguments
+
+Some producers emit different fields for different flags (`get-volume
+--inodes`), and recordifiers take their field names from the command line
+(`convert-from-tsv --columns name,version`). A fixed list of `# Column:` lines
+cannot describe those. Name a function instead:
+
+```bash
+# Pipeline: producer
+# Column: name string Filesystem
+# Column: size int bytes Size on disk
+# Column: inodes int Inodes used
+# Columns-From: __myapp_volume_columns
+```
+
+```bash
+# In the module's preinit (the function must be defined before it is needed;
+# a command script is not sourced to describe it).
+__myapp_volume_columns() {
+    BU_RET=(name size)
+    case " $* " in *' --inodes '*) BU_RET=(name inodes) ;; esac
+    return 0
+}
+```
+
+The function receives the stage's arguments, the words after the command
+name, exactly as they appear in the pipeline text: nothing is expanded and
+the producer is not run. It sets `BU_RET` to one entry per output column, in
+order. An entry is a full declaration in the `# Column:` grammar
+(`note string Free-form note`) or a bare name, which takes its type, unit and
+description from the command's own `# Column:` line of that name. So the
+usual pattern is to declare every possible column statically (they all show
+in `--help`) and let the function pick. If the function is not defined,
+returns non-zero, or declares nothing, the static declarations are used.
+
+Function and alias commands register the same thing with
+`bu_register_output_columns_from "bu get-volume" __myapp_volume_columns`.
+
+`bu get-column`, lineage through `select`/`agg`, field completion hints and
+the pipe form all go through it:
+
+```bash
+bu get-column 'get-volume --inodes | select name,n=inodes'
+bu get-column 'convert-from-tsv --columns name,version'
+printf 'a\t1\n' | bu convert-from-tsv --columns name,n | bu get-column
+```
+
+The built-in recordifiers use it: `convert-from-tsv` (`--columns`),
+`convert-from-lines` (`--column`) and `new-record` (`key=value` is `string`,
+`key:=value` is `any`).
+
 #### Describing a live pipe
 
 `bu get-column 'a | b'` is static: it explains a pipeline without running it.
@@ -746,12 +797,19 @@ byte, and a middle stage reads its own input before writing.
   a quote or a backslash is stored as `_`. The analyzer reads a stage word by
   word, and lineage depends on clause structure (what `select` keeps, what
   `agg` computes), never on filter values, so those values are not written to
-  disk verbatim.
+  disk verbatim. The key of a `key=value` argument is kept (`name=_`), since
+  for `bu new-record` it names a field.
 - **Broken chain.** A stage that is not a `bu` command (`grep`, `jq`, `cat`)
   writes no sidecar. If the chain cannot be followed back to a producer, or
   stdin is a file, or the analyzer cannot trace the pipeline, the reason is
   logged at info level and every column is inferred from the records.
-  The pipe form never fails.
+  The pipe form never fails. A chain whose earliest known stage defines its
+  own schema is complete wherever its input came from
+  (`cat hosts.tsv | bu convert-from-tsv --columns name,ip | bu get-column`).
+- **`bu get-member`.** The same lookup feeds `bu get-member`: when the
+  pipeline is known, each observed field also carries the declared `type`,
+  `unit` and `description` of its column (null for a field nobody declared).
+  Without a chain it emits its four basic fields, as before.
 - **Nesting.** Only the outermost dispatch writes; a command that calls `bu`
   internally leaves no sidecars for its private pipes.
 - **Reaping.** A pipeline with no `bu get-column` at the end leaves its

@@ -877,6 +877,9 @@ function test_bu_get_git_log { #@test
 function test_bu_pipeline_get_member_after_select { #@test
     local out
     out=$(BU_MODULE_LIST='alpha:1.0.0:/a' bu get-module | bu select name | bu get-member)
+    # The stages are bu commands, so the declared column is joined in.
+    assert_equal "$out" '{"name":"name","types":"string","count":1,"null_count":0,"type":"string","unit":null,"description":"Module name"}'
+    out=$(BU_MODULE_LIST='alpha:1.0.0:/a' BU_OUT_PIPE_METADATA=false bu get-module | bu select name | bu get-member)
     assert_equal "$out" '{"name":"name","types":"string","count":1,"null_count":0}'
 }
 

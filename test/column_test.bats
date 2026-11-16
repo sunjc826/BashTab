@@ -374,3 +374,122 @@ function test_column_pipemeta_read_and_pgid { #@test
     run __bu_pipemeta_read "$file" 42
     assert_failure
 }
+
+# MARK: Columns-From (a schema that depends on the stage's arguments)
+
+__column_test_gadget_columns() {
+    BU_RET=(name size)
+    case " $* " in
+    *' --inodes '*) BU_RET=(name inodes) ;;
+    esac
+    case " $* " in
+    *' --note '*) BU_RET+=('note string Free-form note') ;;
+    esac
+    return 0
+}
+
+__column_test_register_gadget() {
+    local gadget="$BATS_TEST_TMPDIR/bu-get-gadget.sh"
+    cat > "$gadget" <<'FIXTURE'
+#!/usr/bin/env bash
+# Dispatch: source
+# Pipeline: producer
+# Synopsis: List gadgets
+# Column: name string Gadget name
+# Column: size int bytes Size on disk
+# Column: inodes int Inodes used
+# Columns-From: __column_test_gadget_columns
+case " $* " in
+*' --inodes '*) printf '%s\n' '{"name":"g","inodes":7}' ;;
+*) printf '%s\n' '{"name":"g","size":4096}' ;;
+esac
+FIXTURE
+    bu_preinit_register_user_defined_subcommand_file "$gadget" get-gadget source
+    BU_COMMAND_PROPERTIES[get-gadget,verb]=get
+    BU_COMMAND_PROPERTIES[get-gadget,noun]=gadget
+}
+
+__column_test_static() {
+    __bu_column_explain_pipeline "$1" | jq -r '[.column, .type, .unit, .description, .source] | join("|")'
+}
+
+function test_columns_from_header_function { #@test
+    __column_test_register_gadget
+    run __column_test_static 'get-gadget'
+    assert_output "name|string||Gadget name|declared
+size|int|bytes|Size on disk|declared"
+    run __column_test_static 'get-gadget --inodes --note'
+    assert_output "name|string||Gadget name|declared
+inodes|int||Inodes used|declared
+note|string||Free-form note|declared"
+    run __column_test_static 'get-gadget --inodes | select n=inodes'
+    assert_output 'n|int||Inodes used|derived'
+}
+
+function test_columns_from_falls_back_to_static { #@test
+    __column_test_register_gadget
+    # A function that declares nothing, fails, or is not defined: static columns.
+    __column_test_gadget_columns() { BU_RET=(); return 0; }
+    assert_equal "$(__column_test_static 'get-gadget --inodes' | cut -d'|' -f1 | tr '\n' ' ')" 'name size inodes '
+    __column_test_gadget_columns() { BU_RET=(name); return 1; }
+    assert_equal "$(__column_test_static 'get-gadget' | cut -d'|' -f1 | tr '\n' ' ')" 'name size inodes '
+    unset -f __column_test_gadget_columns
+    assert_equal "$(__column_test_static 'get-gadget' | cut -d'|' -f1 | tr '\n' ' ')" 'name size inodes '
+}
+
+function test_columns_from_registry_and_help { #@test
+    local out
+    __column_test_register_gadget
+    __column_test_virtual() { printf '{}\n'; }
+    __column_test_virtual_columns() { BU_RET=("${1:-id} int Chosen key"); }
+    bu_preinit_register_user_defined_subcommand_function __column_test_virtual get-virtual-thing function
+    bu_register_stage_effect 'bu get-virtual-thing' producer
+    bu_register_output_columns_from 'bu get-virtual-thing' __column_test_virtual_columns
+    run __column_test_static 'get-virtual-thing serial'
+    assert_output 'serial|int||Chosen key|declared'
+    out=$(bu get-gadget --help | sed $'s/\033\\[[0-9;]*m//g;s/\017//g;s/\033(B//g')
+    [[ "$out" == *'OUTPUT COLUMNS'* ]]
+    [[ "$out" == *"depends on the arguments: bu get-column 'get-gadget ARGS...'"* ]]
+}
+
+function test_columns_from_core_recordifiers { #@test
+    run __column_test_static 'convert-from-tsv --columns name,n:Count | select n'
+    assert_output 'n|string|||declared'
+    run __column_test_static 'convert-from-lines --column line'
+    assert_output 'line|string|||declared'
+    run __column_test_static 'new-record name=a n:=5 --format jsonl'
+    assert_output "name|string|||declared
+n|any|||declared"
+}
+
+function test_columns_from_live_pipe { #@test
+    local out="$BATS_TEST_TMPDIR/out.jsonl"
+    BU_OUT_DIR="$BATS_TEST_TMPDIR/out"
+    __column_test_register_gadget
+    bu get-gadget --inodes | bu get-column --format jsonl > "$out"
+    run __column_test_rows "$out"
+    assert_output "name|string|declared|string
+inodes|int|declared|int"
+    # A recordifier defines its schema whatever feeds it.
+    printf 'a\t1\n' | bu convert-from-tsv --columns name,n | bu where name -eq a | bu get-column --format jsonl > "$out"
+    run __column_test_rows "$out"
+    assert_output "name|string|declared|string
+n|string|declared|string"
+    # The key of key=value survives the sidecar even when the value does not.
+    bu new-record 'name=a b' n:=5 | bu get-column --format jsonl > "$out"
+    run __column_test_rows "$out"
+    assert_output "name|string|declared|string
+n|any|declared|int"
+}
+
+function test_column_get_member_joins_declared_columns { #@test
+    local out="$BATS_TEST_TMPDIR/out.jsonl"
+    BU_OUT_DIR="$BATS_TEST_TMPDIR/out"
+    bu get-widget | bu get-member --format jsonl > "$out"
+    assert_equal "$(jq -c 'select(.name == "lag")' "$out")" \
+        '{"name":"lag","types":"number","count":2,"null_count":0,"type":"int","unit":"ns","description":"Ping round trip, p50"}'
+    assert_equal "$(jq -c 'select(.name == "extra") | [.type, .unit, .description]' "$out")" '[null,null,null]'
+    # No sidecar chain: the four basic fields only.
+    bu get-widget | grep . | bu get-member --format jsonl > "$out"
+    assert_equal "$(jq -c 'select(.name == "lag")' "$out")" '{"name":"lag","types":"number","count":2,"null_count":0}'
+}

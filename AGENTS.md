@@ -472,6 +472,8 @@ Command names support multi-word verbs via `BU_MULTI_WORD_VERBS` (default: `conv
 
 After a pipe, field-aware completion suggests producer record fields for `select`/`where`/`sort` and sink `--columns`: static registry `BU_OUT_PRODUCER_FIELDS` (extend with `bu_register_output_fields`), opt-in live probing via `BU_OUT_PROBE_PIPELINE` + `BU_OUT_PROBE_COMMANDS`.
 
+Columns are declared with `# Column: name type [unit] description` headers (or `bu_register_output_columns`); a producer whose fields depend on its flags adds `# Columns-From: FUNC` (or `bu_register_output_columns_from`): FUNC gets the stage's arguments and sets `BU_RET` to column lines or bare names of static `# Column:` lines, without running the producer. `bu get-column 'a | b'` traces lineage statically; `a | b | bu get-column` describes the live pipe via sidecars in `$BU_OUT_DIR/pipes` (`lib/core/bu_core_pipemeta.sh`, `BU_OUT_PIPE_METADATA`), and `bu get-member` joins the declared type/unit/description the same way.
+
 See `docs/structured_output.md` for the full guide.
 
 ## Extension Mechanisms

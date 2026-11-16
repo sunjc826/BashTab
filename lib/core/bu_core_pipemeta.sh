@@ -21,12 +21,15 @@
 # An argument that is empty or contains whitespace, `|`, a quote or a
 # backslash is stored as `_`: the static analyzer reads a stage word by word
 # and lineage depends only on clause structure (which fields a `select` keeps,
-# what an `agg` computes), never on filter values.
+# what an `agg` computes), never on filter values. The key of a `key=value`
+# argument is kept (`name=_`): for a recordifier it names an output field.
 #
 # Reader (`... | bu get-column`): read the first line of stdin (or EOF), then
 # look up the sidecar for the fd 0 inode, prepend its stage, and follow
 # `upstream` until a stage that is a producer (or standalone), an empty
 # upstream, or 64 hops. The chain is the pipeline that produced stdin.
+# A chain that ends at a missing sidecar is usable only when its earliest
+# stage defines its own schema (`cat f | bu convert-from-tsv --columns a,b`).
 #
 # Ordering: a writer's sidecar is on disk before its command runs, so before
 # any byte reaches the pipe; the reader has seen a byte (or EOF) before it
@@ -118,7 +121,14 @@ __bu_pipemeta_write()
     do
         if [[ -z "$_pw_arg" || "$_pw_arg" == *[[:space:]\|\'\"\\]* ]]
         then
-            _pw_arg=_
+            # Keep the key of key=value / key:=value: for a recordifier it
+            # names an output field (bu new-record name='a b').
+            if [[ "$_pw_arg" =~ ^([A-Za-z_][A-Za-z0-9_.-]*:?=) ]]
+            then
+                _pw_arg=${BASH_REMATCH[1]}_
+            else
+                _pw_arg=_
+            fi
         fi
         _pw_stage+=" $_pw_arg"
     done
@@ -169,12 +179,14 @@ __bu_pipemeta_read()
 # *Returns*:
 # - `$BU_RET`: `(pipeline status)`. status is `resolved`, `none` (stdin is not
 #   a pipe, or it has no sidecar) or `broken` (at least one sidecar resolved,
-#   then an upstream one is missing: a `grep`/`jq` stage in the middle)
+#   then an upstream one is missing: a `grep`/`jq` stage in the middle). A
+#   missing upstream is not `broken` when the earliest known stage defines its
+#   own schema (a recordifier, a transform, or a Columns-From function)
 __bu_pipemeta_resolve()
 {
     local -r _ps_me=$BASHPID
     local -r _ps_dir=${BU_OUT_DIR:-}/pipes
-    local _ps_inode= _ps_pgid= _ps_pipeline= _ps_status=none _ps_effect= _ps_hops=0 _ps_file=
+    local _ps_inode= _ps_pgid= _ps_pipeline= _ps_status=none _ps_effect= _ps_hops=0 _ps_file= _ps_from=
     local -a _ps_words=() _ps_consumed=()
     BU_RET=('' none)
     [[ -p /dev/stdin && -d "$_ps_dir" ]] || return 0
@@ -189,7 +201,17 @@ __bu_pipemeta_resolve()
             _ps_file=$_ps_dir/$_ps_inode
             if ! __bu_pipemeta_read "$_ps_file" "$_ps_pgid"
             then
-                (( ${#_ps_consumed[@]} )) && _ps_status=broken
+                # Missing upstream. That is fine when the earliest stage we
+                # know defines its own schema (cat file | bu convert-from-tsv
+                # --columns a,b): what fed it does not matter.
+                if (( ${#_ps_consumed[@]} ))
+                then
+                    __bu_column_from_function "${_ps_words[1]:-}" _ps_from
+                    case "$_ps_effect" in
+                    recordify_*|transform) ;;
+                    *) [[ -n "$_ps_from" ]] || _ps_status=broken ;;
+                    esac
+                fi
                 break
             fi
             _ps_consumed+=("$_ps_file")

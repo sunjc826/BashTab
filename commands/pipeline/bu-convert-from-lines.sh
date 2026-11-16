@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Pipeline: recordify_lines
 # Dispatch: source
+# Columns-From: __bu_column_from_lines_args
 # Synopsis: Convert line-oriented text to JSONL records with a single key
 function __bu_bu_convert_from_lines_main()
 {

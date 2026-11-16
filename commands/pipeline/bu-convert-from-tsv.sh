@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Pipeline: recordify_tsv
 # Dispatch: source
+# Columns-From: __bu_column_from_tsv_args
 # Synopsis: Convert TSV text to JSONL records
 function __bu_bu_convert_from_tsv_main()
 {

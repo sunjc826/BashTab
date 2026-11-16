@@ -3,6 +3,8 @@ declare -g -a BU_COLUMN_TYPES=(string int float bool object array any)
 declare -g -a BU_COLUMN_UNITS=(ns us ms s min h d bytes kb mb gb pct bps ticks)
 declare -g -A BU_OUT_PRODUCER_COLUMNS=()
 declare -g -A __BU_COLUMN_FILES=()
+# Canonical command -> function mapping a stage's arguments to its columns.
+declare -g -A BU_OUT_PRODUCER_COLUMNS_FROM=()
 declare -g BU_OUT_COMPLETE_PRODUCER=
 
 # *Description*:
@@ -117,6 +119,149 @@ __bu_column_for_command()
     fi
     BU_RET=("${_cfc_saved[@]}")
     [[ -n "$_cfc_out" ]]
+}
+
+# *Description*:
+# Name the function that declares a command's columns from its arguments, for
+# a function or alias command (a script uses a `# Columns-From:` header).
+#
+# The function is called with the stage's arguments (the words after the
+# command name, taken literally from the pipeline text: nothing is expanded
+# or executed) and sets `BU_RET` to one entry per output column, in order.
+# An entry is either a full declaration in the `# Column:` grammar
+# (`name type [unit] description`) or a bare name, which takes its type, unit
+# and description from the command's static `# Column:` declaration of that
+# name. A non-zero return or an empty `BU_RET` falls back to the static
+# declarations. It must not run the producer.
+#
+# *Params*:
+# - `$1`: Canonical command (`bu verb-noun`)
+# - `$2`: Function name
+#
+# *Example*:
+# ```bash
+# __my_volume_columns() {
+#     BU_RET=(name size)
+#     [[ " $* " == *' --inodes '* ]] && BU_RET=(name inodes)
+#     return 0
+# }
+# bu_register_output_columns_from "bu get-volume" __my_volume_columns
+# ```
+bu_register_output_columns_from()
+{
+    [[ -n "${1:-}" && -n "${2:-}" ]] || return 1
+    BU_OUT_PRODUCER_COLUMNS_FROM[$1]=$2
+}
+
+# *Description*:
+# Name of a command's Columns-From function: the registry, then the script's
+# `# Columns-From:` header. Empty when there is none or it is not defined.
+#
+# *Params*:
+# - `$1`: Command name without the `bu ` prefix; `$2`: output scalar name.
+__bu_column_from_function()
+{
+    local -n _cff_out=$2
+    local _cff_file=${BU_COMMANDS[$1]:-}
+    _cff_out=${BU_OUT_PRODUCER_COLUMNS_FROM[bu $1]:-}
+    if [[ -z "$_cff_out" && -f "$_cff_file" ]]; then
+        __bu_command_header_get "$_cff_file" Columns-From _cff_out
+    fi
+    if [[ -n "$_cff_out" ]] && ! declare -F -- "$_cff_out" >/dev/null; then _cff_out=; fi
+    return 0
+}
+
+# *Description*:
+# Columns of one stage as declared by its Columns-From function for these
+# arguments: newline-separated name/type/unit/description rows joined by US.
+#
+# *Params*:
+# - `$1`: Command name without the `bu ` prefix; `$2`: output scalar name;
+#   remaining arguments: the stage's arguments.
+#
+# *Returns*:
+# - 1 when the command has no Columns-From function or it declared nothing.
+__bu_column_from_stage()
+{
+    local -n _cfs_out=$2
+    local -r _cfs_cmd=$1
+    local _cfs_func= _cfs_static= _cfs_line _cfs_row _cfs_rows= _cfs_name _cfs_rest
+    local -a _cfs_lines=() _cfs_saved=("${BU_RET[@]}")
+    local -A _cfs_known=()
+    shift 2
+    _cfs_out=
+    __bu_column_from_function "$_cfs_cmd" _cfs_func
+    [[ -n "$_cfs_func" ]] || return 1
+    BU_RET=()
+    if "$_cfs_func" "$@"; then _cfs_lines=("${BU_RET[@]}"); fi
+    if ((${#_cfs_lines[@]})); then
+        __bu_column_for_command "bu $_cfs_cmd" _cfs_static || true
+        while IFS=$'\x1f' read -r _cfs_name _cfs_rest; do
+            [[ -n "$_cfs_name" ]] && _cfs_known[$_cfs_name]=$_cfs_rest
+        done <<< "$_cfs_static"
+        for _cfs_line in "${_cfs_lines[@]}"; do
+            __bu_column_parse_line "$_cfs_line" || continue
+            _cfs_name=${BU_RET[0]}
+            if [[ "${BU_RET[1]}" == any && -z "${BU_RET[2]}${BU_RET[3]}" && -n "${_cfs_known[$_cfs_name]:-}" ]]; then
+                # A bare name: inherit the static declaration.
+                _cfs_row=$_cfs_name$'\x1f'${_cfs_known[$_cfs_name]}
+            else
+                printf -v _cfs_row '%s\x1f%s\x1f%s\x1f%s' "${BU_RET[@]}"
+            fi
+            _cfs_rows+=${_cfs_rows:+$'\n'}$_cfs_row
+        done
+    fi
+    BU_RET=("${_cfs_saved[@]}")
+    _cfs_out=$_cfs_rows
+    [[ -n "$_cfs_rows" ]]
+}
+
+# *Description*:
+# Columns-From for `bu convert-from-tsv`: the names in `--columns a,b:Label`.
+__bu_column_from_tsv_args()
+{
+    local _ct_spec= _ct_item
+    local -a _ct_items=()
+    BU_RET=()
+    while (($#)); do
+        if [[ "$1" == --columns ]]; then _ct_spec=${2:-}; fi
+        shift
+    done
+    IFS=, read -r -a _ct_items <<< "$_ct_spec"
+    for _ct_item in "${_ct_items[@]}"; do
+        _ct_item=${_ct_item%%:*}
+        [[ -n "$_ct_item" ]] && BU_RET+=("$_ct_item string")
+    done
+    return 0
+}
+
+# *Description*:
+# Columns-From for `bu convert-from-lines`: the key named by `--column`.
+__bu_column_from_lines_args()
+{
+    BU_RET=()
+    while (($#)); do
+        if [[ "$1" == --column && -n "${2:-}" ]]; then BU_RET=("$2 string"); fi
+        shift
+    done
+    return 0
+}
+
+# *Description*:
+# Columns-From for `bu new-record`: `key=value` is a string, `key:=value` is typed.
+__bu_column_from_record_args()
+{
+    BU_RET=()
+    while (($#)); do
+        case "$1" in
+        --format) shift ;;
+        -*) ;;
+        *:=*) BU_RET+=("${1%%:=*}") ;;
+        *=*) BU_RET+=("${1%%=*} string") ;;
+        esac
+        (($#)) && shift
+    done
+    return 0
 }
 
 # *Description*:
@@ -299,6 +444,7 @@ __bu_column_explain_pipeline()
             [[ "${BU_COMMAND_PROPERTIES[$_ce_cmd,type]:-}" == alias ]] || break
             # An alias may itself declare a producer schema.
             [[ -n "${BU_OUT_PRODUCER_COLUMNS[bu $_ce_cmd]:-}" ]] && break
+            [[ -n "${BU_OUT_PRODUCER_COLUMNS_FROM[bu $_ce_cmd]:-}" ]] && break
             __bu_column_split words "${BU_COMMANDS[$_ce_cmd]}" _ce_alias_words || return 1
             _ce_expanded=(bu); _ce_pos=2
             for _ce_arg in "${_ce_alias_words[@]}"; do
@@ -311,6 +457,17 @@ __bu_column_explain_pipeline()
             done
             _ce_words=("${_ce_expanded[@]}")
         done
+        # A schema that depends on the stage's arguments (Columns-From) wins
+        # over the static declarations, whatever the stage's effect.
+        if __bu_column_from_stage "$_ce_cmd" _ce_decl "${_ce_words[@]:2}"; then
+            _ce_names=(); _ce_rows=()
+            while IFS=$_ce_sep read -r _ce_name _ce_type _ce_unit _ce_desc; do
+                [[ -n "$_ce_name" ]] || continue
+                [[ -v _ce_rows[$_ce_name] ]] || _ce_names+=("$_ce_name")
+                _ce_rows[$_ce_name]="$_ce_type$_ce_sep$_ce_unit$_ce_sep$_ce_desc${_ce_sep}declared${_ce_sep}bu $_ce_cmd$_ce_sep"
+            done <<< "$_ce_decl"
+            continue
+        fi
         __bu_out_stage_effect_lookup "$_ce_cmd" _ce_effect
         case "$_ce_effect" in
         producer|transform)
@@ -382,8 +539,17 @@ __bu_column_attach_hints()
 # Render declared columns for autohelp, padded by the widest column name.
 __bu_column_help()
 {
-    local _ch_rows='' _ch_name _ch_type _ch_unit _ch_desc _ch_width=0
-    __bu_column_for_command "$1" _ch_rows || return 0
+    local _ch_rows='' _ch_name _ch_type _ch_unit _ch_desc _ch_width=0 _ch_from= _ch_cmd=
+    __bu_out_canonicalize_stage "$1"
+    _ch_cmd=${BU_CANONICAL_STAGE#bu }
+    _ch_cmd=${_ch_cmd%%[[:space:]]*}
+    __bu_column_from_function "$_ch_cmd" _ch_from
+    if ! __bu_column_for_command "$1" _ch_rows; then
+        [[ -n "$_ch_from" ]] || return 0
+        printf '\n%s\n\n%s%s\n' "${BU_TPUT_BOLD}OUTPUT COLUMNS${BU_TPUT_RESET}" "$2" \
+            "Depend on the arguments: $BU_CLI_COMMAND_NAME get-column '$_ch_cmd ARGS...'"
+        return 0
+    fi
     while IFS=$'\x1f' read -r _ch_name _ch_type _ch_unit _ch_desc; do
         ((${#_ch_name} > _ch_width)) && _ch_width=${#_ch_name}
     done <<< "$_ch_rows"
@@ -391,4 +557,7 @@ __bu_column_help()
     while IFS=$'\x1f' read -r _ch_name _ch_type _ch_unit _ch_desc; do
         printf '%s%s%-*s%s  %s%s%s  %s\n' "$2" "$BU_TPUT_BOLD" "$_ch_width" "$_ch_name" "$BU_TPUT_RESET" "$BU_TPUT_GREY" "$_ch_type${_ch_unit:+ $_ch_unit}" "$BU_TPUT_RESET" "$_ch_desc"
     done <<< "$_ch_rows"
+    if [[ -n "$_ch_from" ]]; then
+        printf '\n%s%s\n' "$2" "Which of these appear depends on the arguments: $BU_CLI_COMMAND_NAME get-column '$_ch_cmd ARGS...'"
+    fi
 }
