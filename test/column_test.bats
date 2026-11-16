@@ -16,8 +16,7 @@ setup() {
 # Column: up bool Widget responds to pings
 # Column: lag int ns Ping round trip, p50
 # Column: host string Widget host
-printf 'Producer must never execute\n' >&2
-return 99
+printf '%s\n' '{"name":"a","up":true,"lag":5}' '{"name":"b","up":false,"lag":1.5,"extra":"x"}'
 FIXTURE
     bu_preinit_register_user_defined_subcommand_file "$widget" get-widget source
     # Late fixture registration runs after init's verb/noun indexing.
@@ -151,13 +150,15 @@ function test_column_commands_alias_usage_self_help { #@test
     out=$(bu explain-column get-widget --format jsonl)
     assert_equal "$(jq -s length <<< "$out")" 4
     assert_equal "$(jq -sr '.[2].unit' <<< "$out")" ns
-    run bu get-column
+    run bu get-column </dev/null
     assert_failure
     out=$(bu get-column get-column --format jsonl)
-    assert_equal "$(jq -s length <<< "$out")" 7
+    assert_equal "$(jq -s length <<< "$out")" 8
+    assert_equal "$(jq -sr '.[-1].column' <<< "$out")" observed
     out=$(bu get-column --help | sed $'s/\033\\[[0-9;]*m//g;s/\017//g;s/\033(B//g')
     [[ "$out" == *'OUTPUT COLUMNS'* ]]
     [[ "$out" == *'derived      string  How the column was derived'* ]]
+    [[ "$out" == *'observed     string  Pipe form only: value types seen on stdin'* ]]
 }
 
 function test_column_core_producers_declare_columns { #@test
@@ -229,4 +230,147 @@ function test_column_query_comma_spacing_and_keyword_field { #@test
     assert_equal "$(jq -r .column <<< "$out")" $'first\nr'
     out=$(__bu_column_explain_pipeline 'get-widget | query-object agg count , avg:lag')
     assert_equal "$(jq -r .column <<< "$out")" $'count\navg_lag'
+}
+
+# MARK: Pipe form (sidecars). Pipelines run in the test shell and write to a
+# file: `run bash -c` would lose the functions.
+
+__column_test_rows() {
+    jq -r '[.column, .type, .source, (.observed // "null")] | join("|")' "$1"
+}
+
+# Stands in for a bu stage: record a sidecar on its own stdout pipe.
+# $1: pgid to record (empty = the real one), $2: stage
+__column_test_forge() {
+    local me=$BASHPID link pgid=$1
+    # Capture the pid first: fd 1 of a command substitution is its own pipe.
+    link=$(readlink "/proc/$me/fd/1")
+    link=${link#pipe:[}
+    link=${link%]}
+    [[ -n "$pgid" ]] || __bu_pipemeta_pgid "$me" pgid
+    mkdir -p "$BU_OUT_DIR/pipes"
+    printf 'pgid %s\nupstream \nstage %s\n' "$pgid" "$2" > "$BU_OUT_DIR/pipes/$link"
+    printf '%s\n' '{"name":"a","up":true,"lag":5}'
+}
+
+function test_column_pipe_declared_with_observed_types { #@test
+    local out="$BATS_TEST_TMPDIR/out.jsonl"
+    BU_OUT_DIR="$BATS_TEST_TMPDIR/out"
+    bu get-widget | bu where up -eq true | bu get-column --format jsonl > "$out"
+    run __column_test_rows "$out"
+    assert_output "name|string|declared|string
+up|bool|declared|bool
+lag|int|declared|int
+host|string|declared|absent"
+}
+
+function test_column_pipe_mixed_types_and_undeclared_field { #@test
+    local out="$BATS_TEST_TMPDIR/out.jsonl"
+    BU_OUT_DIR="$BATS_TEST_TMPDIR/out"
+    bu get-widget | bu get-column --format jsonl > "$out"
+    assert_equal "$(jq -r 'select(.column == "lag") | .observed' "$out")" 'int,float'
+    assert_equal "$(jq -r 'select(.column == "lag") | .unit' "$out")" ns
+    assert_equal "$(jq -r 'select(.column == "extra") | [.type, .source, .unit, .producer] | join("|")' "$out")" 'string|inferred||'
+    assert_equal "$(jq -sr 'map(.column) | join(" ")' "$out")" 'name up lag host extra'
+}
+
+function test_column_pipe_broken_chain_is_inferred { #@test
+    local out="$BATS_TEST_TMPDIR/out.jsonl"
+    BU_OUT_DIR="$BATS_TEST_TMPDIR/out"
+    bu get-widget | grep . | bu get-column --format jsonl > "$out" 2>/dev/null
+    run __column_test_rows "$out"
+    assert_output "name|string|inferred|string
+up|bool|inferred|bool
+lag|any|inferred|int,float
+extra|string|inferred|string"
+}
+
+function test_column_pipe_regular_file_stdin { #@test
+    local out="$BATS_TEST_TMPDIR/out.jsonl" in="$BATS_TEST_TMPDIR/in.jsonl"
+    BU_OUT_DIR="$BATS_TEST_TMPDIR/out"
+    printf '%s\n' '{"k":1}' '{"k":null}' > "$in"
+    bu get-column --format jsonl < "$in" > "$out" 2>/dev/null
+    run __column_test_rows "$out"
+    assert_output 'k|int|inferred|int,null'
+}
+
+function test_column_pipe_empty_stream_observes_nothing { #@test
+    local out="$BATS_TEST_TMPDIR/out.jsonl"
+    BU_OUT_DIR="$BATS_TEST_TMPDIR/out"
+    bu get-widget | bu where name -eq nobody | bu get-column --format jsonl > "$out"
+    run __column_test_rows "$out"
+    assert_output "name|string|declared|null
+up|bool|declared|null
+lag|int|declared|null
+host|string|declared|null"
+}
+
+function test_column_pipe_forged_sidecar_same_pgid { #@test
+    local out="$BATS_TEST_TMPDIR/out.jsonl"
+    BU_OUT_DIR="$BATS_TEST_TMPDIR/out"
+    __column_test_forge '' 'bu get-widget' | bu get-column --format jsonl > "$out"
+    run __column_test_rows "$out"
+    assert_output "name|string|declared|string
+up|bool|declared|bool
+lag|int|declared|int
+host|string|declared|absent"
+}
+
+function test_column_pipe_forged_sidecar_other_pgid_rejected { #@test
+    local out="$BATS_TEST_TMPDIR/out.jsonl"
+    BU_OUT_DIR="$BATS_TEST_TMPDIR/out"
+    __column_test_forge 1 'bu get-widget' | bu get-column --format jsonl > "$out" 2>/dev/null
+    run __column_test_rows "$out"
+    assert_output "name|string|inferred|string
+up|bool|inferred|bool
+lag|int|inferred|int"
+}
+
+function test_column_pipe_sidecars_consumed { #@test
+    local out="$BATS_TEST_TMPDIR/out.jsonl"
+    local -a left=()
+    BU_OUT_DIR="$BATS_TEST_TMPDIR/out"
+    bu get-widget | bu where up -eq true | bu get-column > "$out"
+    left=("$BU_OUT_DIR"/pipes/*)
+    [[ -d "$BU_OUT_DIR/pipes" ]]
+    [[ ! -e "${left[0]}" ]]
+}
+
+function test_column_pipe_metadata_switch_and_placeholder { #@test
+    local -a left=()
+    BU_OUT_DIR="$BATS_TEST_TMPDIR/out"
+    BU_OUT_PIPE_METADATA=false bu get-widget | cat > /dev/null
+    left=("$BU_OUT_DIR"/pipes/*)
+    [[ ! -e "${left[0]}" ]]
+    bu get-widget | cat > /dev/null
+    left=("$BU_OUT_DIR"/pipes/*)
+    assert_equal "${#left[@]}" 1
+    assert_equal "$(sed -n 3p "${left[0]}")" 'stage bu get-widget'
+    rm -f "${left[0]}"
+    # Filter values never reach the sidecar verbatim when they could break the lexer.
+    bu get-widget | bu where name -eq 'a b|c' | cat > /dev/null
+    run grep -h '^stage' "$BU_OUT_DIR"/pipes/*
+    assert_line 'stage bu where name -eq _'
+    # Not written when stdout is not a pipe.
+    rm -f "$BU_OUT_DIR"/pipes/*
+    bu get-widget > /dev/null
+    left=("$BU_OUT_DIR"/pipes/*)
+    [[ ! -e "${left[0]}" ]]
+}
+
+function test_column_pipemeta_read_and_pgid { #@test
+    local file="$BATS_TEST_TMPDIR/sidecar" pgid=
+    __bu_pipemeta_pgid "$BASHPID" pgid
+    assert_equal "$pgid" "$(ps -o pgid= -p "$BASHPID" | tr -d ' ')"
+    printf 'pgid 42\nupstream 7\nstage bu select a,b\n' > "$file"
+    __bu_pipemeta_read "$file" 42
+    assert_equal "${BU_RET[0]}" 'bu select a,b'
+    assert_equal "${BU_RET[1]}" 7
+    run __bu_pipemeta_read "$file" 43
+    assert_failure
+    run __bu_pipemeta_read "$BATS_TEST_TMPDIR/missing" 42
+    assert_failure
+    printf 'pgid 42\nupstream 7\n' > "$file"
+    run __bu_pipemeta_read "$file" 42
+    assert_failure
 }

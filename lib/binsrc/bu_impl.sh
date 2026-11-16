@@ -75,6 +75,9 @@ __bu_impl_process_alias()
 
 __bu_impl()
 {
+    # Dispatch depth. Exported so that an execute-type command calling the CLI
+    # counts as nested; only depth 1 records pipe metadata.
+    local -x __BU_IMPL_DEPTH=$(( ${__BU_IMPL_DEPTH:-0} + 1 ))
     # Complete deferred command scan on first by-name dispatch.
     bu_ensure_command_scan
 
@@ -164,6 +167,12 @@ __bu_impl()
     fi
     __bu_cli_command_type "$bu_command"
     local -r type=$BU_RET
+    # Tell the reader of our stdout pipe which stage writes it (see
+    # bu_core_pipemeta.sh). Commands that call the CLI internally leave no sidecars.
+    if (( __BU_IMPL_DEPTH == 1 ))
+    then
+        __bu_pipemeta_write "$bu_command" "${remaining_options[@]}"
+    fi
     local exit_code=0
     case "$type" in
     execute)

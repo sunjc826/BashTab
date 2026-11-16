@@ -96,6 +96,8 @@ bu_config_register BU_OUT_VALIDATION --default warn \
 bu_config_register BU_OUT_VALIDATE_RECORDS --default first \
     --enum first all enum-- \
     --hint "Check required fields on the first record or every record"
+bu_config_register BU_OUT_PIPE_METADATA --bool --default true \
+    --hint "Record which pipeline produced a pipe, for '... | bu get-column'"
 
 # Show the active top-level module name in PS1, like Python venvs.
 # When enabled, PS1 is prefixed with e.g. "[myproject] ".

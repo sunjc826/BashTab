@@ -163,6 +163,7 @@ bu_help_topic_register_dir "$BU_DIR/help"
 BU_CURRENT_MODULE=$_bu_cur_module_prev
 source ./lib/core/bu_core_out.sh --__bu-once
 source ./lib/core/bu_core_column.sh --__bu-once
+source ./lib/core/bu_core_pipemeta.sh --__bu-once
 source ./lib/core/bu_core_remote.sh --__bu-once
 source ./lib/core/bu_core_compat.sh --__bu-once
 source ./lib/core/bu_core_cap.sh --__bu-once

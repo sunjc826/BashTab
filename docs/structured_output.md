@@ -581,6 +581,7 @@ verb=`convert-to`, noun=`jsonl`. Extend the array for custom multi-word verbs.
 | `BU_OUT_STRICT` | `true` | Legacy master switch; `false` disables record validation. |
 | `BU_OUT_VALIDATION` | `warn` | Contract validation action: `off`, `warn`, or `error`. |
 | `BU_OUT_VALIDATE_RECORDS` | `first` | Validate the `first` record or `all` records. |
+| `BU_OUT_PIPE_METADATA` | `true` | Record which pipeline produced a pipe, so `... \| bu get-column` can describe it (see [Describing a live pipe](#describing-a-live-pipe)). `false` writes no sidecars. |
 | `BU_PIPELINE_CONTRACT_WARN` | `true` | Scan-time warnings for commands missing a `# Pipeline:` header or field contract (`false` silences) |
 | `BU_MULTI_WORD_VERBS` | `convert-to convert-from` | Multi-word verb list for name parsing |
 
@@ -696,6 +697,70 @@ in command help. Field Tab completions, including comma lists in `select`,
 `group-by`, and `--columns`, show `type unit  description` in the hint column.
 Renamed fields retain their original descriptions. The completion DSL's
 `--field-enum ... field-enum--` adds these hints to enumerated field names.
+
+#### Describing a live pipe
+
+`bu get-column 'a | b'` is static: it explains a pipeline without running it.
+With no argument and records on stdin, `bu get-column` describes the pipeline
+that is feeding it:
+
+```bash
+bu get-command | bu where verb -eq get | bu get-column --columns column,type,source,observed
+bu get-command | bu where verb -eq get | bu explain-column
+```
+
+The declared columns and their lineage come out as in the static form, plus an
+`observed` column: the value types actually seen on stdin, in the `# Column:`
+vocabulary (`string int float bool array object null`; a number is `int` when
+it has no fractional part), in first-seen order and joined with commas
+(`int,float`, `int,null`). A declared column that no record carried is
+`absent`; on an empty stream `observed` is null. A field that nobody declared
+is appended with `source` = `inferred`, its type set to the one non-null type
+observed (`any` when there are several), and no unit or description.
+
+**How the reader knows the pipeline.** A pipe carries bytes, not metadata, but
+every pipe has an inode that both ends can see: the writer's
+`/proc/<pid>/fd/1` and the reader's `/proc/<pid>/fd/0` both link to
+`pipe:[<inode>]`. Each top-level `bu` dispatch whose stdout is a pipe writes a
+*sidecar* `$BU_OUT_DIR/pipes/<inode>` before the command runs:
+
+```text
+pgid 48213
+upstream 91532
+stage bu where verb -eq _
+```
+
+`upstream` is the inode of the stage's own stdin pipe (empty when stdin is not
+a pipe). The reader reads its first line of input, looks up the sidecar for
+its fd 0, prepends the stage, and follows `upstream` until it reaches a
+producer, an empty `upstream`, or 64 hops; then it hands the rebuilt pipeline
+to the static analyzer and deletes the sidecars it used. Reading a line first
+is what makes this race-free: a sidecar is on disk before its command writes a
+byte, and a middle stage reads its own input before writing.
+
+- **pgid rule.** Inodes are recycled, so a sidecar is accepted only when its
+  `pgid` equals the reader's. The members of one pipeline share a process
+  group, under job control and in scripts alike; a stale sidecar left by an
+  earlier job does not.
+- **`_` placeholder.** An argument that is empty or contains whitespace, `|`,
+  a quote or a backslash is stored as `_`. The analyzer reads a stage word by
+  word, and lineage depends on clause structure (what `select` keeps, what
+  `agg` computes), never on filter values, so those values are not written to
+  disk verbatim.
+- **Broken chain.** A stage that is not a `bu` command (`grep`, `jq`, `cat`)
+  writes no sidecar. If the chain cannot be followed back to a producer, or
+  stdin is a file, or the analyzer cannot trace the pipeline, the reason is
+  logged at info level and every column is inferred from the records.
+  The pipe form never fails.
+- **Nesting.** Only the outermost dispatch writes; a command that calls `bu`
+  internally leaves no sidecars for its private pipes.
+- **Reaping.** A pipeline with no `bu get-column` at the end leaves its
+  sidecars behind. Files older than an hour are deleted on 1 write in 128
+  (in the background) and on every pipe-form `bu get-column`.
+- **Cost.** Nothing when stdout is not a pipe. Otherwise one `readlink` fork
+  and one small file write per dispatch (a few milliseconds). Set
+  `BU_OUT_PIPE_METADATA=false` to turn it off. Without `/proc` (macOS) no
+  sidecars are written and the pipe form always infers.
 
 ### Agent and script integration
 
