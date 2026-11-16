@@ -1753,14 +1753,27 @@ bu_autocomplete_print_autocompletions()
     printf "%s\n" "${COMPREPLY[@]}"
 }
 
-# Wrapper around `compgen` that captures output into `${COMPREPLY[@]}`
+# Bash 5.3 added compgen -V to store matches directly in an array.
+# Declare globally because this file can be sourced through a function.
+declare -g __BU_COMPGEN_HAS_TARGET=false
+if (( BASH_VERSINFO[0] > 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 3) ))
+then
+    declare -g __BU_COMPGEN_HAS_TARGET=true
+fi
+
+# Wrapper around `compgen` that stores matches in `${COMPREPLY[@]}`
 #
 # @arg $@ {string} args... All parameters are passed to `compgen`
 # @set COMPREPLY[@] Output of `compgen`
 bu_compgen()
 {
-    # Some modern versions of bash support a target variable, but we don't assume this
-    bu_stdout_to_ret --lines -o COMPREPLY compgen "$@"
+    if "$__BU_COMPGEN_HAS_TARGET"
+    then
+        COMPREPLY=()
+        compgen -V COMPREPLY "$@"
+    else
+        bu_stdout_to_ret --lines -o COMPREPLY compgen "$@"
+    fi
 }
 
 

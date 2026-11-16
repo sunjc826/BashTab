@@ -32,6 +32,9 @@ bu_config_register BU_EXIT_HANDLER_VSCODE_POPUP --bool --default false \
 bu_config_register BU_COMMAND_CACHE_ENABLED --bool --default true \
     --hint "Cache the command registry between activations (false: scan every time)"
 
+bu_config_register BU_PROC_SCRATCH_ENABLED --bool --default false \
+    --hint "Capture command output through a per-shell fifo and scratch file instead of a subshell (default false: --str keeps all output with trailing newlines stripped; --spaces returns every word)"
+
 # Bootstrap inputs: they choose the settings files and modules themselves, so
 # only the environment (or the activate script) can set them.
 bu_config_register BU_CONFIG_LOCAL_FILE --env-only \

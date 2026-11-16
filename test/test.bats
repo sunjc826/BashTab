@@ -145,6 +145,39 @@ function test_bu_stdout_to_ret_lines { #@test
     assert_equal "${BU_RET[2]}" "line3"
 }
 
+function test_bu_stdout_to_ret_scratch_off_by_default { #@test
+    run bash -c '
+        unset BU_PROC_SCRATCH_ENABLED
+        export BU_OUT_DIR="$2/out"
+        source "$1/../bu_entrypoint.sh" || exit 1
+        [[ -z "$BU_PROC_FIFO_FD" && ! -e "$BU_PROC_FIFO" ]] || exit 1
+        bu_stdout_to_ret --str printf "a b\nc d\n" || exit 1
+        [[ "$BU_RET" == $'"'"'a b\nc d'"'"' ]] || exit 1
+        bu_stdout_to_ret --proc --str echo next || exit 1
+        [[ "$BU_RET" == next ]] || exit 1
+        bu_stdout_to_ret --str printf "no newline" || exit 1
+        [[ "$BU_RET" == "no newline" ]] || exit 1
+        bu_stdout_to_ret --spaces printf "a b\nc d\n" || exit 1
+        [[ ${#BU_RET[@]} == 4 && "${BU_RET[*]}" == "a b c d" ]] || exit 1
+        bu_stdout_to_ret --lines printf "a b\nc d\n" || exit 1
+        [[ ${#BU_RET[@]} == 2 && "${BU_RET[0]}" == "a b" && "${BU_RET[1]}" == "c d" ]] || exit 1
+        [[ ! -e "$BU_PROC_FILE" ]]
+    ' bash "$DIR" "$BATS_TEST_TMPDIR"
+    assert_success
+}
+
+function test_bu_stdout_to_ret_scratch_opt_in { #@test
+    run bash -c '
+        export BU_PROC_SCRATCH_ENABLED=true
+        export BU_OUT_DIR="$2/out"
+        source "$1/../bu_entrypoint.sh" || exit 1
+        [[ -n "$BU_PROC_FIFO_FD" && -p "$BU_PROC_FIFO" ]] || exit 1
+        bu_stdout_to_ret --proc --str echo hello || exit 1
+        [[ "$BU_RET" == hello ]]
+    ' bash "$DIR" "$BATS_TEST_TMPDIR"
+    assert_success
+}
+
 function test_bu_cached_keyed_execute_str_ignores_stale_ret_array { #@test
     # A --str command built on bu_stdout_to_ret assigns element 0 of BU_RET
     # only. With an array left in BU_RET by an earlier call, the uncached
@@ -224,6 +257,29 @@ function test_bu_symbol_is_function { #@test
     # Test with nonexistent symbol
     run bu_symbol_is_function nonexistent_function_xyz
     assert_failure
+}
+
+function test_bu_symbol_is_function_shadowed_by_alias { #@test
+    run bash -c '
+        shopt -s expand_aliases
+        source "$1/../bu_entrypoint.sh" || exit 1
+        __test_shadowed_function() { :; }
+        alias __test_shadowed_function=true
+        bu_symbol_is_function __test_shadowed_function || exit 1
+        alias __test_alias_only=true
+        ! bu_symbol_is_function __test_alias_only
+    ' bash "$DIR"
+    assert_success
+}
+
+function test_bu_compgen_clears_previous_matches { #@test
+    local status=0
+    bu_compgen -W "alpha beta" -- a
+    assert_equal "${#COMPREPLY[@]}" 1
+    assert_equal "${COMPREPLY[0]}" alpha
+    bu_compgen -W "alpha beta" -- missing || status=$?
+    assert_equal "$status" 1
+    assert_equal "${#COMPREPLY[@]}" 0
 }
 
 # Tests for bu_symbol_is_file

@@ -90,23 +90,26 @@ bu_mkdir \
     "$BU_SHIMS_DIR"
 
 # Variables prefixed with BU_PROC_ are process specific
-# BU_PROC_FIFO is allows reading from stdout of a command without using a subshell
-# Iirc, bash 5.3 will support subshell-less process substitution, but until then, this is a workaround
+# Opt-in scratch capture avoids a subshell. The fifo path reads only one line:
+# leftover lines contaminate later captures, and missing newlines can block.
 BU_PROC_FIFO=$BU_PROC_DIR/scratch.fifo
 BU_PROC_FILE=$BU_PROC_DIR/scratch.txt
 # Use an fd to further reduce overhead
 # TODO: Think about fds leaking if we re-source the file, e.g. when overridding source-once
 BU_PROC_FIFO_FD=
 # Probably have some kind of cleanup policy
-if [[ ! -e "$BU_PROC_DIR" ]]
+if [[ ${BU_PROC_SCRATCH_ENABLED:-false} == true ]]
 then
-    mkdir "$BU_PROC_DIR"
+    if [[ ! -e "$BU_PROC_DIR" ]]
+    then
+        mkdir "$BU_PROC_DIR"
+    fi
+    if [[ ! -e "$BU_PROC_FIFO" ]]
+    then
+        mkfifo "$BU_PROC_FIFO"
+    fi
+    exec {BU_PROC_FIFO_FD}<>"$BU_PROC_FIFO"
 fi
-if [[ ! -e "$BU_PROC_FIFO" ]]
-then
-    mkfifo "$BU_PROC_FIFO"
-fi
-exec {BU_PROC_FIFO_FD}<>"$BU_PROC_FIFO"
 
 BU_ENV_IS_MACOS=
 # Detect if we are in WSL
@@ -185,6 +188,13 @@ bu_ret_to_stdout()
     return "$exit_code"
 }
 
+# Capture command stdout into BU_RET (or --outparam).
+# By default, --str returns the whole output with trailing newlines stripped
+# ($() semantics), --spaces returns every word, and --lines returns each line.
+# BU_PROC_SCRATCH_ENABLED enables the legacy fifo/scratch-file path (except
+# by default on WSL). --no-proc bypasses it; --proc falls back to a subshell
+# when no scratch fd exists. The opt-in fifo path reads only the first line
+# and requires a trailing newline; leftover lines affect subsequent captures.
 bu_stdout_to_ret()
 {
     local mode=str
@@ -219,6 +229,10 @@ bu_stdout_to_ret()
         shift "$shift_by"
     done
 
+    if [[ -z "${BU_PROC_FIFO_FD:-}" ]]
+    then
+        is_proc=false
+    fi
     if [[ -z "$is_proc" ]]
     then
         if "$BU_ENV_IS_WSL"
@@ -502,6 +516,7 @@ __bu_command_headers_batch()
 # MARK: Shell symbol helpers
 
 # Check if a symbol is a function
+# Uses the exit status without capturing output; an alias cannot hide the function.
 #
 # @arg $1 string Symbol name
 #
@@ -509,8 +524,7 @@ __bu_command_headers_batch()
 # - Exit code 0 if the symbol is a function, non-zero otherwise
 bu_symbol_is_function()
 {
-    bu_stdout_to_ret type -t "$1"
-    [[ "$BU_RET" = function ]]
+    declare -F -- "$1" >/dev/null
 }
 
 # Check if a symbol is a file
