@@ -95,6 +95,7 @@ __bu_command_dir_candidates()
 # bash-ide parse-func-sig
 __bu_init_env_commands()
 {
+    local _column_command
     # ── Recursion guard for --is-compatible probes ──
     # The framework probes gated commands with `BU_IS_COMPAT_PROBE=1 bash
     # <script> --is-compatible`.  An executable command generated from the
@@ -133,6 +134,10 @@ __bu_init_env_commands()
         __BU_COMMAND_HEADER_BLOCK=()
         __BU_COMMAND_HEADER_PARSED=()
         __BU_COMMAND_HEADER_DISPATCH=()
+        for _column_command in "${!__BU_COLUMN_FILES[@]}"; do
+            unset 'BU_OUT_PRODUCER_COLUMNS[$_column_command]'
+        done
+        __BU_COLUMN_FILES=()
     fi
 
     local dir

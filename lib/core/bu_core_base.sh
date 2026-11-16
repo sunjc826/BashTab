@@ -387,6 +387,7 @@ declare -A -g __BU_COMMAND_HEADER_DISPATCH=()
 # - Directive headers (`Dispatch`, `Tab-Execute`, `Tab-Execute-Field`) are
 #   only honored within the first 8 lines so they must sit at the very top
 #   of the file; all other headers are honored within the first 30 lines.
+#   A Column run starting in that window continues until its first non-Column line.
 # - Values are extracted verbatim (no variable/command substitution) with
 #   leading space after the colon and trailing whitespace trimmed.
 # bash-ide parse-func-sig
@@ -403,7 +404,8 @@ __bu_command_headers_parse()
         return 0
     fi
     __BU_COMMAND_HEADER_BLOCK[$file]=$(awk '
-        FNR > 30 { exit }
+        FNR > 30 && !(column_run && /^#[[:space:]]*Column:[[:space:]]/) { exit }
+        { column_run = ($0 ~ /^#[[:space:]]*Column:[[:space:]]/) }
         /^#[[:space:]]*[A-Za-z][A-Za-z0-9-]*:[[:space:]]/ {
             line = $0
             sub(/^#[[:space:]]*/, "", line)
@@ -449,6 +451,23 @@ __bu_command_header_get()
     return 0
 }
 
+# *Description*:
+# Read every value of a repeated header, in declaration order.
+# *Params*:
+# - `$1`: File; `$2`: header key; `$3`: output array name.
+__bu_command_header_get_all()
+{
+    local -n _hga_out=$3
+    local _hga_line
+    _hga_out=()
+    __bu_command_headers_parse "$1"
+    while IFS= read -r _hga_line
+    do
+        [[ "$_hga_line" == "$2"$'\t'* ]] && _hga_out+=("${_hga_line#*$'\t'}")
+    done <<< "${__BU_COMMAND_HEADER_BLOCK[$1]}"
+    return 0
+}
+
 # Parse the headers of many command scripts in a single awk process (batch
 # mode), populating the memoized header cache.  Called once per search
 # directory during the command scan so the per-file registration loop does
@@ -484,7 +503,7 @@ __bu_command_headers_batch()
     done
 
     # One awk over all files: print FILENAME<TAB>key<TAB>value per header.
-    # Reads past line 30 of each file but only matches within the window.
+    # Reads past line 30 only for a contiguous Column run starting in the window.
     while IFS=$'\t' read -r _bp _bk _bv
     do
         [[ -z "$_bp" ]] && continue
@@ -497,7 +516,10 @@ __bu_command_headers_batch()
         # Pre-extract Dispatch for the scan's hot path.
         [[ "$_bk" == Dispatch ]] && __BU_COMMAND_HEADER_DISPATCH[$_bp]=$_bv
     done < <(awk '
-        FNR <= 30 && /^#[[:space:]]*[A-Za-z][A-Za-z0-9-]*:[[:space:]]/ {
+        FNR == 1 { column_run = 0 }
+        FNR > 30 && !(column_run && /^#[[:space:]]*Column:[[:space:]]/) { column_run = 0; next }
+        { column_run = ($0 ~ /^#[[:space:]]*Column:[[:space:]]/) }
+        /^#[[:space:]]*[A-Za-z][A-Za-z0-9-]*:[[:space:]]/ {
             line = $0
             sub(/^#[[:space:]]*/, "", line)
             key = line

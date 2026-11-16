@@ -101,7 +101,7 @@ fi
 
 # Declared schema (name list + order) from the # Fields: header.
 local declared=
-__bu_command_header_get "$producer_file" "Fields" declared
+__bu_command_fields_get "$producer_file" declared
 local -a declared_fields=()
 read -r -a declared_fields <<< "$declared"
 local declared_json='[]'

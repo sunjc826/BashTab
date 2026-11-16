@@ -779,6 +779,8 @@ bu_register_stage_effect "bu gc" producer
 #   bu get-process | bu grep get
 #   bu get-process | bu sort name desc
 #   bu get-process | bu count --format tsv   # bare number (Measure-Object)
+bu_preinit_register_new_alias explain-column get-column {...}
+bu_register_stage_effect "bu explain-column" producer
 bu_preinit_register_new_alias where query-object --where {...}
 bu_preinit_register_new_alias select query-object --select {...}
 bu_preinit_register_new_alias grep query-object --grep {...}

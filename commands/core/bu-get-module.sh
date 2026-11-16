@@ -4,7 +4,13 @@
 # Tab-Execute: true
 # Synopsis: List loaded BashTab modules
 # Help-Topic: modules
-# Fields: name rank version path describe branch dirty
+# Column: name string Module name
+# Column: rank int Command shadowing priority in module order
+# Column: version string Declared module version
+# Column: path string Module directory
+# Column: describe string Git revision description
+# Column: branch string Current Git branch
+# Column: dirty bool Whether the module has uncommitted changes
 function __bu_bu_get_module_main()
 {
 local -r invocation_dir=$PWD

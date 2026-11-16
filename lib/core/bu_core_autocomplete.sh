@@ -2107,7 +2107,7 @@ __bu_autocomplete_completion_func_master_helper()
             cd "${args[i+1]}"
             shift_by=2
             ;;
-        --sh|--enum|--stdout|--ret|--as-if|--pipeline-fields|--delimited)
+        --sh|--enum|--field-enum|--stdout|--ret|--as-if|--pipeline-fields|--delimited)
             # Generic completion utilities
             terminator=${args[i]#--}--
             for (( offset = 1; i + offset < "${#args[@]}"; offset++ ))
@@ -2119,7 +2119,10 @@ __bu_autocomplete_completion_func_master_helper()
             done
             sub_args=("${args[@]:i+1:offset-1}")
             case "${args[i]}" in
-            --enum)
+            --enum|--field-enum)
+                if [[ "${args[i]}" == --field-enum ]]; then
+                    __bu_column_attach_hints "${#COMPREPLY[@]}" "${sub_args[@]}"
+                fi
                 if [[ -n "$current_ansi_color" ]]
                 then
                     # TODO: Filtering here
@@ -2177,8 +2180,10 @@ __bu_autocomplete_completion_func_master_helper()
                 local -a _pf_call_args=()
                 "$_pf_is_dot" && _pf_call_args+=(--dot)
                 "$_pf_is_nested" && _pf_call_args+=(--nested)
+                BU_OUT_COMPLETE_PRODUCER=
                 if __bu_out_complete_pipeline_fields "${_pf_call_args[@]}" "${opt_cur_word[@]}"
                 then
+                    __bu_column_attach_hints "${#COMPREPLY[@]}" "${BU_RET[@]}"
                     if [[ -n "$current_ansi_color" ]]
                     then
                         BU_RET=("${BU_RET[@]/#/$current_ansi_color}")

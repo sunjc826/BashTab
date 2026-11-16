@@ -153,6 +153,7 @@ do
             local _s_prefix=${_s_cur%"$_s_active"}
             local -a _s_candidates=()
             local _s_cand=
+            BU_OUT_COMPLETE_PRODUCER=
             if __bu_out_complete_pipeline_fields "$_s_active"; then
                 for _s_cand in "${BU_RET[@]}"; do
                     [[ -n "${_s_used[$_s_cand]:-}" ]] && continue
@@ -160,7 +161,7 @@ do
                 done
             fi
             if ((${#_s_candidates[@]} > 0)); then
-                autocompletion=(--enum "${_s_candidates[@]}" enum-- --hint "Fields, new=old renames")
+                autocompletion=(--field-enum "${_s_candidates[@]}" field-enum-- --hint "Fields, new=old renames")
             else
                 autocompletion=(--hint "Fields, new=old renames")
             fi
@@ -469,6 +470,7 @@ do
             local _g_prefix=${_g_cur%"$_g_active"}
             local -a _g_candidates=()
             local _g_cand=
+            BU_OUT_COMPLETE_PRODUCER=
             if __bu_out_complete_pipeline_fields "$_g_active"; then
                 for _g_cand in "${BU_RET[@]}"; do
                     [[ -n "${_g_used[$_g_cand]:-}" ]] && continue
@@ -476,7 +478,7 @@ do
                 done
             fi
             if ((${#_g_candidates[@]} > 0)); then
-                autocompletion=(--enum "${_g_candidates[@]}" enum-- --hint "Group key fields")
+                autocompletion=(--field-enum "${_g_candidates[@]}" field-enum-- --hint "Group key fields")
             else
                 autocompletion=(--hint "Group key fields")
             fi
@@ -768,6 +770,7 @@ do
             local _c_prefix=${_c_cur%"$_c_active"}
             local -a _c_candidates=()
             local _c_cand=
+            BU_OUT_COMPLETE_PRODUCER=
             if __bu_out_complete_pipeline_fields "$_c_active"; then
                 for _c_cand in "${BU_RET[@]}"; do
                     [[ -n "${_c_used[$_c_cand]:-}" ]] && continue
@@ -775,7 +778,7 @@ do
                 done
             fi
             if ((${#_c_candidates[@]} > 0)); then
-                autocompletion=(--enum "${_c_candidates[@]}" enum-- --hint "Comma-separated columns, key:Label renames headers")
+                autocompletion=(--field-enum "${_c_candidates[@]}" field-enum-- --hint "Comma-separated columns, key:Label renames headers")
             else
                 autocompletion=(--hint "Comma-separated columns, key:Label renames headers")
             fi

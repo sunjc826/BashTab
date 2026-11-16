@@ -2240,7 +2240,7 @@ function test_query_object_having_value_completion_matches_where { #@test
 function test_value_completion_get_alias_root { #@test
     local command_line_front_before_pipe="bu get-alias | "
     bu_autocomplete_get_autocompletions bu where root -eq ""
-    assert_equal "${COMPREPLY[*]}" "get-command query-object"
+    assert_equal "${COMPREPLY[*]}" "get-column get-command query-object"
 }
 
 function test_value_completion_like_and_gt_never_probe { #@test

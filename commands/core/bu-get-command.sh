@@ -4,7 +4,22 @@
 # Tab-Execute: true
 # Synopsis: List registered commands and their properties
 # Help-Topic: commands
-# Fields: name verb noun namespace type definition synopsis fields stage input output requires_all requires_any module shadows shadowed_by
+# Column: name string Command name
+# Column: verb string Command verb
+# Column: noun string Command noun
+# Column: namespace string Command namespace
+# Column: type string Dispatch type: source, execute, function, or alias
+# Column: definition string Script path, function name, or alias expansion
+# Column: synopsis string Short command summary
+# Column: fields string Declared output field names
+# Column: stage string Pipeline stage effect
+# Column: input string Input stream format
+# Column: output string Output stream format
+# Column: requires_all string Input fields all required
+# Column: requires_any string Input fields accepted as alternatives
+# Column: module string Module that registered the command
+# Column: shadows string Commands shadowed by this command
+# Column: shadowed_by string Command that shadows this command
 function __bu_bu_get_command_main()
 {
 local -r invocation_dir=$PWD
@@ -303,7 +318,7 @@ __bu_get_cmd_registry_lookup()
             local _f_file=${BU_COMMANDS[$command]:-}
             if [[ -f "$_f_file" ]]
             then
-                __bu_command_header_get "$_f_file" "Fields" fields
+                __bu_command_fields_get "$_f_file" fields
             fi
         fi
 

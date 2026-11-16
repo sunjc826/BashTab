@@ -641,6 +641,62 @@ needs no central registry.
 - `# Fields:` — output field names a producer emits, used for pipeline-aware
   completion after a pipe.
 
+### `# Column:` — types, units, and descriptions
+
+Declare one output column per header line:
+
+```bash
+# Pipeline: producer
+# Column: name string Widget name
+# Column: up bool Widget responds to pings
+# Column: lag int ns Ping round trip, p50
+# Column: host string Widget host
+```
+
+The grammar is `# Column: <name> <type> [<unit>] <description>`. Supported
+types are `string int float bool object array any`. An unrecognized type
+token starts the description and the type becomes `any`. A missing name is
+invalid. The optional unit is recognized only from
+`ns us ms s min h d bytes kb mb gb pct bps ticks`; other tokens start the
+description (`count int nanoseconds are not a unit` has no unit).
+
+Column names, in declaration order, supply the field list when there is no
+`# Fields:` header. If both exist, `# Fields:` wins. Headers normally occupy
+the first 30 lines, but a contiguous run of `# Column:` lines starting in
+that window is read to its end. A code line or another kind of header ends
+the continuation.
+
+Functions and aliases without files can register the same metadata:
+
+```bash
+bu_register_output_columns "bu get-widget" \
+    "name string Widget name" "lag int ns Ping round trip, p50"
+```
+
+This also registers the field names for pipeline analysis. File declarations
+are parsed and cached lazily. Inspect a command or trace a quoted pipeline
+with `bu get-column` (also spelled `bu explain-column`):
+
+```bash
+bu get-column get-module
+bu explain-column 'get-module | where dirty -eq true | select name,r=rank'
+bu get-column 'get-widget | query-object group-by host agg count,avg:lag,worst=max:lag'
+```
+
+Tracing is static: no producer is executed. Registered commands can omit the
+`bu` prefix. Filters retain descriptions; projections retain or rename them;
+aggregates synthesize descriptions and carry units through numeric aggregates.
+The output fields are `column type unit description source producer derived`.
+`source` is `declared`, `derived`, or `none` for fields without descriptions.
+Unknown stages such as `jq` fail instead of guessing. Use `--format` and
+`--columns` to choose the presentation.
+
+Declared columns appear in an **OUTPUT COLUMNS** section before **OPTIONS**
+in command help. Field Tab completions, including comma lists in `select`,
+`group-by`, and `--columns`, show `type unit  description` in the hint column.
+Renamed fields retain their original descriptions. The completion DSL's
+`--field-enum ... field-enum--` adds these hints to enumerated field names.
+
 ### Agent and script integration
 
 Agents and scripts should enumerate capabilities via:

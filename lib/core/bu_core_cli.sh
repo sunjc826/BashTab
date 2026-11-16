@@ -531,6 +531,8 @@ bu_autohelp()
         fi
     fi
 
+    [[ -n "$command" ]] && __bu_column_help "bu $command" "$padding"
+
     printf '\n%s\n\n' "${BU_TPUT_BOLD}OPTIONS${BU_TPUT_RESET}"
     local i
     local option

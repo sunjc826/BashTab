@@ -3,7 +3,15 @@
 # Dispatch: source
 # Synopsis: List BashTab configuration settings
 # Help-Topic: config
-# Fields: name value origin phase default allowed module description location
+# Column: name string Setting name
+# Column: value string Current setting value
+# Column: origin string Source of the current value
+# Column: phase string Configuration phase
+# Column: default string Registered default value
+# Column: allowed string Allowed values
+# Column: module string Module that registered the setting
+# Column: description string Setting description
+# Column: location string File and line that supplied the value
 function __bu_bu_get_config_main()
 {
 # --is-compatible: no external dependencies

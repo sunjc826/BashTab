@@ -2720,6 +2720,7 @@ __bu_out_complete_pipeline_fields()
     if __bu_out_resolve_producer
     then
         producer_str=$BU_RET
+        BU_OUT_COMPLETE_PRODUCER=$producer_str
         producer_eval=$BU_RET_EVAL
         BU_RET=()
     elif __bu_out_resolve_self_from_file
@@ -2768,7 +2769,7 @@ __bu_out_complete_pipeline_fields()
         if [[ -f "${BU_COMMANDS[$_ff_cmd_name]:-}" ]]
         then
             local _ff_line=
-            __bu_command_header_get "${BU_COMMANDS[$_ff_cmd_name]}" "Fields" _ff_line
+            __bu_command_fields_get "${BU_COMMANDS[$_ff_cmd_name]}" _ff_line
             if [[ -n "$_ff_line" ]]
             then
                 # shellcheck disable=SC2206 # Intentional word splitting of the field list
@@ -3505,7 +3506,7 @@ __bu_out_static_pipeline_fields()
         if [[ -f "$_spf_file" ]]
         then
             local _spf_line=
-            __bu_command_header_get "$_spf_file" "Fields" _spf_line
+            __bu_command_fields_get "$_spf_file" _spf_line
             [[ -n "$_spf_line" ]] && _spf_fields=($_spf_line)
         fi
     fi
@@ -3785,6 +3786,7 @@ __bu_out_pipeline_help()
             # Resolve upstream fields (but don't pollute BU_RET for callers)
             local -a _plh_saved_ret=("${BU_RET[@]:-}")
             local -a _plh_fields=()
+            local BU_OUT_COMPLETE_PRODUCER=
             if __bu_out_complete_pipeline_fields "" 2>/dev/null
             then
                 _plh_fields=("${BU_RET[@]}")
@@ -4116,7 +4118,7 @@ __bu_out_analyze_stage()
             if [[ -f "$_prod_file" ]]
             then
                 local _prod_line=
-                __bu_command_header_get "$_prod_file" "Fields" _prod_line
+                __bu_command_fields_get "$_prod_file" _prod_line
                 [[ -n "$_prod_line" ]] && _out_fields=($_prod_line)
             fi
         fi
@@ -4138,7 +4140,7 @@ __bu_out_analyze_stage()
         if [[ -f "$_tr_file" ]]
         then
             local _tr_line=
-            __bu_command_header_get "$_tr_file" "Fields" _tr_line
+            __bu_command_fields_get "$_tr_file" _tr_line
             [[ -n "$_tr_line" ]] && _out_fields=($_tr_line)
         fi
         if ((${#_out_fields[@]} == 0))
