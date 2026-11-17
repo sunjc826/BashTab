@@ -1,0 +1,8 @@
+{
+  "name": "bashtab-tree-sitter-bash",
+  "version": "0.0.0",
+  "private": true,
+  "description": "BashTab's vendored fork of tree-sitter-bash. Built by lib/grammar/build.js; see lib/grammar/README.md.",
+  "main": "bindings/node",
+  "license": "MIT"
+}

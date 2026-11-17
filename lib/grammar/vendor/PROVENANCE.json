@@ -1,0 +1,14 @@
+{
+  "upstream": {
+    "package": "tree-sitter-bash",
+    "version": "0.25.1"
+  },
+  "patches": [
+    "fork-banner",
+    "rw-redirect",
+    "subscript-index",
+    "subscript-conflict",
+    "arith-base-prefix"
+  ],
+  "note": "Regenerate with: node lib/grammar/build.js --rebase"
+}

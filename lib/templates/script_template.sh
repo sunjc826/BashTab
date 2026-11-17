@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Synopsis: TODO -- one line for the command catalog
 function __bu_@BU_SCRIPT_NAME@_main()
 {
 # --is-compatible: magic flag checked by the framework at registration time.
@@ -30,8 +31,6 @@ case "$BASH_SOURCE" in
 esac
 pushd "$script_dir" &>/dev/null
 script_dir=$PWD
-
-# Synopsis: TODO -- one line for the command catalog
 
 if [[ -z "$COMP_CWORD" ]]
 then
